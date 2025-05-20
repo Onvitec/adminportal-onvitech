@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { SidebarNavigation } from "./sidebar-navigation";
-import { Search } from "lucide-react";
+import { Search, Menu } from "lucide-react"; // Added Menu icon for mobile
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
@@ -13,9 +13,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, ChevronLeft, ChevronRight } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useMediaQuery } from "../../hooks/use-media-query";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -23,6 +24,8 @@ interface DashboardLayoutProps {
 
 export function CustomLayout({ children }: DashboardLayoutProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   useEffect(() => {
     const storedState = localStorage.getItem("sidebarCollapsed");
@@ -39,29 +42,68 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
     };
   }, []);
 
+  // Close mobile sidebar when switching to desktop
+  useEffect(() => {
+    if (isDesktop) {
+      setIsMobileSidebarOpen(false);
+    }
+  }, [isDesktop]);
+
+  const toggleMobileSidebar = () => {
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  };
+
   return (
     <div className="flex h-screen overflow-hidden">
-      <SidebarNavigation />
+      {/* Desktop Sidebar */}
+      <div className="hidden lg:block">
+        <SidebarNavigation />
+      </div>
+
+      {/* Mobile Sidebar Overlay */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={toggleMobileSidebar}
+        />
+      )}
+
+      {/* Mobile Sidebar */}
+      <div
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out lg:hidden",
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <SidebarNavigation />
+      </div>
+
+      {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 items-center  bg-background px-4 lg:px-6">
-          <div
-            className={cn(
-              "flex w-full items-center justify-between transition-all duration-300 ease-in-out",
-              isCollapsed ? "ml-[10px]" : "ml-[220px]"
-            )}
-          >
+        <header className="flex h-14 items-center bg-background px-4 lg:px-6 border-b">
+          <div className="flex w-full items-center justify-between">
+            {/* Mobile Menu Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden mr-2"
+              onClick={toggleMobileSidebar}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+
             {/* Search Bar */}
-            <div className="relative">
+            <div className="relative flex-1 max-w-md">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Search..."
-                className="w-full rounded-md bg-background pl-8 md:w-[300px] lg:w-[400px] border-none"
+                className="w-full rounded-md bg-background pl-8 border-none outline-none"
               />
             </div>
 
             {/* Profile */}
-            <div className="flex items-center">
+            <div className="flex items-center ml-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-8 w-8 rounded-full p-0">
@@ -93,12 +135,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
           </div>
         </header>
 
-        <main
-          className={cn(
-            "flex-1 overflow-y-auto  transition-all duration-300 ease-in-out bg-[##F2F7FC]",
-            isCollapsed ? "ml-[70px]" : "ml-[220px]"
-          )}
-        >
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F2F7FC]">
           {children}
         </main>
       </div>
