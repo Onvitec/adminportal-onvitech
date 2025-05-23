@@ -72,6 +72,15 @@ export function SidebarNavigation() {
     }
   };
 
+  // New function to handle mobile logo click
+  const handleMobileLogoClick = () => {
+    if (isDesktop) {
+      toggleSidebar(); // Toggle on desktop
+    } else {
+      setIsCollapsed(true); // Always close on mobile
+    }
+  };
+
   const navGroups: NavGroup[] = [
     {
       title: "ANALYSIS",
@@ -93,7 +102,7 @@ export function SidebarNavigation() {
       items: [
         {
           title: "Session Maker",
-          href: "/session-maker",
+          href: "/session",
           icon: <Database className="h-5 w-5" />,
         },
       ],
@@ -151,7 +160,7 @@ export function SidebarNavigation() {
           ) : (
             <div className="w-full flex justify-center">
               <button
-                onClick={toggleSidebar}
+                onClick={handleMobileLogoClick} // Changed to new handler
                 className="rounded-full hover:opacity-80 transition"
               >
                 <Image

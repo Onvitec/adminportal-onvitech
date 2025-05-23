@@ -1,11 +1,23 @@
-import React from 'react'
+'use client';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
 
-type Props = {}
+export default function DashboardPage() {
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-function Dashboard({}: Props) {
-  return (
-    <div>Dashboard</div>
-  )
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) {
+        router.replace('/signup');
+      } else {
+        setLoading(false);
+      }
+    });
+  }, []);
+
+  if (loading) return <p>Loading...</p>;
+
+  return <div className="p-4">Welcome to Dashboard gyu</div>;
 }
-
-export default Dashboard
