@@ -50,7 +50,6 @@ export default function TableRow<T>({
       variant: "destructive" as const,
     },
   ];
-
   return (
     <tr
       key={rowIndex}

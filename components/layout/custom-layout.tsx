@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { SidebarNavigation } from "./sidebar-navigation";
-import { Search, Menu } from "lucide-react"; 
+import { Search, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
@@ -17,10 +17,9 @@ import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMediaQuery } from "../../hooks/use-media-query";
-import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
-
+import { supabase } from "@/lib/supabase";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -35,8 +34,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
   } | null>(null);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const router = useRouter();
-    const pathname = usePathname();
-
+  const pathname = usePathname();
 
   useEffect(() => {
     const storedState = localStorage.getItem("sidebarCollapsed");
@@ -49,17 +47,21 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
 
     // Check user session on mount
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
-        router.push('/login');
+        router.push("/login");
         return;
       }
 
       // Get user info from the session
       const userData = {
         email: session.user.email,
-        username: session.user.user_metadata?.username || 
-                 session.user.email?.split('@')[0] || 'User'
+        username:
+          session.user.user_metadata?.username ||
+          session.user.email?.split("@")[0] ||
+          "User",
       };
       setUser(userData);
     };
@@ -72,7 +74,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
     };
   }, [router]);
 
-   if (pathname === '/login' || pathname === '/signup') {
+  if (pathname === "/login" || pathname === "/signup") {
     return null;
   }
 
@@ -90,7 +92,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     // router.push('/login');
-    window.location.href='/login';
+    window.location.href = "/login";
   };
 
   if (!user) {
@@ -99,11 +101,14 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
 
   // Get initials for avatar fallback
   const getInitials = (name: string) => {
-    const names = name.split(' ');
-    return names.map(n => n[0]).join('').toUpperCase();
+    const names = name.split(" ");
+    return names
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
   };
 
-  const initials = user.username ? getInitials(user.username) : 'U';
+  const initials = user.username ? getInitials(user.username) : "U";
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -179,9 +184,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
               </DropdownMenu>
               <div className="ml-2 hidden sm:block">
                 <p className="text-sm font-medium">{user.username}</p>
-                <p className="text-xs text-muted-foreground">
-                  {user.email}
-                </p>
+                <p className="text-xs text-muted-foreground">{user.email}</p>
               </div>
             </div>
           </div>

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import Image from 'next/image';
+import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' });

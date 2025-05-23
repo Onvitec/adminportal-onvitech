@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CustomLayout } from "@/components/layout/custom-layout";
 import { headers } from "next/headers";
+import { Suspense } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -26,12 +27,17 @@ export default async function RootLayout({
 }) {
   const headersList = await headers(); // await here
   const pathname = headersList.get("x-pathname") || "";
-  const isAuthPage = pathname.startsWith("/login") || pathname.startsWith("/signup");
+  const isAuthPage =
+    pathname.startsWith("/login") || pathname.startsWith("/signup");
 
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        {isAuthPage ? children : <CustomLayout>{children}</CustomLayout>}
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <Suspense>
+          {isAuthPage ? children : <CustomLayout>{children}</CustomLayout>}
+        </Suspense>
       </body>
     </html>
   );

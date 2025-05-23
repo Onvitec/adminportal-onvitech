@@ -16,7 +16,7 @@ export default function TableCell<T>({
   isFirstColumn,
 }: TableCellProps<T>) {
   const value = row[column.accessorKey];
-
+console.log(column)  
   return (
     <td
       className={`whitespace-nowrap px-3 py-4 text-sm text-gray-500 ${
