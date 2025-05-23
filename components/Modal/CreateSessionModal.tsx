@@ -31,21 +31,21 @@ const SESSION_TYPES: SessionType[] = [
     title: "Interactive Video",
     description: "Interactive Video Flow Builder (Main Feature)",
     icon: <Video className="h-5 w-5 text-white" />,
-    redirectUrl: "sesssions/create/interactive",
+    redirectUrl: "sessions/create/interactive",
   },
   {
     key: "linear",
     title: "Linear Flow",
     description: "Linear Flow (Sequential Learning Path)",
     icon: <Shuffle className="h-5 w-5 text-white" />,
-    redirectUrl: "sesssions/create/linear",
+    redirectUrl: "sessions/create/linear",
   },
   {
     key: "selection",
     title: "Selection Based",
     description: " Selection-Based Flow with Final Solutions",
     icon: <Layers className="h-5 w-5 text-white" />,
-    redirectUrl: "sesssions/create/selection",
+    redirectUrl: "sessions/create/selection",
   },
 ];
 

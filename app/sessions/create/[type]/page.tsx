@@ -7,7 +7,7 @@ interface PageProps {
 
 export default async function Page({ params }: PageProps) {
   const { type } = await params;
-console.log(type)
+  
   if (type === sessionTypes.LINEAR_FLOW) {
     return <LinearFlowForm />;
   }

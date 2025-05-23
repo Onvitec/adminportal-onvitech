@@ -7,16 +7,11 @@ import { useEffect, useState } from "react";
 import CreateSessionModal from "../../components/Modal/CreateSessionModal";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-type Sessions = {
-  id: string;
-  title: string;
-  session_type: string;
-  created_by: string;
-  created_at: string;
-};
+import { SessionType } from "@/lib/types";
+
 const SessionsTable = () => {
   const [openModal, setOpenModal] = useState(false);
-  const [sessions, setSessions] = useState([]);
+  const [sessions, setSessions] = useState<SessionType[]>([]);
   const [loading, setLoading] = useState(true);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 
@@ -35,47 +30,48 @@ const SessionsTable = () => {
       const { data: sessionsData, error } = await supabase
         .from("sessions")
         .select("id, title, session_type, created_at")
-        .eq("created_by", "826e31ef-0431-4762-af43-c501e3898cc3")
+        // .eq("created_by", "826e31ef-0431-4762-af43-c501e3898cc3")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
       // For each session, get stats
-      const sessionsWithStats = await Promise.all(
-        (sessionsData || []).map(async (session) => {
-          // For linear sessions, count modules
-          if (session.session_type === "linear") {
-            const { count: moduleCount } = await supabase
-              .from("modules")
-              .select("id", { count: "exact", head: true })
-              .eq("session_id", session.id);
+      // Uncomment this when you need video count or stuff
+      // const sessionsWithStats = await Promise.all(
+      //   (sessionsData || []).map(async (session) => {
+      //     // For linear sessions, count modules
+      //     if (session.session_type === "linear") {
+      //       const { count: moduleCount } = await supabase
+      //         .from("modules")
+      //         .select("id", { count: "exact", head: true })
+      //         .eq("session_id", session.id);
 
-            const { count: videoCount } = await supabase
-              .from("videos")
-              .select("id", { count: "exact", head: true })
-              .eq("session_id", session.id);
+      //       const { count: videoCount } = await supabase
+      //         .from("videos")
+      //         .select("id", { count: "exact", head: true })
+      //         .eq("session_id", session.id);
 
-            return {
-              ...session,
-              module_count: moduleCount || 0,
-              video_count: videoCount || 0,
-            };
-          } else {
-            // For interactive sessions, count videos
-            const { count: videoCount } = await supabase
-              .from("videos")
-              .select("id", { count: "exact", head: true })
-              .eq("session_id", session.id);
+      //       return {
+      //         ...session,
+      //         module_count: moduleCount || 0,
+      //         video_count: videoCount || 0,
+      //       };
+      //     } else {
+      //       // For interactive sessions, count videos
+      //       const { count: videoCount } = await supabase
+      //         .from("videos")
+      //         .select("id", { count: "exact", head: true })
+      //         .eq("session_id", session.id);
 
-            return {
-              ...session,
-              video_count: videoCount || 0,
-            };
-          }
-        })
-      );
+      //       return {
+      //         ...session,
+      //         video_count: videoCount || 0,
+      //       };
+      //     }
+      //   })
+      // );
 
-      setSessions(sessionsWithStats);
+      setSessions(sessionsData as SessionType[]);
     } catch (error) {
       console.error("Error fetching sessions:", error);
     } finally {
@@ -85,44 +81,44 @@ const SessionsTable = () => {
 
   const columns = [
     {
-      accessorKey: "title" as keyof Session,
+      accessorKey: "title" as keyof SessionType,
       header: "Session Name",
       enableSorting: true,
     },
     {
-      accessorKey: "id" as keyof Session,
-      header: "Session Name",
+      accessorKey: "id" as keyof SessionType,
+      header: "Id",
       enableSorting: true,
     },
     {
-      accessorKey: "type" as keyof Session,
+      accessorKey: "session_type" as keyof SessionType,
       header: "Type",
       cell: ({ getValue }: { getValue: () => any }) => (
         <span className="capitalize">{getValue()}</span>
       ),
     },
     {
-      accessorKey: "status" as keyof Session,
+      accessorKey: "status" as keyof SessionType,
       header: "Status",
       enableSorting: true,
     },
     {
-      accessorKey: "startDate" as keyof Session,
+      accessorKey: "created_at" as keyof SessionType,
       header: "Start Date",
       enableSorting: true,
     },
     {
-      accessorKey: "endDate" as keyof Session,
+      accessorKey: "created_at" as keyof SessionType,
       header: "End Date",
       enableSorting: true,
     },
   ];
 
-  const handleRowSelect = (selectedRows: Sessions[]) => {
+  const handleRowSelect = (selectedRows: SessionType[]) => {
     console.log("Selected rows:", selectedRows);
   };
 
-  const handleRowClick = (row: Sessions) => {
+  const handleRowClick = (row: SessionType) => {
     router.push(`sessions/${row.id}`);
   };
 
@@ -148,7 +144,7 @@ const SessionsTable = () => {
         </div>
       </div>
 
-      <Table<Sessions>
+      <Table<SessionType>
         data={sessions}
         columns={columns}
         onRowSelect={handleRowSelect}

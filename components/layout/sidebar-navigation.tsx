@@ -102,7 +102,7 @@ export function SidebarNavigation() {
       items: [
         {
           title: "Session Maker",
-          href: "/session",
+          href: "/sessions",
           icon: <Database className="h-5 w-5" />,
         },
       ],

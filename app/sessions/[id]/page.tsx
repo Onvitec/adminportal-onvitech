@@ -6,14 +6,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-
-type Session = {
-  id: string;
-  title: string;
-  session_type: string;
-  created_by: string;
-  created_at: string;
-};
+import { SessionType } from "@/lib/types";
 
 type Module = {
   id: string;
@@ -31,13 +24,13 @@ type Video = {
   session_id: string;
   order_index: number;
   is_interactive: boolean;
-  progress?: string; // You might want to add this field to your database
+  // progress?: string; // You might want to add this field to your database
 };
 
 export default function SessionViewPage() {
   const { id } = useParams();
   const router = useRouter();
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSession] = useState<SessionType | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -150,7 +143,9 @@ export default function SessionViewPage() {
                 Session Type
               </h3>
               <p className="text-base font-medium">
-                {session.session_type === "linear" ? "Linear Flow" : "Interactive"}
+                {session.session_type === "linear"
+                  ? "Linear Flow"
+                  : "Interactive"}
               </p>
             </div>
             <div>
@@ -204,18 +199,17 @@ function ModuleCard({ module }: { module: Module }) {
       {isExpanded && (
         <div className="bg-gray-50 p-4 border-t">
           {module.videos.length > 0 ? (
-            <ul className="space-y-3">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {module.videos.map((video) => (
                 <li
                   key={video.id}
-                  className="flex justify-between items-center p-3 bg-white rounded"
+                  className="bg-white rounded-lg overflow-hidden shadow-sm border"
                 >
-                  <span className="font-medium">{video.title}</span>
-                  {video.progress && (
-                    <span className="text-sm text-gray-500">
-                      {video.progress}
-                    </span>
-                  )}
+                  <video
+                    src={video.url}
+                    controls
+                    className="w-full aspect-video object-cover"
+                  />
                 </li>
               ))}
             </ul>

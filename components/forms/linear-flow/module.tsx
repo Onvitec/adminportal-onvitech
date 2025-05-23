@@ -38,7 +38,7 @@ export function ModuleCard({
   dragHandleProps?: any;
 }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [moduleName, setModuleName] = useState(module.title);
 
   const handleRename = () => {
@@ -69,7 +69,6 @@ export function ModuleCard({
                 className="h-8 w-48"
                 autoFocus
                 onBlur={handleRename}
-                // onKeyDown={(e) => e.key === "Enter" && handleRename()}
               />
             </div>
           ) : (
@@ -91,10 +90,10 @@ export function ModuleCard({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => setIsCollapsed(!isCollapsed)}
+            onClick={() => setIsExpanded(!isExpanded)}
             className="text-gray-600 hover:text-gray-900"
           >
-            {isCollapsed ? (
+            {isExpanded ? (
               <ChevronDown className="h-4 w-4" />
             ) : (
               <ChevronUp className="h-4 w-4" />
@@ -103,26 +102,51 @@ export function ModuleCard({
         </div>
       </div>
 
-      {!isCollapsed && (
+      {isExpanded && (
         <div className="px-4 pb-4 space-y-3">
-          {module.videos.map((video) => (
-            <VideoUpload
-              key={video.id}
-              video={video}
-              moduleId={module.id}
-              onDelete={() => removeVideo(module.id, video.id)}
-              handleFileChange={(file) =>
-                handleFileChange(module.id, video.id, file)
-              }
-            />
-          ))}
+          {/* Grid of existing videos with URLs */}
+          {module.videos.some((v) => v.url) && (
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="text-sm font-medium mb-3">Existing Videos</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {module.videos
+                  .filter((v) => v.url)
+                  .map((video) => (
+                    <VideoUpload
+                      key={video.id}
+                      video={video}
+                      moduleId={module.id}
+                      onDelete={() => removeVideo(module.id, video.id)}
+                      handleFileChange={(file) =>
+                        handleFileChange(module.id, video.id, file)
+                      }
+                    />
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Videos being uploaded (no URL yet) */}
+          {module.videos
+            .filter((v) => !v.url)
+            .map((video) => (
+              <VideoUpload
+                key={video.id}
+                video={video}
+                moduleId={module.id}
+                onDelete={() => removeVideo(module.id, video.id)}
+                handleFileChange={(file) =>
+                  handleFileChange(module.id, video.id, file)
+                }
+              />
+            ))}
 
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={addVideo}
-            className="mt-2 bg-gray-100 py-5 border-dashed"
+            className="mt-2 bg-gray-100 py-5 border-dashed w-full"
           >
             <PlusCircle className="h-4 w-4 mr-2" />
             Add Video
