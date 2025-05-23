@@ -35,20 +35,20 @@ export default function TableRow({
   const router = useRouter();
   const defaultActions = [
     {
-      label: "View",
+      label: "View Session",
       icon: <Eye className="h-4 w-4" />,
-      action: () => router.push(`sessions/${row.id as any}`),
+      action: () => router.push(`sessions/${row.id}`),
     },
     {
       label: "Edit",
       icon: <Pencil className="h-4 w-4" />,
-      action: () => console.log("Edit", row),
+      action: () => router.push(`sessions/edit/${row.id}`),
     },
     {
       label: "Delete",
       icon: <Trash2 className="h-4 w-4" />,
       action: () => console.log("Delete", row),
-      variant: "destructive" as const,
+      variant: "outline" as const,
     },
     {
       label: "Share Session",

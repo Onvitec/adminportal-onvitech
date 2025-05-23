@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import CreateSessionModal from "../../components/Modal/CreateSessionModal";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { SessionType } from "@/lib/types";
+import { SessionType, sessionTypes } from "@/lib/types";
 
 const SessionsTable = () => {
   const [openModal, setOpenModal] = useState(false);
@@ -29,7 +29,7 @@ const SessionsTable = () => {
       // Fetch sessions
       const { data: sessionsData, error } = await supabase
         .from("sessions")
-        .select("id, title, session_type, created_at")
+        .select("*")
         // .eq("created_by", "826e31ef-0431-4762-af43-c501e3898cc3")
         .order("created_at", { ascending: false });
 
@@ -78,7 +78,7 @@ const SessionsTable = () => {
       setLoading(false);
     }
   };
-
+  console.log(sessions);
   const columns = [
     {
       accessorKey: "title" as keyof SessionType,
@@ -86,31 +86,41 @@ const SessionsTable = () => {
       enableSorting: true,
     },
     {
-      accessorKey: "id" as keyof SessionType,
-      header: "Id",
-      enableSorting: true,
-    },
-    {
       accessorKey: "session_type" as keyof SessionType,
       header: "Type",
-      cell: ({ getValue }: { getValue: () => any }) => (
-        <span className="capitalize">{getValue()}</span>
-      ),
+      cell: ({ getValue }: { getValue: () => any }) => {
+        const value = getValue();
+        if (value === sessionTypes.LINEAR_FLOW) return "Linear Flow";
+        if (value === sessionTypes.INTERACTIVE) return "Interactive Video";
+      },
     },
     {
-      accessorKey: "status" as keyof SessionType,
+      accessorKey: "is_active" as keyof SessionType,
       header: "Status",
       enableSorting: true,
+      cell: ({ getValue }: { getValue: () => any }) => {
+        const value = getValue();
+        return (
+          <span
+            className={`px-2 py-1 text-sm font-medium rounded ${
+              value === true
+                ? "text-green-700 "
+                : "text-gray-700"
+            }`}
+          >
+            {value === true ? "Active" : "InActive"}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "created_at" as keyof SessionType,
       header: "Start Date",
       enableSorting: true,
-    },
-    {
-      accessorKey: "created_at" as keyof SessionType,
-      header: "End Date",
-      enableSorting: true,
+      cell: ({ getValue }: { getValue: () => any }) => {
+        const value = getValue();
+        return value.split("T")[0].replace(/-/g, "/");
+      },
     },
   ];
 

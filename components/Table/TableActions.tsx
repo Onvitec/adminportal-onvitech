@@ -14,7 +14,7 @@ interface Action {
   label: string;
   icon: React.ReactNode;
   action: () => void;
-  variant?: "default" | "destructive";
+  variant?: "default" | "destructive" | "outline";
 }
 
 interface TableActionsProps {
