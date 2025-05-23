@@ -4,7 +4,8 @@ import TableCell from "./TableCell";
 import TableCheckbox from "./TableCheckbox";
 import TableActions from "./TableActions";
 import { ColumnDef } from "./types";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Share, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface TableRowProps<T> {
   row: T;
@@ -18,7 +19,7 @@ interface TableRowProps<T> {
   showActions: boolean;
 }
 
-export default function TableRow<T>({
+export default function TableRow({
   row,
   rowIndex,
   columns,
@@ -28,15 +29,15 @@ export default function TableRow<T>({
   onClick,
   isSelectable,
   showActions,
-}: TableRowProps<T>) {
+}: any) {
   // No need for hover state anymore since actions are always visible
   // const [isHovered, setIsHovered] = useState(false);
-
+  const router = useRouter();
   const defaultActions = [
     {
       label: "View",
       icon: <Eye className="h-4 w-4" />,
-      action: () => console.log("View", row),
+      action: () => router.push(`sessions/${row.id as any}`),
     },
     {
       label: "Edit",
@@ -48,6 +49,15 @@ export default function TableRow<T>({
       icon: <Trash2 className="h-4 w-4" />,
       action: () => console.log("Delete", row),
       variant: "destructive" as const,
+    },
+    {
+      label: "Share Session",
+      icon: <Share className="h-4 w-4" />,
+      action: () =>
+        navigator.clipboard.writeText(
+          `${process.env.NEXT_PUBLIC_FRONTEND_URL}/sessions/embed/${row.id}`
+        ),
+      variant: "outline" as const,
     },
   ];
   return (
@@ -71,7 +81,7 @@ export default function TableRow<T>({
         </td>
       )}
 
-      {columns.map((column, colIndex) => (
+      {columns.map((column: any, colIndex: any) => (
         <TableCell
           key={column.accessorKey as string}
           row={row}

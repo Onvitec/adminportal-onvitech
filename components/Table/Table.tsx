@@ -1,5 +1,5 @@
 // Table.tsx
-"use client"
+"use client";
 import type React from "react";
 import { forwardRef } from "react";
 import { TableProps } from "./types";
@@ -55,7 +55,9 @@ function TableInner<T>(
                 requestSort={requestSort}
                 sortConfig={sortConfig}
                 showActions={showActions}
-                allSelected={selectedRows.length === data.length && data.length > 0}
+                allSelected={
+                  selectedRows.length === data.length && data.length > 0
+                }
               />
               <tbody className="divide-y divide-[#C5D2E799] bg-white">
                 {paginatedData.map((row, rowIndex) => (
@@ -66,7 +68,9 @@ function TableInner<T>(
                     columns={columns}
                     showCheckbox={showCheckbox}
                     isSelected={selectedRows.includes(row)}
-                    onSelect={(isSelected) => handleSelectRow(row, isSelected)}
+                    onSelect={(isSelected: any) =>
+                      handleSelectRow(row, isSelected)
+                    }
                     onClick={() => onRowClick?.(row)}
                     isSelectable={isSelectable}
                     showActions={showActions}

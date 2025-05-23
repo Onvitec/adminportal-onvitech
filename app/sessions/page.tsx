@@ -119,7 +119,7 @@ const SessionsTable = () => {
   };
 
   const handleRowClick = (row: SessionType) => {
-    router.push(`sessions/${row.id}`);
+    // router.push(`sessions/${row.id}`);
   };
 
   return (
