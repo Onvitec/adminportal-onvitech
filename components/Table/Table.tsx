@@ -20,6 +20,7 @@ function TableInner<T>(
     showActions = true,
     isSelectable = false,
     className = "",
+    actions,
   }: TableProps<T>,
   ref: React.Ref<HTMLDivElement>
 ) {
@@ -74,6 +75,7 @@ function TableInner<T>(
                     onClick={() => onRowClick?.(row)}
                     isSelectable={isSelectable}
                     showActions={showActions}
+                    actions={actions}
                   />
                 ))}
               </tbody>

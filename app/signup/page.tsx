@@ -1,65 +1,95 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import Image from 'next/image';
+import Image from "next/image";
+import { toast } from "sonner";
 
 export default function SignupPage() {
-  const [form, setForm] = useState({ email: '', password: '', username: '' });
-  const [error, setError] = useState('');
-  const router = useRouter();
+  const [form, setForm] = useState({ 
+    firstName: "", 
+    lastName: "", 
+    email: "", 
+    password: "", 
+  });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSignup = async () => {
-    setError('');
+    setError("");
+    setLoading(true);
 
-    // 1. Sign up with Supabase Auth
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        data: {
-          username: form.username
-        }
+    try {
+      // Validate form inputs
+      if (!form.email || !form.password || !form.firstName || !form.lastName) {
+        throw new Error("All fields are required");
       }
-    });
 
-    if (signUpError) {
-      setError(signUpError.message);
-      return;
-    }
+      // Check if email already exists
+      const { data: existingUser, error: userCheckError } = await supabase
+        .from("users")
+        .select("email")
+        .eq("email", form.email)
+        .maybeSingle();
 
-    // 2. Add user to custom table
-    if (authData.user) {
-      const { error: dbError } = await supabase.from('users').insert({
-        id: authData.user.id,
+      if (existingUser) {
+        throw new Error("Email already registered");
+      }
+
+      // Sign up with Supabase Auth
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: form.email,
-        username: form.username
+        password: form.password,
+        options: {
+          data: {
+            first_name: form.firstName,
+            last_name: form.lastName,
+          },
+        },
+      });
+
+      if (signUpError) throw signUpError;
+      if (!authData.user) throw new Error("User creation failed");
+
+      // Insert into custom users table with Admin role by default
+      const { error: dbError } = await supabase.from("users").insert({
+        id: authData.user.id,
+        first_name: form.firstName,
+        last_name: form.lastName,
+        email: form.email,
+        role: "Admin", 
+        created_at: new Date().toISOString(),
       });
 
       if (dbError) {
-        setError('Failed to create user profile');
-        return;
+        console.error("Database error:", dbError);
+        await supabase.auth.admin.deleteUser(authData.user.id);
+        throw new Error("Failed to create user profile");
       }
-    }
 
-    // 3. Redirect to login page after successful signup
-    window.location.href = '/login';
+      toast.success("Signup successful! Please log in.");
+      window.location.href = "/login";
+    } catch (err: any) {
+      setError(err.message || "Failed to create account");
+      console.error("Signup error:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
       {/* Logo */}
       <div className="mb-8">
-        <Image 
-          src="/icons/signuplogo.png" // Replace with your logo path
+        <Image
+          src="/icons/signuplogo.png"
           alt="Onvitec Logo"
           width={150}
           height={50}
@@ -68,24 +98,39 @@ export default function SignupPage() {
       </div>
 
       {/* Signup Card */}
-      <div className="w-full max-w-[464px] h-[480px] bg-white rounded-lg shadow-sm p-8 flex flex-col">
+      <div className="w-full max-w-[464px] bg-white rounded-lg shadow-sm p-8 flex flex-col">
         <h1 className="text-2xl font-semibold text-center mb-2">Sign Up</h1>
         <p className="text-sm text-gray-600 text-center mb-8">
           Please create an account to continue.
         </p>
 
         {/* Form */}
-        <div className="space-y-6 flex-grow">
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              name="username"
-              type="text"
-              placeholder="Enter your username"
-              onChange={handleChange}
-              required
-            />
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="firstName">First Name</Label>
+              <Input
+                id="firstName"
+                name="firstName"
+                type="text"
+                placeholder="Enter your first name"
+                onChange={handleChange}
+                value={form.firstName}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                name="lastName"
+                type="text"
+                placeholder="Enter your last name"
+                onChange={handleChange}
+                value={form.lastName}
+                required
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -96,43 +141,42 @@ export default function SignupPage() {
               type="email"
               placeholder="Enter your email"
               onChange={handleChange}
+              value={form.email}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label htmlFor="password">Password</Label>
-              <a href="/forgot-password" className="text-xs text-red-500 hover:underline">
-                Forgot Password?
-              </a>
-            </div>
+            <Label htmlFor="password">Password</Label>
             <Input
               id="password"
               name="password"
               type="password"
               placeholder="Enter your password"
               onChange={handleChange}
+              value={form.password}
               required
               minLength={6}
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-red-500 text-center">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
-          <Button 
+          <Button
             onClick={handleSignup}
-            className="w-full mt-4 bg-[#2E3545]"
+            className="w-full mt-4 bg-[#2E3545] hover:bg-[#3A4255]"
+            disabled={loading}
           >
-            Sign Up
+            {loading ? "Creating Account..." : "Sign Up"}
           </Button>
         </div>
 
-        <div className="mt-2 text-center text-sm text-gray-500">
-          Already have an account?{' '}
-          <a href="/login" className="text-[#000000] hover:underline">
+        <div className="mt-6 text-center text-sm text-gray-500">
+          Already have an account?{" "}
+          <a
+            href="/login"
+            className="text-[#2E3545] font-medium hover:underline"
+          >
             Log in
           </a>
         </div>

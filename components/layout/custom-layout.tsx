@@ -20,6 +20,8 @@ import { useMediaQuery } from "../../hooks/use-media-query";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { toast } from 'sonner'; 
+
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -91,7 +93,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    // router.push('/login');
+          toast.success("Sign out successful!");
     window.location.href = "/login";
   };
 

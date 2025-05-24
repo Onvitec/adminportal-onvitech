@@ -4,6 +4,8 @@ import "./globals.css";
 import { CustomLayout } from "@/components/layout/custom-layout";
 import { headers } from "next/headers";
 import { Suspense } from "react";
+import { Toaster } from 'sonner';
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +37,8 @@ export default async function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+<Toaster position="top-center" theme="light" duration={3000} />
+
         <Suspense>
           {isAuthPage ? children : <CustomLayout>{children}</CustomLayout>}
         </Suspense>

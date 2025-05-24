@@ -2,12 +2,13 @@
 
 import Heading from "@/components/Heading";
 import Table from "@/components/Table/Table";
-import { Plus } from "lucide-react";
+import { Eye, Pencil, Plus, Share2, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import CreateSessionModal from "../../components/Modal/CreateSessionModal";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
-import { SessionType, sessionTypes } from "@/lib/types";
+import { SessionType } from "@/lib/types";
+import { Share } from "next/font/google";
 
 const SessionsTable = () => {
   const [openModal, setOpenModal] = useState(false);
@@ -29,7 +30,7 @@ const SessionsTable = () => {
       // Fetch sessions
       const { data: sessionsData, error } = await supabase
         .from("sessions")
-        .select("*")
+        .select("id, title, session_type, created_at")
         // .eq("created_by", "826e31ef-0431-4762-af43-c501e3898cc3")
         .order("created_at", { ascending: false });
 
@@ -78,7 +79,35 @@ const SessionsTable = () => {
       setLoading(false);
     }
   };
-  console.log(sessions);
+
+   const sessionActions = [
+    {
+      label: "View Session",
+      icon: <Eye className="h-4 w-4" />,
+      action: (session: SessionType) => router.push(`sessions/${session.id}`),
+    },
+    {
+      label: "Edit",
+      icon: <Pencil className="h-4 w-4" />,
+      action: (session: SessionType) => router.push(`sessions/edit/${session.id}`),
+    },
+    {
+      label: "Delete",
+      icon: <Trash2 className="h-4 w-4" />,
+      action: (session: SessionType) => console.log("Delete", session),
+      variant: "outline" as const,
+    },
+    {
+      label: "Share Session",
+      icon: <Share2 className="h-4 w-4" />,
+      action: (session: SessionType) =>
+        navigator.clipboard.writeText(
+          `${process.env.NEXT_PUBLIC_FRONTEND_URL}/sessions/embed/${session.id}`
+        ),
+      variant: "outline" as const,
+    },
+  ];
+
   const columns = [
     {
       accessorKey: "title" as keyof SessionType,
@@ -86,41 +115,31 @@ const SessionsTable = () => {
       enableSorting: true,
     },
     {
-      accessorKey: "session_type" as keyof SessionType,
-      header: "Type",
-      cell: ({ getValue }: { getValue: () => any }) => {
-        const value = getValue();
-        if (value === sessionTypes.LINEAR_FLOW) return "Linear Flow";
-        if (value === sessionTypes.INTERACTIVE) return "Interactive Video";
-      },
+      accessorKey: "id" as keyof SessionType,
+      header: "Id",
+      enableSorting: true,
     },
     {
-      accessorKey: "is_active" as keyof SessionType,
+      accessorKey: "session_type" as keyof SessionType,
+      header: "Type",
+      cell: ({ getValue }: { getValue: () => any }) => (
+        <span className="capitalize">{getValue()}</span>
+      ),
+    },
+    {
+      accessorKey: "status" as keyof SessionType,
       header: "Status",
       enableSorting: true,
-      cell: ({ getValue }: { getValue: () => any }) => {
-        const value = getValue();
-        return (
-          <span
-            className={`px-2 py-1 text-sm font-medium rounded ${
-              value === true
-                ? "text-green-700 "
-                : "text-gray-700"
-            }`}
-          >
-            {value === true ? "Active" : "InActive"}
-          </span>
-        );
-      },
     },
     {
       accessorKey: "created_at" as keyof SessionType,
       header: "Start Date",
       enableSorting: true,
-      cell: ({ getValue }: { getValue: () => any }) => {
-        const value = getValue();
-        return value.split("T")[0].replace(/-/g, "/");
-      },
+    },
+    {
+      accessorKey: "created_at" as keyof SessionType,
+      header: "End Date",
+      enableSorting: true,
     },
   ];
 
@@ -163,6 +182,8 @@ const SessionsTable = () => {
         showCheckbox={true}
         showActions={true}
         isSelectable={true}
+        actions={sessionActions} 
+
       />
 
       <CreateSessionModal open={openModal} setOpen={setOpenModal} />
