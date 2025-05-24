@@ -198,7 +198,7 @@ export default function SessionViewPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 max-w-4xl">
+    <div className="container py-8 ">
       <Card className="border-none shadow-none px-4">
         <CardHeader className="px-0">
           <CardTitle className="text-2xl font-semibold">

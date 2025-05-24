@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabase';
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);

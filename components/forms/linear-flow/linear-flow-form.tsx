@@ -250,7 +250,7 @@ export default function LinearSessionForm() {
   };
 
   return (
-    <div className="container mx-auto py-8 max-w-4xl ">
+    <div className="container py-8 max-w-7xl mx-auto">
       <form onSubmit={handleSubmit} className="">
         <Card className="border-none shadow-none px-3">
           <CardHeader className="px-0">
@@ -276,6 +276,23 @@ export default function LinearSessionForm() {
                   value={sessionName}
                   onChange={(e) => setSessionName(e.target.value)}
                   placeholder="e.g., UX Design Sprint"
+                  className="h-10"
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <Label
+                  htmlFor="userId"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Session Type
+                </Label>
+                <Input
+                  id="userId"
+                  value={"Linear Flow"}
+                  disabled
+                  // onChange={(e) => setUserId(e.target.value)}
+                  placeholder="e.g., AI2045864"
                   className="h-10"
                   required
                 />

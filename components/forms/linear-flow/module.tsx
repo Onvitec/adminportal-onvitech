@@ -82,7 +82,7 @@ export function ModuleCard({
             size="sm"
             type="button"
             onClick={handleRename}
-            className="text-sm h-8 text-gray-600 hover:text-gray-900"
+            className="text-sm h-8 text-blue-600 hover:text-gray-900"
           >
             {isEditing ? "Save" : "Rename"}
           </Button>
@@ -127,19 +127,21 @@ export function ModuleCard({
           )}
 
           {/* Videos being uploaded (no URL yet) */}
-          {module.videos
-            .filter((v) => !v.url)
-            .map((video) => (
-              <VideoUpload
-                key={video.id}
-                video={video}
-                moduleId={module.id}
-                onDelete={() => removeVideo(module.id, video.id)}
-                handleFileChange={(file) =>
-                  handleFileChange(module.id, video.id, file)
-                }
-              />
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {module.videos
+              .filter((v) => !v.url)
+              .map((video) => (
+                <VideoUpload
+                  key={video.id}
+                  video={video}
+                  moduleId={module.id}
+                  onDelete={() => removeVideo(module.id, video.id)}
+                  handleFileChange={(file) =>
+                    handleFileChange(module.id, video.id, file)
+                  }
+                />
+              ))}
+          </div>
 
           <Button
             type="button"
