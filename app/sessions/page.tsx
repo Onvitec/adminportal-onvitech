@@ -8,22 +8,63 @@ import CreateSessionModal from "../../components/Modal/CreateSessionModal";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { SessionType } from "@/lib/types";
-import { Share } from "next/font/google";
 import { fetchSessions } from "@/repos/sessions";
+import { ConfirmModal } from "@/components/Modal/confirmDelete";
 
 const SessionsTable = () => {
   const [openModal, setOpenModal] = useState(false);
   const [sessions, setSessions] = useState<SessionType[]>([]);
   const [loading, setLoading] = useState(true);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [selectedSessions, setSelectedSessions] = useState<SessionType[]>([]);
+  const [isConfirmModalOpen, setIsconfirmModalOpen] = useState(false);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+
   const router = useRouter();
 
   useEffect(() => {
-    fetchSessions().then((sessionsData: any) => {
-      setSessions(sessionsData as SessionType[]);
-      setLoading(false);
-    });
+    loadSessions();
   }, []);
+
+  const loadSessions = async () => {
+    setLoading(true);
+    const sessionsData = await fetchSessions();
+    setSessions(sessionsData as SessionType[]);
+    setLoading(false);
+  };
+
+  const handleDeleteSession = async (sessionId: string) => {
+    const { error } = await supabase
+      .from("sessions")
+      .delete()
+      .eq("id", sessionId);
+    if (error) {
+      console.error("Failed to delete session:", error.message);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedSessions.length === 0) return;
+
+    try {
+      const idsToDelete = selectedSessions.map((s) => s.id);
+
+      const { error } = await supabase
+        .from("sessions")
+        .delete()
+        .in("id", idsToDelete);
+
+      if (error) throw new Error(error.message);
+
+      // Refresh session list
+      const refreshedSessions = await fetchSessions();
+      setSessions(refreshedSessions!);
+      setSelectedSessions([]);
+      setIsBulkDeleteModalOpen(false);
+    } catch (err) {
+      console.error("Failed to delete sessions:", err);
+    }
+  };
 
   const sessionActions = [
     {
@@ -40,7 +81,10 @@ const SessionsTable = () => {
     {
       label: "Delete",
       icon: <Trash2 className="h-4 w-4" />,
-      action: (session: SessionType) => console.log("Delete", session),
+      action: (session: SessionType) => {
+        setSessionToDelete(session.id);
+        setIsconfirmModalOpen(true);
+      },
       variant: "outline" as const,
     },
     {
@@ -110,14 +154,6 @@ const SessionsTable = () => {
     },
   ];
 
-  const handleRowSelect = (selectedRows: SessionType[]) => {
-    console.log("Selected rows:", selectedRows);
-  };
-
-  const handleRowClick = (row: SessionType) => {
-    // router.push(`sessions/${row.id}`);
-  };
-
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
@@ -128,7 +164,18 @@ const SessionsTable = () => {
           </p>
         </div>
 
-        <div>
+        <div className="flex gap-2">
+          {selectedSessions.length > 0 && (
+            <button
+              onClick={() => setIsBulkDeleteModalOpen(true)}
+              type="button"
+              className="inline-flex items-center gap-2 bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete Selected ({selectedSessions.length})
+            </button>
+          )}
+
           <button
             onClick={() => setOpenModal(true)}
             type="button"
@@ -143,14 +190,43 @@ const SessionsTable = () => {
       <Table<SessionType>
         data={sessions}
         columns={columns}
-        onRowSelect={handleRowSelect}
-        onRowClick={handleRowClick}
+        onRowClick={(row) => {}}
+        onRowSelect={(selectedRows) =>
+          console.log("Selected rows:", selectedRows)
+        }
         pageSize={5}
         showCheckbox={true}
         showActions={true}
         isSelectable={true}
         actions={sessionActions}
         isLoading={loading}
+        onSelectionChange={(selected: any) => setSelectedSessions(selected)}
+      />
+
+      <ConfirmModal
+        open={isConfirmModalOpen}
+        title="Delete this session?"
+        description="This will permanently delete the session data."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={async () => {
+          if (sessionToDelete) {
+            await handleDeleteSession(sessionToDelete);
+            setSessions((prev) => prev.filter((s) => s.id !== sessionToDelete));
+            setSessionToDelete(null);
+            setIsconfirmModalOpen(false);
+          }
+        }}
+        onCancel={() => setIsconfirmModalOpen(false)}
+      />
+      <ConfirmModal
+        open={isBulkDeleteModalOpen}
+        title="Delete selected sessions?"
+        description={`You are about to delete ${selectedSessions.length} session(s). This action cannot be undone.`}
+        confirmText="Delete All"
+        cancelText="Cancel"
+        onConfirm={handleBulkDelete}
+        onCancel={() => setIsBulkDeleteModalOpen(false)}
       />
 
       <CreateSessionModal open={openModal} setOpen={setOpenModal} />

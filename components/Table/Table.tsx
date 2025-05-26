@@ -1,6 +1,5 @@
-// Table.tsx
 "use client";
-import React, { memo } from 'react';
+import React, { memo, useEffect } from "react";
 import { forwardRef } from "react";
 import { TableProps } from "./types";
 import { useTable } from "./useTable";
@@ -8,7 +7,7 @@ import TableHeader from "./TableHeader";
 import TableRow from "./TableRow";
 import TablePagination from "./TablePagination";
 
-function TableInner<T>(
+function TableInner<T extends { id: string | number }>(
   {
     data = [],
     columns = [],
@@ -22,6 +21,7 @@ function TableInner<T>(
     className = "",
     actions,
     isLoading = false,
+    onSelectionChange,
   }: TableProps<T>,
   ref: React.Ref<HTMLDivElement>
 ) {
@@ -44,6 +44,11 @@ function TableInner<T>(
     currentPage * rowsPerPage
   );
 
+  // 🔄 Notify parent when selection changes
+  useEffect(() => {
+    onSelectionChange?.(selectedRows);
+  }, [selectedRows, onSelectionChange]);
+
   return (
     <div className={`flex flex-col ${className}`} ref={ref}>
       <div className="overflow-x-auto rounded-lg border border-[#C5D2E799]">
@@ -57,52 +62,56 @@ function TableInner<T>(
                 requestSort={requestSort}
                 sortConfig={sortConfig}
                 showActions={showActions}
-                
                 allSelected={
                   selectedRows.length === data.length && data.length > 0
                 }
               />
-              
+
               <tbody className="divide-y divide-[#C5D2E799] bg-white">
                 {isLoading ? (
-                  // Loading state
+                  // 🔄 Loading State
                   <tr>
-                    <td 
-                      colSpan={columns.length + (showCheckbox ? 1 : 0) + (showActions ? 1 : 0)}
+                    <td
+                      colSpan={
+                        columns.length +
+                        (showCheckbox ? 1 : 0) +
+                        (showActions ? 1 : 0)
+                      }
                       className="py-8 text-center"
                     >
                       <div className="flex justify-center">
                         <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]">
-                          <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">
-                            Loading...
-                          </span>
+                          <span className="sr-only">Loading...</span>
                         </div>
                       </div>
                     </td>
                   </tr>
                 ) : paginatedData.length === 0 ? (
-                  // Empty state
                   <tr>
-                    <td 
-                      colSpan={columns.length + (showCheckbox ? 1 : 0) + (showActions ? 1 : 0)}
+                    <td
+                      colSpan={
+                        columns.length +
+                        (showCheckbox ? 1 : 0) +
+                        (showActions ? 1 : 0)
+                      }
                       className="py-8 text-center text-gray-500"
                     >
                       No data available
                     </td>
                   </tr>
                 ) : (
-                  // Normal data rows
                   paginatedData.map((row, rowIndex) => (
                     <TableRow
-                      key={rowIndex}
+                      key={row.id ?? rowIndex}
                       row={row}
                       rowIndex={rowIndex}
                       columns={columns}
                       showCheckbox={showCheckbox}
                       isSelected={selectedRows.includes(row)}
-                      onSelect={(isSelected: any) =>
-                        handleSelectRow(row, isSelected)
-                      }
+                      onSelect={(isSelected: boolean) => {
+                        handleSelectRow(row, isSelected);
+                        onRowSelect?.(row as any);
+                      }}
                       onClick={() => onRowClick?.(row)}
                       isSelectable={isSelectable}
                       showActions={showActions}
@@ -131,11 +140,10 @@ function TableInner<T>(
   );
 }
 
-// Assign displayName to the inner component
 TableInner.displayName = "Table";
 
-// Forward the ref with proper typing
-const Table = forwardRef(TableInner) as <T>(
+// 🔁 Forward ref with typing
+const Table = forwardRef(TableInner) as <T extends { id: string | number }>(
   props: TableProps<T> & { ref?: React.Ref<HTMLDivElement> }
 ) => React.JSX.Element;
 

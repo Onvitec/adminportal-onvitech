@@ -14,7 +14,6 @@ export interface ColumnDef<T> {
   cell?: (props: { row: T; getValue: () => any }) => React.ReactNode;
 }
 
-
 export interface TableAction<T> {
   label: string;
   icon: React.ReactNode;
@@ -32,9 +31,9 @@ export interface TableProps<T> {
   showActions?: boolean;
   isSelectable?: boolean;
   className?: string;
-  actions?: TableAction<T>[]; 
-    isLoading?: boolean; // Add this line
-
+  onSelectionChange: any;
+  actions?: TableAction<T>[];
+  isLoading?: boolean; // Add this line
 }
 
 export interface TablePaginationProps {
