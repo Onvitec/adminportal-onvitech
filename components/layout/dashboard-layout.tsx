@@ -17,68 +17,12 @@ import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMediaQuery } from "../../hooks/use-media-query";
-import { useRouter } from "next/navigation";
-import { usePathname } from "next/navigation";
-import { supabase } from "@/lib/supabase";
-import { toast } from 'sonner'; 
+import { useSession } from "../session-provider";
 
-
-interface DashboardLayoutProps {
-  children: React.ReactNode;
-}
-
-export function CustomLayout({ children }: DashboardLayoutProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [user, setUser] = useState<{
-    email?: string;
-    username?: string;
-  } | null>(null);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
-  const router = useRouter();
-  const pathname = usePathname();
-
-  useEffect(() => {
-    const storedState = localStorage.getItem("sidebarCollapsed");
-    if (storedState) setIsCollapsed(storedState === "true");
-
-    const handleStorageChange = () => {
-      const currentState = localStorage.getItem("sidebarCollapsed");
-      setIsCollapsed(currentState === "true");
-    };
-
-    // Check user session on mount
-    const getSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/login");
-        return;
-      }
-
-      // Get user info from the session
-      const userData = {
-        email: session.user.email,
-        username:
-          session.user.user_metadata?.username ||
-          session.user.email?.split("@")[0] ||
-          "User",
-      };
-      setUser(userData);
-    };
-
-    getSession();
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-    };
-  }, [router]);
-
-  if (pathname === "/login" || pathname === "/signup") {
-    return null;
-  }
+  const { user, signOut } = useSession();
 
   // Close mobile sidebar when switching to desktop
   useEffect(() => {
@@ -91,16 +35,6 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-          toast.success("Sign out successful!");
-    window.location.href = "/login";
-  };
-
-  if (!user) {
-    return null; // or a loading spinner
-  }
-
   // Get initials for avatar fallback
   const getInitials = (name: string) => {
     const names = name.split(" ");
@@ -110,7 +44,9 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
       .toUpperCase();
   };
 
-  const initials = user.username ? getInitials(user.username) : "U";
+  const initials = user?.username ? getInitials(user.username) : "U";
+
+  if (!user) return null;
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -178,7 +114,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
                   <DropdownMenuItem>Profile</DropdownMenuItem>
                   <DropdownMenuItem>Settings</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut}>
+                  <DropdownMenuItem onClick={signOut}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Sign out</span>
                   </DropdownMenuItem>
@@ -192,7 +128,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F2F7FC]">
+        <main className="flex-1  overflow-y-auto p-4 md:p-6 bg-[#F2F7FC]">
           {children}
         </main>
       </div>

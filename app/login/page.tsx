@@ -1,45 +1,45 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import Image from 'next/image';
-import { supabase } from '@/lib/supabase';
+import Image from "next/image";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 export default function LoginPage() {
-  const [form, setForm] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
-  const router = useRouter();
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleLogin = async () => {
-    setError('');
-    
+    setError("");
+
     const { error: authError } = await supabase.auth.signInWithPassword({
       email: form.email,
-      password: form.password
+      password: form.password,
     });
 
     if (authError) {
       setError(authError.message);
+      toast.error(authError.message);
+
       return;
     }
-
-    // Redirect to dashboard after successful login
-    window.location.href="/"
+    toast.success("Login successful!");
+    window.location.href = "/dashboard";
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
       {/* Logo */}
       <div className="mb-8">
-        <Image 
-          src="/icons/signuplogo.png" // Replace with your logo path
+        <Image
+          src="/icons/signuplogo.png"
           alt="Onvitec Logo"
           width={150}
           height={50}
@@ -49,7 +49,9 @@ export default function LoginPage() {
 
       {/* Login Card */}
       <div className="w-full max-w-[464px] bg-white rounded-lg shadow-sm p-8 flex flex-col">
-        <h1 className="text-2xl font-semibold text-center mb-2">Welcome Back!</h1>
+        <h1 className="text-2xl font-semibold text-center mb-2">
+          Welcome Back!
+        </h1>
         <p className="text-sm text-gray-600 text-center mb-8">
           Please log in to your account to continue.
         </p>
@@ -71,7 +73,10 @@ export default function LoginPage() {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <Label htmlFor="password">Password</Label>
-              <a href="/forgot-password" className="text-xs text-red-500 hover:underline">
+              <a
+                href="/forgot-password"
+                className="text-xs text-red-500 hover:underline"
+              >
                 Forgot Password?
               </a>
             </div>
@@ -85,20 +90,15 @@ export default function LoginPage() {
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-red-500 text-center">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
-          <Button 
-            onClick={handleLogin}
-            className="w-full mt-6 bg-[#2E3545]"
-          >
+          <Button onClick={handleLogin} className="w-full mt-6 bg-[#2E3545]">
             Sign In
           </Button>
         </div>
 
         <div className="mt-8 text-center text-sm text-gray-500">
-          Don't have an account?{' '}
+          Don't have an account?{" "}
           <a href="/signup" className="text-[#000000] hover:underline">
             Sign up
           </a>

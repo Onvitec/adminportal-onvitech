@@ -24,9 +24,21 @@ export enum sessionTypes {
 }
 
 export type SessionType = {
+ 
   id: string;
   title: string;
   session_type: string;
   created_by: string;
   created_at: string;
 };
+
+export type UserType={
+ id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  role: string;
+  status: string;
+  created_at: string;
+  updated_at?: string;
+}

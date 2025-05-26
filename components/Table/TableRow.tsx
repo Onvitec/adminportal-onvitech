@@ -17,6 +17,12 @@ interface TableRowProps<T> {
   onClick?: () => void;
   isSelectable: boolean;
   showActions: boolean;
+  actions?: {
+    label: string;
+    icon: React.ReactNode;
+    action: (row: T) => void;
+    variant?: "default" | "destructive" | "outline";
+  }[];
 }
 
 export default function TableRow({
@@ -29,37 +35,8 @@ export default function TableRow({
   onClick,
   isSelectable,
   showActions,
-}: any) {
-  // No need for hover state anymore since actions are always visible
-  // const [isHovered, setIsHovered] = useState(false);
-  const router = useRouter();
-  const defaultActions = [
-    {
-      label: "View Session",
-      icon: <Eye className="h-4 w-4" />,
-      action: () => router.push(`sessions/${row.id}`),
-    },
-    {
-      label: "Edit",
-      icon: <Pencil className="h-4 w-4" />,
-      action: () => router.push(`sessions/edit/${row.id}`),
-    },
-    {
-      label: "Delete",
-      icon: <Trash2 className="h-4 w-4" />,
-      action: () => console.log("Delete", row),
-      variant: "outline" as const,
-    },
-    {
-      label: "Share Session",
-      icon: <Share className="h-4 w-4" />,
-      action: () =>
-        navigator.clipboard.writeText(
-          `${process.env.NEXT_PUBLIC_FRONTEND_URL}/sessions/embed/${row.id}`
-        ),
-      variant: "outline" as const,
-    },
-  ];
+  actions,
+}: TableRowProps<any>) {
   return (
     <tr
       key={rowIndex}
@@ -90,10 +67,15 @@ export default function TableRow({
         />
       ))}
 
-      {showActions && (
+       {showActions && actions && (
         <td className="whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
-          {/* Always show actions, so pass isVisible={true} */}
-          <TableActions actions={defaultActions} isVisible={true} />
+          <TableActions 
+            actions={actions.map(action => ({
+              ...action,
+              action: () => action.action(row)
+            }))} 
+            isVisible={true} 
+          />
         </td>
       )}
     </tr>

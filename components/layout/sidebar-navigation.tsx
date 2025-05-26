@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
+  LogOutIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,11 +33,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Image from "next/image";
 import { useMediaQuery } from "../../hooks/use-media-query";
+import { supabase } from "@/lib/supabase";
+import { toast } from "sonner";
 
 type NavItem = {
   title: string;
   href: string;
   icon: React.ReactNode;
+  onClick?: () => void;  
 };
 
 type NavGroup = {
@@ -72,12 +76,23 @@ export function SidebarNavigation() {
     }
   };
 
-  // New function to handle mobile logo click
   const handleMobileLogoClick = () => {
     if (isDesktop) {
-      toggleSidebar(); // Toggle on desktop
+      toggleSidebar();
     } else {
-      setIsCollapsed(true); // Always close on mobile
+      setIsCollapsed(true);
+    }
+  };
+
+  // logout
+   const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast.success("Signed out successfully!");
+      window.location.href="/login"
+    } catch (error) {
+      toast.error("Error signing out");
+      console.error("Error signing out:", error);
     }
   };
 
@@ -112,7 +127,7 @@ export function SidebarNavigation() {
       items: [
         {
           title: "User Management",
-          href: "/users",
+          href: "/user-management",
           icon: <Users className="h-5 w-5" />,
         },
         {
@@ -120,14 +135,30 @@ export function SidebarNavigation() {
           href: "/settings",
           icon: <Settings className="h-5 w-5" />,
         },
+         {
+          title: "Sign Out",
+          href: "#", // Using href="#" to maintain link styling
+          icon: <LogOut className="h-5 w-5" />,
+          onClick: handleSignOut, // Add onClick handler
+        },
       ],
     },
   ];
 
+  // Function to check if a nav item is active
+  const isActive = (href: string) => {
+    // Make dashboard active when exactly on /dashboard
+    if (href === "/dashboard") {
+      return pathname === href;
+    }
+    // For other routes, check if pathname starts with href
+    return pathname.startsWith(href);
+  };
+
   return (
     <div
       className={cn(
-        "flex h-screen flex-col border-r border-border bg-[#1C2534] transition-all duration-300 ease-in-out dark:bg-card",
+        "flex h-screen  flex-col border-r border-border bg-[#1C2534] transition-all duration-300 ease-in-out dark:bg-card",
         isCollapsed ? "w-[80px]" : "w-[280px]",
         !isDesktop ? "fixed top-0 left-0 z-50" : "relative"
       )}
@@ -160,7 +191,7 @@ export function SidebarNavigation() {
           ) : (
             <div className="w-full flex justify-center">
               <button
-                onClick={handleMobileLogoClick} // Changed to new handler
+                onClick={handleMobileLogoClick}
                 className="rounded-full hover:opacity-80 transition"
               >
                 <Image
@@ -181,7 +212,7 @@ export function SidebarNavigation() {
         {navGroups.map((group, groupIndex) => (
           <div key={groupIndex} className="mb-4 last:mb-0">
             {!isCollapsed && (
-              <div className="mb-2 text-[#A5ACBA] px-6 text-xs font-semibold text-[14px] uppercase tracking-wider">
+              <div className="mb-2 text-[#A5ACBA] px-6  font-semibold text-[14px] uppercase tracking-wider">
                 {group.title}
               </div>
             )}
@@ -190,30 +221,33 @@ export function SidebarNavigation() {
                 <TooltipProvider key={itemIndex} delayDuration={0}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Link
-                        href={item.href}
-                        className={cn(
-                          "group flex items-center py-2.5 text-sm font-medium transition-colors border-l-2",
-                          isCollapsed
-                            ? "justify-center px-0"
-                            : "justify-start pl-6 pr-6",
-                          pathname === item.href
-                            ? "bg-[#333B48] text-white border-l-[#F9F9F9]"
-                            : "text-[#A5ACBA] border-l-transparent hover:bg-gray-50 hover:bg-opacity-10"
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "flex-shrink-0",
-                            !isCollapsed && "mr-3"
-                          )}
-                        >
-                          {item.icon}
-                        </span>
-                        {!isCollapsed && (
-                          <span className="truncate">{item.title}</span>
-                        )}
-                      </Link>
+                     <Link
+  href={item.href}
+  className={cn(
+    "group flex items-center py-2.5 text-[15px] font-semibold transition-colors border-l-2",
+    isCollapsed
+      ? "justify-center px-0"
+      : "justify-start pl-6 pr-6",
+    isActive(item.href)
+      ? "bg-[#333B48] text-white border-l-[#F9F9F9]"
+      : cn(
+          "text-[#A5ACBA] border-l-transparent",
+          "hover:bg-[#333B48]  hover:text-white"
+        )
+  )}
+>
+  <span
+    className={cn(
+      "flex-shrink-0",
+      !isCollapsed && "mr-3"
+    )}
+  >
+    {item.icon}
+  </span>
+  {!isCollapsed && (
+    <span className="truncate">{item.title}</span>
+  )}
+</Link>
                     </TooltipTrigger>
                     {isCollapsed && (
                       <TooltipContent side="right" className="z-[100]">
