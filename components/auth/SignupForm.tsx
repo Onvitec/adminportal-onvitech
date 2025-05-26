@@ -1,7 +1,7 @@
 'use client'; // If using App Router
 
+import { supabase } from '@/lib/supabase';
 import { useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 
 export default function SignupForm() {
   const [form, setForm] = useState({ username: '', email: '', password: '' });

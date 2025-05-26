@@ -1,7 +1,7 @@
 'use client';
 
+import { supabase } from '@/lib/supabase';
 import { useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 
 export default function LoginForm() {
   const [form, setForm] = useState({ email: '', password: '' });

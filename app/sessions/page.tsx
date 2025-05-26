@@ -30,7 +30,7 @@ const SessionsTable = () => {
       // Fetch sessions
       const { data: sessionsData, error } = await supabase
         .from("sessions")
-        .select("id, title, session_type, created_at")
+        .select("*")
         // .eq("created_by", "826e31ef-0431-4762-af43-c501e3898cc3")
         .order("created_at", { ascending: false });
 
@@ -80,7 +80,7 @@ const SessionsTable = () => {
     }
   };
 
-   const sessionActions = [
+  const sessionActions = [
     {
       label: "View Session",
       icon: <Eye className="h-4 w-4" />,
@@ -89,7 +89,8 @@ const SessionsTable = () => {
     {
       label: "Edit",
       icon: <Pencil className="h-4 w-4" />,
-      action: (session: SessionType) => router.push(`sessions/edit/${session.id}`),
+      action: (session: SessionType) =>
+        router.push(`sessions/edit/${session.id}`),
     },
     {
       label: "Delete",
@@ -115,31 +116,52 @@ const SessionsTable = () => {
       enableSorting: true,
     },
     {
-      accessorKey: "id" as keyof SessionType,
-      header: "Id",
-      enableSorting: true,
-    },
-    {
       accessorKey: "session_type" as keyof SessionType,
       header: "Type",
-      cell: ({ getValue }: { getValue: () => any }) => (
-        <span className="capitalize">{getValue()}</span>
-      ),
+      cell: ({ getValue }: { getValue: () => any }) => {
+        const value = getValue();
+        return (
+          <span className="capitalize">
+            {value === "linear"
+              ? "Linear Flow"
+              : value === "interactive"
+              ? "Interactive Flow"
+              : value}
+          </span>
+        );
+      },
     },
     {
-      accessorKey: "status" as keyof SessionType,
+      accessorKey: "is_active" as keyof SessionType,
       header: "Status",
       enableSorting: true,
+      cell: ({ getValue }: { getValue: () => any }) => {
+        const isActive = getValue();
+        return (
+          <span
+            className={
+              isActive
+                ? "text-green-600 font-semibold"
+                : "text-red-600 font-semibold"
+            }
+          >
+            {isActive ? "Active" : "Inactive"}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "created_at" as keyof SessionType,
       header: "Start Date",
       enableSorting: true,
-    },
-    {
-      accessorKey: "created_at" as keyof SessionType,
-      header: "End Date",
-      enableSorting: true,
+      cell: ({ getValue }: { getValue: () => any }) => {
+        const rawDate = getValue();
+        const date = new Date(rawDate);
+        const formatted = `${date.getFullYear()}/${(date.getMonth() + 1)
+          .toString()
+          .padStart(2, "0")}/${date.getDate().toString().padStart(2, "0")}`;
+        return <span>{formatted}</span>;
+      },
     },
   ];
 
@@ -182,8 +204,8 @@ const SessionsTable = () => {
         showCheckbox={true}
         showActions={true}
         isSelectable={true}
-        actions={sessionActions} 
-isLoading={loading}
+        actions={sessionActions}
+        isLoading={loading}
       />
 
       <CreateSessionModal open={openModal} setOpen={setOpenModal} />

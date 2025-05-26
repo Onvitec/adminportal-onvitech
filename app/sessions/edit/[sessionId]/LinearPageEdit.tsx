@@ -79,7 +79,7 @@ export default function LinearSessionForm() {
   const activeModule = modules.find((module) => module.id === activeId);
 
   useEffect(() => {
-    loadSessionData("fa1d24da-ebc9-4415-8417-d4081781d900");
+    loadSessionData(sessionId as string);
   }, [sessionId]);
 
   const loadSessionData = async (sessionId: string) => {
@@ -439,7 +439,7 @@ export default function LinearSessionForm() {
             // Upload new file
             const fileExt = video.file.name.split(".").pop();
             const filePath = `${
-              userId || "826e31ef-0431-4762-af43-c501e3898cc3"
+              userId || "826e31ef-0431-4762-af43-c501e3898cc3" // TODO: fix this
             }/${sessionId}/${module.db_id}/${uuidv4()}.${fileExt}`;
 
             const { error: uploadError } = await supabase.storage
@@ -490,7 +490,7 @@ export default function LinearSessionForm() {
           // Upload file to storage
           const fileExt = video.file.name.split(".").pop();
           const filePath = `${
-            userId || "826e31ef-0431-4762-af43-c501e3898cc3"
+            userId || "826e31ef-0431-4762-af43-c501e3898cc3" // TODO: fix this
           }/${sessionId}/${module.db_id}/${uuidv4()}.${fileExt}`;
 
           const { error: uploadError } = await supabase.storage
