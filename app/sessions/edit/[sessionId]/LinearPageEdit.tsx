@@ -600,6 +600,7 @@ export default function LinearSessionForm() {
                   User ID
                 </Label>
                 <Input
+                  disabled
                   id="userId"
                   value={userId}
                   onChange={(e) => setUserId(e.target.value)}

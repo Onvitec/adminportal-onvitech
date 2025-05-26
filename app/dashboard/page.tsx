@@ -2,7 +2,18 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { Camera, Users, Activity, ArrowUp, ArrowDown, Eye, Pencil, Plus, Share2, Trash2 } from "lucide-react";
+import {
+  Camera,
+  Users,
+  Activity,
+  ArrowUp,
+  ArrowDown,
+  Eye,
+  Pencil,
+  Plus,
+  Share2,
+  Trash2,
+} from "lucide-react";
 import Heading from "@/components/Heading";
 import { useSession } from "@/components/session-provider";
 import CleanBarChart from "@/components/charts/LineChart";
@@ -29,7 +40,7 @@ export default function DashboardPage() {
     });
   }, []);
 
-   const fetchSessions = async () => {
+  const fetchSessions = async () => {
     setLoading(true);
     try {
       // const { data: { user } } = await supabase.auth.getUser();
@@ -38,7 +49,7 @@ export default function DashboardPage() {
       // Fetch sessions
       const { data: sessionsData, error } = await supabase
         .from("sessions")
-        .select("id, title, session_type, created_at")
+        .select("*")
         // .eq("created_by", "826e31ef-0431-4762-af43-c501e3898cc3")
         .order("created_at", { ascending: false });
 
@@ -97,7 +108,8 @@ export default function DashboardPage() {
     {
       label: "Edit",
       icon: <Pencil className="h-4 w-4" />,
-      action: (session: SessionType) => router.push(`sessions/edit/${session.id}`),
+      action: (session: SessionType) =>
+        router.push(`sessions/edit/${session.id}`),
     },
     {
       label: "Delete",
@@ -116,32 +128,60 @@ export default function DashboardPage() {
     },
   ];
 
-  const columns :ColumnDef<SessionType>[] = [
-     {
+  const columns = [
+    {
       accessorKey: "title" as keyof SessionType,
       header: "Session Name",
       enableSorting: true,
     },
-   
     {
       accessorKey: "session_type" as keyof SessionType,
       header: "Type",
-      cell: ({ getValue }: { getValue: () => any }) => (
-        <span className="capitalize">{getValue()}</span>
-      ),
+      cell: ({ getValue }: { getValue: () => any }) => {
+        const value = getValue();
+        return (
+          <span className="capitalize">
+            {value === "linear"
+              ? "Linear Flow"
+              : value === "interactive"
+              ? "Interactive Flow"
+              : value}
+          </span>
+        );
+      },
     },
-   
     {
-      accessorKey: "created_at" as keyof SessionType,
-      header: "Created Date",
-      enableSorting: true,
-    },
-     {
-      accessorKey: "status" as keyof SessionType,
+      accessorKey: "is_active" as keyof SessionType,
       header: "Status",
       enableSorting: true,
+      cell: ({ getValue }: { getValue: () => any }) => {
+        const isActive = getValue();
+        return (
+          <span
+            className={
+              isActive
+                ? "text-green-600 font-semibold"
+                : "text-red-600 font-semibold"
+            }
+          >
+            {isActive ? "Active" : "Inactive"}
+          </span>
+        );
+      },
     },
-   
+    {
+      accessorKey: "created_at" as keyof SessionType,
+      header: "Start Date",
+      enableSorting: true,
+      cell: ({ getValue }: { getValue: () => any }) => {
+        const rawDate = getValue();
+        const date = new Date(rawDate);
+        const formatted = `${date.getFullYear()}/${(date.getMonth() + 1)
+          .toString()
+          .padStart(2, "0")}/${date.getDate().toString().padStart(2, "0")}`;
+        return <span>{formatted}</span>;
+      },
+    },
   ];
 
   const handleRowSelect = (selectedRows: SessionType[]) => {
@@ -230,29 +270,27 @@ export default function DashboardPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <div>
               <h2 className="text-xl font-semibold">Sessions</h2>
-              
             </div>
-            
           </div>
           <Table<SessionType>
-        data={sessions}
-        columns={columns}
-        onRowSelect={handleRowSelect}
-        onRowClick={handleRowClick}
-        pageSize={5}
-        showCheckbox={true}
-        showActions={true}
-        isSelectable={true}
-        actions={sessionActions} 
-isLoading={loading}
-      />
+            data={sessions}
+            columns={columns}
+            onRowSelect={handleRowSelect}
+            onRowClick={handleRowClick}
+            pageSize={5}
+            showCheckbox={true}
+            showActions={true}
+            isSelectable={true}
+            actions={sessionActions}
+            isLoading={loading}
+          />
         </div>
-        
+
         {/* Right side - 30% width */}
         <div className="w-full md:w-[30%] bg-white rounded-lg p-4">
-  <h2 className="text-lg font-semibold mb-4">Session Status</h2>
-  <SessionPieChart />
-</div>
+          <h2 className="text-lg font-semibold mb-4">Session Status</h2>
+          <SessionPieChart />
+        </div>
       </div>
     </div>
   );
