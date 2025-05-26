@@ -1,6 +1,6 @@
 // Table.tsx
 "use client";
-import type React from "react";
+import React, { memo } from 'react';
 import { forwardRef } from "react";
 import { TableProps } from "./types";
 import { useTable } from "./useTable";
@@ -21,6 +21,7 @@ function TableInner<T>(
     isSelectable = false,
     className = "",
     actions,
+    isLoading = false,
   }: TableProps<T>,
   ref: React.Ref<HTMLDivElement>
 ) {
@@ -56,43 +57,76 @@ function TableInner<T>(
                 requestSort={requestSort}
                 sortConfig={sortConfig}
                 showActions={showActions}
+                
                 allSelected={
                   selectedRows.length === data.length && data.length > 0
                 }
               />
+              
               <tbody className="divide-y divide-[#C5D2E799] bg-white">
-                {paginatedData.map((row, rowIndex) => (
-                  <TableRow
-                    key={rowIndex}
-                    row={row}
-                    rowIndex={rowIndex}
-                    columns={columns}
-                    showCheckbox={showCheckbox}
-                    isSelected={selectedRows.includes(row)}
-                    onSelect={(isSelected: any) =>
-                      handleSelectRow(row, isSelected)
-                    }
-                    onClick={() => onRowClick?.(row)}
-                    isSelectable={isSelectable}
-                    showActions={showActions}
-                    actions={actions}
-                  />
-                ))}
+                {isLoading ? (
+                  // Loading state
+                  <tr>
+                    <td 
+                      colSpan={columns.length + (showCheckbox ? 1 : 0) + (showActions ? 1 : 0)}
+                      className="py-8 text-center"
+                    >
+                      <div className="flex justify-center">
+                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]">
+                          <span className="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">
+                            Loading...
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : paginatedData.length === 0 ? (
+                  // Empty state
+                  <tr>
+                    <td 
+                      colSpan={columns.length + (showCheckbox ? 1 : 0) + (showActions ? 1 : 0)}
+                      className="py-8 text-center text-gray-500"
+                    >
+                      No data available
+                    </td>
+                  </tr>
+                ) : (
+                  // Normal data rows
+                  paginatedData.map((row, rowIndex) => (
+                    <TableRow
+                      key={rowIndex}
+                      row={row}
+                      rowIndex={rowIndex}
+                      columns={columns}
+                      showCheckbox={showCheckbox}
+                      isSelected={selectedRows.includes(row)}
+                      onSelect={(isSelected: any) =>
+                        handleSelectRow(row, isSelected)
+                      }
+                      onClick={() => onRowClick?.(row)}
+                      isSelectable={isSelectable}
+                      showActions={showActions}
+                      actions={actions}
+                    />
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
 
-      <TablePagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        pageSize={rowsPerPage}
-        totalItems={data.length}
-        onPageChange={setCurrentPage}
-        onPageSizeChange={setRowsPerPage}
-        pageSizeOptions={pageSizeOptions}
-      />
+      {!isLoading && (
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageSize={rowsPerPage}
+          totalItems={data.length}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setRowsPerPage}
+          pageSizeOptions={pageSizeOptions}
+        />
+      )}
     </div>
   );
 }

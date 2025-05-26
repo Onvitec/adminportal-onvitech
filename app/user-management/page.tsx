@@ -3,7 +3,7 @@
 import Heading from "@/components/Heading";
 import Table from "@/components/Table/Table";
 import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import UserManModal from "@/components/Modal/UserManModal";
 import { UserType } from "@/lib/types";
@@ -16,6 +16,8 @@ const UsersTable = () => {
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [tableKey, setTableKey] = useState(0); // Add this key to force table re-render
   const router = useRouter();
 
   useEffect(() => {
@@ -23,7 +25,7 @@ const UsersTable = () => {
   }, []);
 
   const fetchUsers = async () => {
-    setLoading(true);
+    setTableLoading(true);
     try {
       const { data, error } = await supabase
         .from("users")
@@ -34,13 +36,16 @@ const UsersTable = () => {
       setUsers(data || []);
     } catch (error) {
       console.error("Error fetching users:", error);
+      toast.error("Failed to fetch users");
     } finally {
+      setTableLoading(false);
       setLoading(false);
     }
   };
 
   const handleUserCreated = (newUser: UserType) => {
     setUsers((prevUsers) => [newUser, ...prevUsers]);
+    setTableKey(prev => prev + 1); // Update key to force re-render
     toast.success("User created successfully!");
   };
 
@@ -50,7 +55,9 @@ const UsersTable = () => {
         user.id === updatedUser.id ? { ...user, ...updatedUser } : user
       )
     );
+    setTableKey(prev => prev + 1); // Update key to force re-render
     toast.success("User updated successfully!");
+    handleCloseModal();
   };
 
   const handleDeleteUser = async (user: UserType) => {
@@ -63,6 +70,7 @@ const UsersTable = () => {
       if (error) throw error;
       
       setUsers(prevUsers => prevUsers.filter((u) => u.id !== user.id));
+      setTableKey(prev => prev + 1); // Update key to force re-render
       toast.success("User deleted successfully!");
     } catch (error) {
       toast.error("Error deleting user");
@@ -70,7 +78,17 @@ const UsersTable = () => {
     }
   };
 
-  const userActions = [
+  const handleOpenModal = (user: UserType | null = null) => {
+    setEditingUser(user);
+    setOpenModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    setEditingUser(null);
+  };
+
+  const userActions = useMemo(() => [
     {
       label: "View",
       icon: <Eye className="h-4 w-4" />,
@@ -79,10 +97,7 @@ const UsersTable = () => {
     {
       label: "Edit",
       icon: <Pencil className="h-4 w-4" />,
-      action: (user: UserType) => {
-        setEditingUser(user);
-        setOpenModal(true);
-      },
+      action: (user: UserType) => handleOpenModal(user),
     },
     {
       label: "Delete",
@@ -90,9 +105,9 @@ const UsersTable = () => {
       action: handleDeleteUser,
       variant: "destructive" as const,
     },
-  ];
+  ], [router]);
 
-  const columns: ColumnDef<UserType>[] = [
+  const columns: ColumnDef<UserType>[] = useMemo(() => [
     {
       accessorKey: "first_name",
       header: "First Name",
@@ -118,7 +133,15 @@ const UsersTable = () => {
       header: "Status",
       enableSorting: true,
     },
-  ];
+    {
+      accessorKey: "updated_at",
+      header: "Last Updated",
+      cell: ({ getValue }) => {
+        const value = getValue() as string;
+        return value ? new Date(value).toLocaleString() : "Never";
+      },
+    },
+  ], []);
 
   const handleRowSelect = (selectedRows: UserType[]) => {
     console.log("Selected rows:", selectedRows);
@@ -140,10 +163,7 @@ const UsersTable = () => {
 
         <div>
           <button
-            onClick={() => {
-              setEditingUser(null);
-              setOpenModal(true);
-            }}
+            onClick={() => handleOpenModal()}
             type="button"
             className="inline-flex items-center gap-2 bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
           >
@@ -154,6 +174,7 @@ const UsersTable = () => {
       </div>
 
       <Table<UserType>
+        key={`users-table-${tableKey}`} // This forces re-render when key changes
         data={users}
         columns={columns}
         onRowSelect={handleRowSelect}
@@ -163,11 +184,12 @@ const UsersTable = () => {
         showActions={true}
         isSelectable={true}
         actions={userActions}
+        isLoading={tableLoading}
       />
 
       <UserManModal
         open={openModal}
-        setOpen={setOpenModal}
+        setOpen={handleCloseModal}
         mode={editingUser ? "edit" : "create"}
         user={editingUser}
         onUserCreated={handleUserCreated}

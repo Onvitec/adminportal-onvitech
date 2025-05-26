@@ -183,7 +183,7 @@ const SessionsTable = () => {
         showActions={true}
         isSelectable={true}
         actions={sessionActions} 
-
+isLoading={loading}
       />
 
       <CreateSessionModal open={openModal} setOpen={setOpenModal} />

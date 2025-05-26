@@ -33,6 +33,8 @@ export interface TableProps<T> {
   isSelectable?: boolean;
   className?: string;
   actions?: TableAction<T>[]; 
+    isLoading?: boolean; // Add this line
+
 }
 
 export interface TablePaginationProps {

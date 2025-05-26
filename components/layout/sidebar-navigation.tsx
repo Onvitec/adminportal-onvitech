@@ -158,7 +158,7 @@ export function SidebarNavigation() {
   return (
     <div
       className={cn(
-        "flex h-screen flex-col border-r border-border bg-[#1C2534] transition-all duration-300 ease-in-out dark:bg-card",
+        "flex h-screen  flex-col border-r border-border bg-[#1C2534] transition-all duration-300 ease-in-out dark:bg-card",
         isCollapsed ? "w-[80px]" : "w-[280px]",
         !isDesktop ? "fixed top-0 left-0 z-50" : "relative"
       )}
