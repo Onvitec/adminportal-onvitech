@@ -4,16 +4,11 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
   Camera,
-  Users,
   Activity,
-  ArrowUp,
-  ArrowDown,
-  Eye,
-  Pencil,
-  Plus,
   Share2,
-  Trash2,
+  Delete,
 } from "lucide-react";
+import {ArrowUp, ArrowDown, UsersIcon,EyeIcon, EditIcon, Plus,DeleteIcon } from "@/components/icons";
 import Heading from "@/components/Heading";
 import { useSession } from "@/components/session-provider";
 import CleanBarChart from "@/components/charts/LineChart";
@@ -102,18 +97,18 @@ export default function DashboardPage() {
   const sessionActions = [
     {
       label: "View Session",
-      icon: <Eye className="h-4 w-4" />,
+      icon: <EyeIcon className="h-4 w-4" />,
       action: (session: SessionType) => router.push(`sessions/${session.id}`),
     },
     {
       label: "Edit",
-      icon: <Pencil className="h-4 w-4" />,
+      icon: <EditIcon className="h-4 w-4" />,
       action: (session: SessionType) =>
         router.push(`sessions/edit/${session.id}`),
     },
     {
       label: "Delete",
-      icon: <Trash2 className="h-4 w-4" />,
+      icon: <DeleteIcon className="h-4 w-4" />,
       action: (session: SessionType) => console.log("Delete", session),
       variant: "outline" as const,
     },
@@ -195,7 +190,7 @@ export default function DashboardPage() {
   if (loading) return <p>Loading...</p>;
 
   return (
-    <div className="p-4">
+  <div className="p-4  h-screen"> {/* Changed to h-screen and overflow-y-auto */}
       <Heading>Hey there, {user?.username}</Heading>
       <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md">
         Welcome back, we're happy to have you here!{" "}
@@ -243,7 +238,7 @@ export default function DashboardPage() {
         <div className="border rounded-lg p-4 flex items-center justify-between bg-[#FFFFFF]">
           <div className="flex items-center gap-4">
             <div className="bg-[#6195BA] w-10 h-10 rounded-sm flex items-center justify-center">
-              <Users className="w-5 h-5 text-white" />
+              <UsersIcon className="w-5 h-5 text-white" />
             </div>
             <div>
               <p className="text-3xl font-bold text-[#272D37]">1,248</p>
@@ -265,33 +260,37 @@ export default function DashboardPage() {
 
       {/* table and piechart - Fixed 70-30 split */}
       <div className="flex flex-col md:flex-row gap-4 w-full mt-6">
-        {/* Left side - 70% width with Sessions Table */}
-        <div className="w-full md:w-[70%] bg-white rounded-lg p-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-            <div>
-              <h2 className="text-xl font-semibold">Sessions</h2>
-            </div>
-          </div>
-          <Table<SessionType>
-            data={sessions}
-            columns={columns}
-            onRowSelect={handleRowSelect}
-            onRowClick={handleRowClick}
-            pageSize={5}
-            showCheckbox={true}
-            showActions={true}
-            isSelectable={true}
-            actions={sessionActions}
-            isLoading={loading}
-          />
-        </div>
-
-        {/* Right side - 30% width */}
-        <div className="w-full md:w-[30%] bg-white rounded-lg p-4">
-          <h2 className="text-lg font-semibold mb-4">Session Status</h2>
-          <SessionPieChart />
-        </div>
+  {/* Left side - 70% width with Sessions Table */}
+  <div className="w-full md:w-[70%] bg-white rounded-lg p-4">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+      <div>
+        <h2 className="text-xl font-semibold">Sessions</h2>
       </div>
+    </div>
+
+    {/* <div className="w-full overflow-x-auto">
+      <Table<SessionType>
+        data={sessions}
+        columns={columns}
+        onRowSelect={handleRowSelect}
+        onRowClick={handleRowClick}
+        pageSize={5}
+        showCheckbox={true}
+        showActions={true}
+        isSelectable={true}
+        actions={sessionActions}
+        isLoading={loading}
+      />
+    </div> */}
+  </div>
+
+  {/* Right side - 30% width */}
+  <div className="w-full md:w-[30%] bg-white rounded-lg p-4">
+    <h2 className="text-lg font-semibold mb-4">Session Status</h2>
+    <SessionPieChart />
+  </div>
+</div>
+
     </div>
   );
 }

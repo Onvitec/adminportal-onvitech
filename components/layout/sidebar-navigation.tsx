@@ -13,7 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutDashboard,
-  LogOutIcon,
+  // LogOutIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +35,14 @@ import Image from "next/image";
 import { useMediaQuery } from "../../hooks/use-media-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import {
+  DashboardIcon,
+  AnalyticsIcon,
+  DatabaseIcon,
+  UsersIcon,
+  SettingsIcon,
+  LogOutIcon,
+} from "../../components/icons"; 
 
 type NavItem = {
   title: string;
@@ -103,13 +111,13 @@ export function SidebarNavigation() {
         {
           title: "Dashboard",
           href: "/dashboard",
-          icon: <LayoutDashboard className="h-5 w-5" />,
+          icon: <DashboardIcon className="h-5 w-5" />,
         },
-        {
-          title: "Analytics",
-          href: "/analytics",
-          icon: <BarChart className="h-5 w-5" />,
-        },
+        // {
+        //   title: "Analytics",
+        //   href: "/analytics",
+        //   icon: <AnalyticsIcon className="h-5 w-5" />,
+        // },
       ],
     },
     {
@@ -118,7 +126,7 @@ export function SidebarNavigation() {
         {
           title: "Session Maker",
           href: "/sessions",
-          icon: <Database className="h-5 w-5" />,
+          icon: <DatabaseIcon className="h-5 w-5" />,
         },
       ],
     },
@@ -128,17 +136,17 @@ export function SidebarNavigation() {
         {
           title: "User Management",
           href: "/user-management",
-          icon: <Users className="h-5 w-5" />,
+          icon: <UsersIcon className="h-5 w-5" />,
         },
         {
           title: "Settings",
           href: "/settings",
-          icon: <Settings className="h-5 w-5" />,
+          icon: <SettingsIcon className="h-5 w-5" />,
         },
          {
           title: "Sign Out",
           href: "#", // Using href="#" to maintain link styling
-          icon: <LogOut className="h-5 w-5" />,
+          icon: <LogOutIcon className="h-5 w-5" />,
           onClick: handleSignOut, // Add onClick handler
         },
       ],

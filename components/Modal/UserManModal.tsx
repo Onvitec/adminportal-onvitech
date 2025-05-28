@@ -81,6 +81,7 @@ export default function UserManModal({
       }
 
       if (mode === "create") {
+        // Check if email exists first
         const { data: existingUser } = await supabase
           .from("users")
           .select("email")
@@ -89,17 +90,8 @@ export default function UserManModal({
 
         if (existingUser) throw new Error("Email already registered");
 
-        const { data: authData, error: signUpError } = await supabase.auth.signUp({
-          email: form.email,
-          password: "tempPassword123!",
-          options: { data: { first_name: form.firstName, last_name: form.lastName } },
-        });
-
-        if (signUpError) throw signUpError;
-        if (!authData.user) throw new Error("User creation failed");
-
+        // Create user directly in your users table without auth
         const newUser = {
-          id: authData.user.id,
           first_name: form.firstName,
           last_name: form.lastName,
           email: form.email,
@@ -108,13 +100,30 @@ export default function UserManModal({
           created_at: new Date().toISOString(),
         };
 
-        const { error: dbError } = await supabase.from("users").insert(newUser);
-        if (dbError) {
-          await supabase.auth.admin.deleteUser(authData.user.id);
-          throw dbError;
+        const { data, error: dbError } = await supabase
+          .from("users")
+          .insert(newUser)
+          .select()
+          .single();
+
+        if (dbError) throw dbError;
+
+        // Optionally send an invite email
+        const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(form.email, {
+          redirectTo: `${window.location.origin}/set-password`,
+          data: {
+            first_name: form.firstName,
+            last_name: form.lastName
+          }
+        });
+
+        if (inviteError) {
+          console.warn("Invite email failed to send:", inviteError.message);
+          // Don't fail the operation - just log it
         }
 
-        onUserCreated?.(newUser);
+        onUserCreated?.(data);
+        toast.success("User created successfully! Invitation email sent.");
       } else {
         if (!user) throw new Error("No user selected for editing");
 

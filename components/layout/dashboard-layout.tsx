@@ -1,3 +1,4 @@
+// components/layout/dashboard-layout.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -128,7 +129,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1  overflow-y-auto p-4 md:p-6 bg-[#F2F7FC]">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F2F7FC]">
           {children}
         </main>
       </div>

@@ -2,7 +2,8 @@
 
 import Heading from "@/components/Heading";
 import Table from "@/components/Table/Table";
-import { Eye, Pencil, Plus, Share2, Trash2 } from "lucide-react";
+import { Share2} from "lucide-react";
+import { DeleteIcon, EditIcon, Plus , EyeIcon } from "@/components/icons";
 import { useEffect, useState } from "react";
 import CreateSessionModal from "../../components/Modal/CreateSessionModal";
 import { supabase } from "@/lib/supabase";
@@ -69,18 +70,18 @@ const SessionsTable = () => {
   const sessionActions = [
     {
       label: "View Session",
-      icon: <Eye className="h-4 w-4" />,
+      icon: <EyeIcon className="h-4 w-4" />,
       action: (session: SessionType) => router.push(`sessions/${session.id}`),
     },
     {
       label: "Edit",
-      icon: <Pencil className="h-4 w-4" />,
+      icon: <EditIcon className="h-4 w-4" />,
       action: (session: SessionType) =>
         router.push(`sessions/edit/${session.id}`),
     },
     {
       label: "Delete",
-      icon: <Trash2 className="h-4 w-4" />,
+      icon: <DeleteIcon className="h-4 w-4" />,
       action: (session: SessionType) => {
         setSessionToDelete(session.id);
         setIsconfirmModalOpen(true);
@@ -171,7 +172,7 @@ const SessionsTable = () => {
               type="button"
               className="inline-flex items-center gap-2 bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
             >
-              <Trash2 className="h-4 w-4" />
+              <DeleteIcon className="h-4 w-4" />
               Delete Selected ({selectedSessions.length})
             </button>
           )}

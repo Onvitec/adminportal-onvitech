@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import {DropdownArrow, DropdownUpArrow} from "@/components/icons";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -276,9 +276,9 @@ function ModuleCard({ module }: { module: Module }) {
           onClick={() => setIsExpanded(!isExpanded)}
         >
           {isExpanded ? (
-            <ChevronUp className="h-5 w-5" />
+            <DropdownArrow className="h-5 w-5" />
           ) : (
-            <ChevronDown className="h-5 w-5" />
+            <DropdownUpArrow className="h-5 w-5" />
           )}
         </Button>
       </div>

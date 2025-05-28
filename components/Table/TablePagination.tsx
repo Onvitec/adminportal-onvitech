@@ -1,4 +1,3 @@
-// TablePagination.tsx
 import { TablePaginationProps } from "./types";
 import {
   Select,
@@ -9,11 +8,10 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import {
-  ChevronLeft,
-  ChevronRight,
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
+import { Next, Previous } from "../icons";
 
 export default function TablePagination({
   currentPage,
@@ -70,7 +68,7 @@ export default function TablePagination({
             disabled={currentPage === 1}
           >
             <span className="sr-only">Go to previous page</span>
-            <ChevronLeft className="h-4 w-4" />
+            <Previous className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
@@ -79,7 +77,7 @@ export default function TablePagination({
             disabled={currentPage === totalPages || totalPages === 0}
           >
             <span className="sr-only">Go to next page</span>
-            <ChevronRight className="h-4 w-4" />
+            <Next className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"

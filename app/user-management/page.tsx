@@ -2,7 +2,7 @@
 
 import Heading from "@/components/Heading";
 import Table from "@/components/Table/Table";
-import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import { EyeIcon, EditIcon, Plus, DeleteIcon } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import UserManModal from "@/components/Modal/UserManModal";
@@ -17,7 +17,7 @@ const UsersTable = () => {
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
-  const [tableKey, setTableKey] = useState(0); // Add this key to force table re-render
+  const [tableKey, setTableKey] = useState(0); 
   const router = useRouter();
 
   useEffect(() => {
@@ -55,9 +55,10 @@ const UsersTable = () => {
         user.id === updatedUser.id ? { ...user, ...updatedUser } : user
       )
     );
-    setTableKey(prev => prev + 1); // Update key to force re-render
+    setTableKey(prev => prev + 1); 
     toast.success("User updated successfully!");
     handleCloseModal();
+  window.location.reload(); 
   };
 
   const handleDeleteUser = async (user: UserType) => {
@@ -91,17 +92,17 @@ const UsersTable = () => {
   const userActions = useMemo(() => [
     {
       label: "View",
-      icon: <Eye className="h-4 w-4" />,
+      icon: <EyeIcon className="h-4 w-4" />,
       action: (user: UserType) => router.push(`/user-management/${user.id}`),
     },
     {
       label: "Edit",
-      icon: <Pencil className="h-4 w-4" />,
+      icon: <EditIcon className="h-4 w-4" />,
       action: (user: UserType) => handleOpenModal(user),
     },
     {
       label: "Delete",
-      icon: <Trash2 className="h-4 w-4" />,
+      icon: <DeleteIcon className="h-4 w-4" />,
       action: handleDeleteUser,
       variant: "destructive" as const,
     },
@@ -133,14 +134,14 @@ const UsersTable = () => {
       header: "Status",
       enableSorting: true,
     },
-    {
-      accessorKey: "updated_at",
-      header: "Last Updated",
-      cell: ({ getValue }) => {
-        const value = getValue() as string;
-        return value ? new Date(value).toLocaleString() : "Never";
-      },
-    },
+    // {
+    //   accessorKey: "updated_at",
+    //   header: "Last Updated",
+    //   cell: ({ getValue }) => {
+    //     const value = getValue() as string;
+    //     return value ? new Date(value).toLocaleString() : "Never";
+    //   },
+    // },
   ], []);
 
   const handleRowSelect = (selectedRows: UserType[]) => {
@@ -174,7 +175,7 @@ const UsersTable = () => {
       </div>
 
       <Table<UserType>
-        key={`users-table-${tableKey}`} // This forces re-render when key changes
+        key={`users-table-${tableKey}`}
         data={users}
         columns={columns}
         onRowSelect={handleRowSelect}

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { SidebarNavigation } from "./sidebar-navigation";
-import { Search, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
+import {Search, LogOutIcon} from "../icons"
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
@@ -13,7 +14,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMediaQuery } from "../../hooks/use-media-query";
@@ -179,7 +179,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
                   <DropdownMenuItem>Settings</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
+                    <LogOutIcon className="mr-2 h-4 w-4" />
                     <span>Sign out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -192,7 +192,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-[#F2F7FC]">
+        <main className="flex-1  p-4 md:p-6 bg-[#F2F7FC]">
           {children}
         </main>
       </div>

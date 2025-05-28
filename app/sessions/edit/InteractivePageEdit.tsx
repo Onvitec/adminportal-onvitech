@@ -3,13 +3,10 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  ChevronDown,
-  ChevronUp,
   PlusCircle,
-  Trash2,
-  Pencil,
-  Upload,
 } from "lucide-react";
+import {DropdownArrow, DropdownUpArrow, DeleteIcon, UploadFile, EditIcon} from "@/components/icons";
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { SessionType } from "@/lib/types";
@@ -671,9 +668,9 @@ export default function InteractiveEditPage({
                         onClick={() => toggleModuleExpand(module.id)}
                       >
                         {module.isExpanded ? (
-                          <ChevronUp className="h-5 w-5" />
+                          <DropdownUpArrow className="h-5 w-5" />
                         ) : (
-                          <ChevronDown className="h-5 w-5" />
+                          <DropdownArrow className="h-5 w-5" />
                         )}
                       </Button>
                       <Button
@@ -682,7 +679,7 @@ export default function InteractiveEditPage({
                         onClick={() => removeModule(module.id)}
                         disabled={modules.length <= 1}
                       >
-                        <Trash2 className="h-5 w-5 text-red-500" />
+                        <DeleteIcon className="h-5 w-5 text-red-500" />
                       </Button>
                     </div>
                   </div>
@@ -728,7 +725,7 @@ export default function InteractiveEditPage({
                                   size="sm"
                                   className="relative"
                                 >
-                                  <Upload className="h-4 w-4 mr-2" />
+                                  <UploadFile className="h-4 w-4 mr-2" />
                                   {video.file ? "Change" : "Upload"}
                                   <input
                                     type="file"
@@ -750,7 +747,7 @@ export default function InteractiveEditPage({
                                     removeVideoFromModule(module.id, video.id)
                                   }
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <DeleteIcon className="h-4 w-4" />
                                 </Button>
                               </div>
                             </div>
@@ -812,7 +809,7 @@ export default function InteractiveEditPage({
                           onClick={() => removeInteractiveVideo(video.id)}
                           disabled={interactiveVideos.length <= 1}
                         >
-                          <Trash2 className="h-5 w-5 text-red-500" />
+                          <DeleteIcon className="h-5 w-5 text-red-500" />
                         </Button>
                       </div>
                     </div>
@@ -839,7 +836,7 @@ export default function InteractiveEditPage({
                             size="sm"
                             className="relative"
                           >
-                            <Upload className="h-4 w-4 mr-2" />
+                            <UploadFile className="h-4 w-4 mr-2" />
                             {video.file ? "Change" : "Upload"}
                             <input
                               type="file"
@@ -887,7 +884,7 @@ export default function InteractiveEditPage({
                                   }
                                   className="ml-2"
                                 >
-                                  <Trash2 className="h-4 w-4 text-red-500" />
+                                  <DeleteIcon className="h-4 w-4 text-red-500" />
                                 </Button>
                               </div>
 
@@ -958,7 +955,7 @@ export default function InteractiveEditPage({
                                         }
                                         disabled={question.answers.length <= 1}
                                       >
-                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                        <DeleteIcon className="h-4 w-4 text-red-500" />
                                       </Button>
                                     </div>
                                   </div>

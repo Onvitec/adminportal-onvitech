@@ -1,4 +1,3 @@
-// TableStatus.tsx
 import { CheckCircle2, Clock } from "lucide-react";
 
 interface TableStatusProps {

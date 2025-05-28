@@ -4,8 +4,6 @@ import TableCell from "./TableCell";
 import TableCheckbox from "./TableCheckbox";
 import TableActions from "./TableActions";
 import { ColumnDef } from "./types";
-import { Eye, Pencil, Share, Trash2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 interface TableRowProps<T> {
   row: T;

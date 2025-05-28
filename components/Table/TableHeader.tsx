@@ -1,7 +1,7 @@
-// TableHeader.tsx
 "use client"
 
-import { ArrowUpDown, ChevronDown } from "lucide-react";
+import { ArrowUpDown } from "lucide-react";
+import { DropdownArrow } from "../icons";
 import TableCheckbox from "./TableCheckbox";
 import { ColumnDef, SortDirection } from "./types";
 
@@ -56,7 +56,7 @@ export default function TableHeader<T>({
                   {sortConfig?.key === column.accessorKey ? (
                     <ArrowUpDown className="h-4 w-4" />
                   ) : (
-                    <ChevronDown className="h-4 w-4 opacity-50" />
+                    <DropdownArrow className="h-4 w-4 opacity-50" />
                   )}
                 </button>
               ) : (
