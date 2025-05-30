@@ -1,18 +1,24 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Module } from '@/lib/types';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { Module, Solution, SolutionCategory } from "@/lib/types";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+// import { ReadonlyForm } from '@/components/readonly-form';
+import { SolutionCard } from "@/components/SolutionCard";
 
 export function LinearSessionView({ sessionId }: { sessionId: string }) {
   const [modules, setModules] = useState<Module[]>([]);
+  const [solutions, setSolutions] = useState<Solution[]>([]);
+  const [solutionCategories, setSolutionCategories] = useState<
+    SolutionCategory[]
+  >([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
-    const fetchModules = async () => {
+    const fetchData = async () => {
       try {
+        // Fetch modules and videos
         const { data: modulesData, error: modulesError } = await supabase
           .from("modules")
           .select("*")
@@ -38,26 +44,65 @@ export function LinearSessionView({ sessionId }: { sessionId: string }) {
           })
         );
 
+        // Fetch solutions and categories
+        const { data: solutionsData, error: solutionsError } = await supabase
+          .from("solutions")
+          .select("*")
+          .eq("session_id", sessionId);
+
+        if (solutionsError) throw solutionsError;
+
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from("solution_categories")
+          .select("*");
+
+        if (categoriesError) throw categoriesError;
+
         setModules(modulesWithVideos);
+        setSolutions(solutionsData || []);
+        setSolutionCategories(categoriesData || []);
       } catch (error) {
-        console.error("Error fetching modules:", error);
+        console.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchModules();
+    fetchData();
   }, [sessionId]);
 
   if (loading) {
-    return <div>Loading linear session...</div>;
+    return <div>Loading session data...</div>;
   }
 
   return (
-    <div className="space-y-4">
-      {modules.map((module) => (
-        <ModuleCard key={module.id} module={module} />
-      ))}
+    <div className="space-y-6">
+      {/* Modules Section */}
+      <div className="space-y-4">
+        {modules.map((module) => (
+          <ModuleCard key={module.id} module={module} />
+        ))}
+      </div>
+      {/* Solutions Section */}
+      <div className="space-y-2">
+        <h2 className="text-xl font-bold">Solution</h2>
+        {solutions.length > 0 ? (
+          <div className="grid grid-cols-1 gap-4">
+            {solutions.map((solution) => {
+              return (
+                <SolutionCard
+                  key={solution.id}
+                  solution={solution}
+                  categories={solutionCategories}
+                  readOnly={true}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">No solutions added</p>
+        )}
+      </div>
     </div>
   );
 }

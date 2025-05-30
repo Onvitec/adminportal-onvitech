@@ -2,6 +2,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { SidebarNavigation } from "./sidebar-navigation";
 import { Search, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ import { useMediaQuery } from "../../hooks/use-media-query";
 import { useSession } from "../session-provider";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const { user, signOut } = useSession();
@@ -36,6 +38,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
   };
 
+  // Check if current route is an embed route
+  const isEmbedRoute = pathname?.startsWith("/sessions/embed/");
+
   // Get initials for avatar fallback
   const getInitials = (name: string) => {
     const names = name.split(" ");
@@ -47,6 +52,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const initials = user?.username ? getInitials(user.username) : "U";
 
+  // For embed routes, just render the children without any layout
+  if (isEmbedRoute) {
+    return <>{children}</>;
+  }
+
+  // Don't render anything if user is not authenticated (except for embed routes)
   if (!user) return null;
 
   return (
