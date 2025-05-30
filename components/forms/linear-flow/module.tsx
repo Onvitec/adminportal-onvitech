@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   GripVertical,
+  Plus,
   PlusCircle,
   Trash2,
   X,
@@ -55,7 +56,7 @@ export function ModuleCard({
         isDragging ? "border-blue-300 bg-blue-50" : "border-gray-200"
       )}
     >
-      <div className="p-4 flex items-center justify-between">
+      <div className="p-4 flex border-b items-center justify-between bg-white">
         <div className="flex items-center gap-2">
           <button {...dragHandleProps}>
             <GripVertical className="h-5 w-5 text-gray-400 cursor-grab" />
@@ -103,7 +104,7 @@ export function ModuleCard({
       </div>
 
       {isExpanded && (
-        <div className="px-4 pb-4 space-y-3">
+        <div className="px-4 pb-4 space-y-3 bg-gray-50">
           {/* Grid of existing videos with URLs */}
           {module.videos.some((v) => v.url) && (
             <div className="bg-gray-50 p-4 rounded-lg">
@@ -148,9 +149,9 @@ export function ModuleCard({
             variant="outline"
             size="sm"
             onClick={addVideo}
-            className="mt-2 bg-gray-100 py-5 border-dashed w-full"
+            className="mt-2 bg-gray-100 py-5"
           >
-            <PlusCircle className="h-4 w-4 mr-2" />
+            <Plus className="h-4 w-4 mr-2" />
             Add Video
           </Button>
         </div>

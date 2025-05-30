@@ -56,4 +56,50 @@ export type UserType = {
   status: string;
   created_at: string;
   updated_at?: string;
+}
+
+
+// Solution Types
+export type SolutionCategory = {
+  id: number;
+  name: string;
+};
+
+export type Solution = {
+  id: string;
+  category_id: number | null;
+  form_data?: any;
+  emailContent?: string;
+  emailTarget?:string;
+  linkUrl?: string;
+  videoFile?: File | null;
+  videoUrl?: string;
+};
+
+
+export type FormElementType = 
+  | 'text'
+  | 'email'
+  | 'number'
+  | 'dropdown'
+  | 'checkbox'
+  | 'radio'
+  | 'paragraph'
+  | 'button';
+
+export type FormElement = {
+  id: string;
+  type: FormElementType;
+  label: string;
+  required?: boolean;
+  placeholder?: string;
+  options?: string[]; // For dropdown, radio
+  defaultValue?: string;
+};
+
+export type FormSolutionData = {
+  title: string;
+  description?: string;
+  elements: FormElement[];
+  submitText?: string;
 };

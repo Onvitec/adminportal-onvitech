@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,15 @@ import {
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { cn } from "@/lib/utils";
 import { ModuleCard } from "./module";
+import { SolutionCard } from "@/components/SolutionCard";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Solution, SolutionCategory } from "@/lib/types";
 
 type Module = {
   id: string;
@@ -69,7 +78,13 @@ export default function LinearSessionForm() {
     },
   ]);
   const [activeId, setActiveId] = useState<string | null>(null);
-
+  const categories = ["Form", "Email", "Link", "Video"];
+  const [solutionCategories, setSolutionCategories] = useState<
+    SolutionCategory[]
+  >([]);
+  const [solution, setSolution] = useState<Solution | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(false);
   const activeModule = modules.find((module) => module.id === activeId);
 
   const sensors = useSensors(
@@ -181,7 +196,7 @@ export default function LinearSessionForm() {
         .insert({
           title: sessionName,
           session_type: "linear",
-          created_by: "826e31ef-0431-4762-af43-c501e3898cc3",
+          created_by: "826e31ef-0431-4762-af43-c501e3898cc3", //TODO: make user dynamic
         })
         .select()
         .single();
@@ -238,7 +253,53 @@ export default function LinearSessionForm() {
           if (videoError) throw videoError;
         }
       }
+      // Solutions Logic
+      if (solution) {
+        let solutionData: any = {
+          session_id: sessionData.id,
+          category_id: solution.category_id,
+          title: `Solution for ${sessionName}`,
+        };
 
+        // Set appropriate fields based on solution type
+        if (solution.category_id === 1) {
+          // Form
+          solutionData.form_data = solution.form_data;
+        } else if (solution.category_id === 2) {
+          // Email
+          solutionData.email_content = solution.emailTarget;
+          // TODO: send solution.emailContent to email content here
+        } else if (solution.category_id === 3) {
+          // Link
+          solutionData.link_url = solution.linkUrl;
+        } else if (solution.category_id === 4) {
+          // Video
+          if (solution.videoFile) {
+            // Upload video file
+            const fileExt = solution.videoFile.name.split(".").pop();
+            const filePath = `${userId}/${
+              sessionData.id
+            }/solutions/${uuidv4()}.${fileExt}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from("solutions")
+              .upload(filePath, solution.videoFile);
+
+            if (uploadError) throw uploadError;
+
+            // Get public URL
+            const { data: urlData } = supabase.storage
+              .from("solutions")
+              .getPublicUrl(filePath);
+
+            solutionData.video_url = urlData.publicUrl;
+          } else if (solution.videoUrl) {
+            solutionData.video_url = solution.videoUrl;
+          }
+        }
+
+        await supabase.from("solutions").insert(solutionData);
+      }
       // Redirect to sessions page
       router.push("/sessions");
     } catch (error) {
@@ -246,6 +307,42 @@ export default function LinearSessionForm() {
       alert("Failed to create session. Please try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Fetch solution categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data, error } = await supabase
+        .from("solution_categories")
+        .select("*");
+
+      if (!error && data) {
+        setSolutionCategories(data);
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // Add solution handler
+  const addSolution = () => {
+    if (!selectedCategory) return;
+
+    setSolution({
+      id: uuidv4(),
+      category_id: selectedCategory,
+    });
+  };
+
+  // Modify the removeSolution handler
+  const removeSolution = () => {
+    setSolution(null);
+  };
+
+  // Modify the updateSolution handler
+  const updateSolution = (updates: Partial<Solution>) => {
+    if (solution) {
+      setSolution({ ...solution, ...updates });
     }
   };
 
@@ -358,6 +455,83 @@ export default function LinearSessionForm() {
               </DndContext>
             </div>
 
+            {/* Solution section */}
+            <div className="mt-8 border rounded-lg">
+              <button
+                type="button"
+                className="w-full flex justify-between items-center p-4"
+                onClick={() => setIsSolutionCollapsed(!isSolutionCollapsed)}
+              >
+                <h3 className="text-lg font-medium"> Add a Solution</h3>
+                {isSolutionCollapsed ? (
+                  <ChevronDown className="h-5 w-5" />
+                ) : (
+                  <ChevronUp className="h-5 w-5" />
+                )}
+              </button>
+
+              {!isSolutionCollapsed && (
+                <div className="p-4 pt-0 space-y-4">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1">
+                      <Label className="block text-sm font-medium mb-1">
+                        Solution Category
+                      </Label>
+                      <Select
+                        value={
+                          solutionCategories
+                            .find((c) => c.id === selectedCategory)
+                            ?.id?.toString() || ""
+                        }
+                        onValueChange={(value) =>
+                          setSelectedCategory(Number(value))
+                        }
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select solution type" />
+                        </SelectTrigger>
+                        <SelectContent className="flex-1">
+                          {solutionCategories.map((category) => (
+                            <SelectItem
+                              key={category.id}
+                              value={String(category.id)}
+                            >
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <Button
+                        type="button"
+                        onClick={addSolution}
+                        disabled={solution !== null}
+                        className="h-10"
+                      >
+                        Add Solution
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => setSolution(null)}
+                        className="h-10 text-red-600 hover:text-red-800"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+
+                  {solution && (
+                    <SolutionCard
+                      solution={solution}
+                      categories={solutionCategories}
+                      onUpdate={updateSolution}
+                      onDelete={removeSolution}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
             <div className="flex justify-between items-center gap-2 mt-8">
               <Button
                 type="button"

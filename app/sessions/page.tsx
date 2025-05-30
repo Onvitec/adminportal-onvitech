@@ -39,6 +39,7 @@ const SessionsTable = () => {
       .from("sessions")
       .delete()
       .eq("id", sessionId);
+    setSelectedSessions([]);
     if (error) {
       console.error("Failed to delete session:", error.message);
     }

@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "@/components/session-provider";
 import { headers } from "next/headers";
-import { Toaster } from 'sonner';
+import { Toaster } from "sonner";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 
 const geistSans = Geist({
@@ -26,7 +26,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const headersList = await headers(); 
+  const headersList = await headers();
   const pathname = headersList.get("x-pathname") || "";
   const isAuthPage =
     pathname.startsWith("/login") || pathname.startsWith("/signup");
@@ -37,18 +37,18 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SessionProvider>
-          <Toaster 
-            position="top-center" 
-            theme="light" 
+          <Toaster
+            position="top-center"
+            theme="light"
             duration={3000}
             toastOptions={{
-              className: 'custom-toast',
+              className: "custom-toast",
               style: {
-                backgroundColor: '#BAEDD7',
-                color: '#242B42',
+                backgroundColor: "#BAEDD7",
+                color: "#242B42",
                 fontWeight: 500,
-                fontSize: '14px',
-                border: 'none',
+                fontSize: "14px",
+                border: "none",
               },
             }}
           />
