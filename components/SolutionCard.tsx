@@ -217,5 +217,5 @@ export function SolutionCard({
     }
   };
 
-  return <div className="rounded-lg p-4 mb-4">{renderSolutionInput()}</div>;
+  return <div className="rounded-lg ">{renderSolutionInput()}</div>;
 }

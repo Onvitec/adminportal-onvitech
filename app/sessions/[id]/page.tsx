@@ -131,7 +131,7 @@ export default function SessionViewPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8 max-w-4xl">
+      <div className=" w-full mx-auto py-8">
         <div className="flex justify-center items-center min-h-[300px]">
           <div className="animate-pulse text-muted-foreground">
             Loading session details...
@@ -143,7 +143,7 @@ export default function SessionViewPage() {
 
   if (!session) {
     return (
-      <div className="container mx-auto py-8 max-w-4xl">
+      <div className=" w-full mx-auto py-8">
         <div className="text-center py-12">
           <h3 className="text-lg font-medium mb-2">Session not found</h3>
           <Button onClick={() => router.push("/sessions")} className="mt-4">
@@ -155,9 +155,9 @@ export default function SessionViewPage() {
   }
 
   return (
-    <div className="container py-8">
+    <div className=" py-4">
       <Card className="border-none shadow-none">
-        <CardHeader className="px-6 pt-0 border-b border-gray-200 pb-6">
+        <CardHeader className="px-6 border-b border-gray-200 ">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <CardTitle className="text-2xl font-semibold">
@@ -180,7 +180,7 @@ export default function SessionViewPage() {
 
         <CardContent className="px-0 space-y-6">
           {/* Session Info Section */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-6 py-6 border-b border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-6  pb-8 border-b border-gray-200">
             <div>
               <h3 className="text-sm font-medium text-gray-500">Session Name</h3>
               <p className="text-base font-medium mt-1">{session.title}</p>
@@ -189,6 +189,13 @@ export default function SessionViewPage() {
               <h3 className="text-sm font-medium text-gray-500">Session Type</h3>
               <p className="text-base font-medium mt-1 capitalize">
                 {session.session_type}
+              </p>
+            </div>
+
+             <div>
+              <h3 className="text-sm font-medium text-gray-500">Session Id</h3>
+              <p className="text-base font-medium mt-1 capitalize">
+                {session.id}
               </p>
             </div>
           </div>

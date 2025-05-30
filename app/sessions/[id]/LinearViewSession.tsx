@@ -5,16 +5,15 @@ import { supabase } from "@/lib/supabase";
 import { Module, Solution, SolutionCategory } from "@/lib/types";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-// import { ReadonlyForm } from '@/components/readonly-form';
 import { SolutionCard } from "@/components/SolutionCard";
 
 export function LinearSessionView({ sessionId }: { sessionId: string }) {
   const [modules, setModules] = useState<Module[]>([]);
   const [solutions, setSolutions] = useState<Solution[]>([]);
-  const [solutionCategories, setSolutionCategories] = useState<
-    SolutionCategory[]
-  >([]);
+  const [solutionCategories, setSolutionCategories] = useState<SolutionCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [solutionsExpanded, setSolutionsExpanded] = useState(true);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -76,31 +75,50 @@ export function LinearSessionView({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 w-full">
       {/* Modules Section */}
       <div className="space-y-4">
         {modules.map((module) => (
           <ModuleCard key={module.id} module={module} />
         ))}
       </div>
+      
       {/* Solutions Section */}
-      <div className="space-y-2">
-        <h2 className="text-xl font-bold">Solution</h2>
-        {solutions.length > 0 ? (
-          <div className="grid grid-cols-1 gap-4">
-            {solutions.map((solution) => {
-              return (
-                <SolutionCard
-                  key={solution.id}
-                  solution={solution}
-                  categories={solutionCategories}
-                  readOnly={true}
-                />
-              );
-            })}
+      <div className="border rounded-lg overflow-hidden">
+        <div className="flex items-center justify-between py-4 px-4 bg-white">
+          <h2 className="text-xl font-bold">Solution Type</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSolutionsExpanded(!solutionsExpanded)}
+          >
+            {solutionsExpanded ? (
+              <ChevronUp className="h-5 w-5" />
+            ) : (
+              <ChevronDown className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
+
+        {solutionsExpanded && (
+          <div className="bg-gray-50 py-4 border-t">
+            {solutions.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4">
+                {solutions.map((solution) => (
+                  <SolutionCard
+                    key={solution.id}
+                    solution={solution}
+                    categories={solutionCategories}
+                    readOnly={true}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-4">
+                No solutions added
+              </p>
+            )}
           </div>
-        ) : (
-          <p className="text-sm text-gray-500">No solutions added</p>
         )}
       </div>
     </div>
@@ -112,7 +130,7 @@ function ModuleCard({ module }: { module: Module }) {
 
   return (
     <div className="border rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between p-4 bg-white">
+      <div className="flex items-center justify-between py-4 px-4 bg-white">
         <h3 className="text-lg font-medium">{module.title}</h3>
         <Button
           variant="ghost"
@@ -141,9 +159,6 @@ function ModuleCard({ module }: { module: Module }) {
                     controls
                     className="w-full aspect-video object-cover"
                   />
-                  <div className="p-3">
-                    <h4 className="text-sm font-medium">{video.title}</h4>
-                  </div>
                 </li>
               ))}
             </ul>
