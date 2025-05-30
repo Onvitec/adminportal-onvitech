@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { SidebarNavigation } from "./sidebar-navigation";
-import { Search, Menu } from "lucide-react";
+import { Search, Menu, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
@@ -90,42 +90,50 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
             {/* Search Bar */}
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search..."
-                className="w-full rounded-md bg-background pl-8 border-none outline-none"
-              />
+              
             </div>
 
             {/* Profile */}
-            <div className="flex items-center ml-4">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="h-8 w-8 rounded-full p-0">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src="/placeholder-avatar.jpg" />
-                      <AvatarFallback>{initials}</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>Profile</DropdownMenuItem>
-                  <DropdownMenuItem>Settings</DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Sign out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <div className="ml-2 hidden sm:block">
-                <p className="text-sm font-medium">{user.username}</p>
-                <p className="text-xs text-muted-foreground">{user.email}</p>
-              </div>
-            </div>
+       
+<div className="flex items-center ml-4">
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button
+        variant="ghost"
+        className="flex items-center space-x-3 h-10 px-3 rounded-full focus:outline-none"
+      >
+        {/* Avatar */}
+        <Avatar className="h-8 w-8">
+          <AvatarImage src="/placeholder-avatar.jpg" />
+          <AvatarFallback>{initials}</AvatarFallback>
+        </Avatar>
+
+        {/* Username, Email, Chevron */}
+        <div className="hidden sm:flex flex-col items-start justify-center">
+          <p className="text-sm font-medium">{user.username}</p>
+          <p className="text-xs text-muted-foreground">{user.email}</p>
+        </div>
+
+        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+      </Button>
+    </DropdownMenuTrigger>
+
+    <DropdownMenuContent align="end">
+      <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem>Profile</DropdownMenuItem>
+      <DropdownMenuItem>Settings</DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={signOut}>
+        <LogOut className="mr-2 h-4 w-4" />
+        <span>Sign out</span>
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
+</div>
+
+
+
           </div>
         </header>
 

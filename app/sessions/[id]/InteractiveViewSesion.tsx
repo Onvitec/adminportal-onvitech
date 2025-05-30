@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { VideoType, Question, Answer } from "@/lib/types";
+import { Answers, DestinationVedio, Questions } from "@/components/icons";
 
 export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
   const [videos, setVideos] = useState<VideoType[]>([]);
@@ -55,10 +56,7 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                   .single();
 
                 if (videoError) {
-                  console.error(
-                    "Error fetching destination video:",
-                    videoError
-                  );
+                  console.error("Error fetching destination video:", videoError);
                   return { ...answer };
                 }
 
@@ -88,70 +86,92 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   if (loading) {
-    return <div>Loading interactive session...</div>;
+    return <div className="p-6 text-center">Loading interactive session...</div>;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8  py-6">
       {videos.map((video) => {
         const videoQuestions = questions.filter((q) => q.video_id === video.id);
 
         return (
-          <div key={video.id} className="border rounded-lg overflow-hidden">
-            <div className="p-4 bg-white">
-              <h3 className="text-lg font-medium">{video.title}</h3>
+          <div key={video.id} className="border rounded-lg overflow-hidden bg-white shadow-sm">
+            <div className="p-4 border-b bg-gray-50">
+              <h3 className="text-lg font-medium">{video.title || "Video Name"}</h3>
             </div>
 
-            <div className="bg-gray-50 p-4 border-t">
-              <div className="mb-4">
+            <div className="flex flex-col md:flex-row">
+              {/* Video on the left */}
+              <div className="w-full md:w-2/5 p-4 ">
                 <video
                   src={video.url}
                   controls
-                  className="w-full aspect-video object-cover rounded-lg"
+                  className="w-full aspect-video object-cover rounded-lg bg-black h-[351px]"
                 />
               </div>
 
-              {videoQuestions.length > 0 ? (
-                <div className="space-y-4">
-                  {videoQuestions.map((question) => (
-                    <div
-                      key={question.id}
-                      className="bg-white p-4 rounded-lg border"
-                    >
-                      <h4 className="font-medium mb-3">
-                        Question: {question.question_text}
-                      </h4>
+              {/* Questions on the right */}
+              <div className="w-full md:w-3/5 p-4">
+                {videoQuestions.length > 0 ? (
+                  <div className="space-y-6">
+                    {videoQuestions.map((question) => (
+                      <div key={question.id} className="space-y-4">
+                        {/* Question section with border bottom */}
+                        <div className="flex items-start gap-3 pb-3 border-b border-gray-200">
+                          <div className="pt-1">
+                            <Questions className="w-[15px] h-[14.35px]" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-[12px] text-[#242B42]">Question</h4>
+                            <p className="text-[#242B42] text-[16px] font-semibold mt-1">{question.question_text}</p>
+                          </div>
+                        </div>
 
-                      <div className="space-y-2">
-                        <h5 className="text-sm font-medium text-gray-700">
-                          Possible Answers:
-                        </h5>
-                        <ul className="space-y-2">
-                          {question.answers.map((answer) => (
-                            <li
-                              key={answer.id}
-                              className="flex items-start gap-2"
-                            >
-                              <span className="text-sm">
-                                - {answer.answer_text}
-                              </span>
+                        {/* Answers section */}
+                        <div className="space-y-3">
+                          {question.answers.map((answer, index) => (
+                            <div key={answer.id} className="grid grid-cols-10 gap-2">
+                              {/* Answer (70% width) */}
+                              <div className="col-span-7">
+                                <div className="flex items-start gap-3 bg-[#EBEEF4] rounded-md p-3 border border-[#EBEEF4]">
+                                  <div className="pt-1">
+                                    <Answers className="w-[15px] h-[14.35px" />
+                                  </div>
+                                  <div className="flex-1">
+                                    <h5 className="font-medium text-[12px] text-[#242B42]">Answer {index + 1}</h5>
+                                    <p className="text-[#242B42] text-[16px] font-semibold">{answer.answer_text}</p>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Destination Video (30% width) */}
                               {answer.destination_video && (
-                                <span className="text-xs text-gray-500">
-                                  (Leads to: {answer.destination_video.title})
-                                </span>
+                                <div className="col-span-3">
+                                  <div className="flex items-start gap-3 bg-[#EBEEF4] rounded-md p-3 border border-[#EBEEF4] h-full">
+                                    <div className="pt-1">
+                                      <DestinationVedio className="w-[15px] h-[14.35px" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <h5 className="font-medium text-gray-800 truncate">Destination Video</h5>
+                                      <p className="text-gray-600 text-sm truncate">
+                                        {answer.destination_video.title}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
                               )}
-                            </li>
+                            </div>
                           ))}
-                        </ul>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  This video has no questions
-                </p>
-              )}
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    This video has no questions
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         );

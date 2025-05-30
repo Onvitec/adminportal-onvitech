@@ -9,8 +9,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { X, CheckCircle, Video, Shuffle, Layers } from "lucide-react";
 import { useRouter } from "next/navigation";
+import {Cross,Check, Linear, Interactive, Optional} from "../icons"
 
 interface SessionType {
   key: string;
@@ -30,21 +30,21 @@ const SESSION_TYPES: SessionType[] = [
     key: "interactive",
     title: "Interactive Video",
     description: "Interactive Video Flow Builder (Main Feature)",
-    icon: <Video className="h-5 w-5 text-white" />,
+    icon: <Interactive className="h-5 w-5 text-white" />,
     redirectUrl: "sessions/create/interactive",
   },
   {
     key: "linear",
     title: "Linear Flow",
     description: "Linear Flow (Sequential Learning Path)",
-    icon: <Shuffle className="h-5 w-5 text-white" />,
+    icon: <Linear className="h-5 w-5 text-white" />,
     redirectUrl: "sessions/create/linear",
   },
   {
     key: "selection",
     title: "Selection Based",
     description: " Selection-Based Flow with Final Solutions",
-    icon: <Layers className="h-5 w-5 text-white" />,
+    icon: <Optional className="h-5 w-5 text-white" />,
     redirectUrl: "sessions/create/selection",
   },
 ];
@@ -90,7 +90,7 @@ export default function CreateSessionModal({
           <p className="text-[14px] text-[#475569] font-normal">{type.description}</p>
         </div>
         {selected === type.key && (
-          <CheckCircle className="absolute right-2 text-[#6096BA]" />
+          <Check className="absolute right-2 text-[#6096BA]" />
         )}
       </div>
     ))}
