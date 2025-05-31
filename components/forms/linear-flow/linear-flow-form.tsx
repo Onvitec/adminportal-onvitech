@@ -33,6 +33,7 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
+  DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -78,10 +79,7 @@ export default function LinearSessionForm() {
     },
   ]);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const categories = ["Form", "Email", "Link", "Video"];
-  const [solutionCategories, setSolutionCategories] = useState<
-    SolutionCategory[]
-  >([]);
+  const [solutionCategories, setSolutionCategories] = useState<SolutionCategory[]>([]);
   const [solution, setSolution] = useState<Solution | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(false);
@@ -96,8 +94,8 @@ export default function LinearSessionForm() {
     useSensor(KeyboardSensor)
   );
 
-  const handleDragStart = (event: any) => {
-    setActiveId(event.active.id);
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as any); //Fix if needed
   };
 
   const handleDragEnd = (event: any) => {
@@ -196,7 +194,7 @@ export default function LinearSessionForm() {
         .insert({
           title: sessionName,
           session_type: "linear",
-          created_by: "826e31ef-0431-4762-af43-c501e3898cc3", //TODO: make user dynamic
+          created_by: "826e31ef-0431-4762-af43-c501e3898cc3",
         })
         .select()
         .single();
@@ -253,6 +251,7 @@ export default function LinearSessionForm() {
           if (videoError) throw videoError;
         }
       }
+
       // Solutions Logic
       if (solution) {
         let solutionData: any = {
@@ -263,19 +262,13 @@ export default function LinearSessionForm() {
 
         // Set appropriate fields based on solution type
         if (solution.category_id === 1) {
-          // Form
           solutionData.form_data = solution.form_data;
         } else if (solution.category_id === 2) {
-          // Email
           solutionData.email_content = solution.emailTarget;
-          // TODO: send solution.emailContent to email content here
         } else if (solution.category_id === 3) {
-          // Link
           solutionData.link_url = solution.linkUrl;
         } else if (solution.category_id === 4) {
-          // Video
           if (solution.videoFile) {
-            // Upload video file
             const fileExt = solution.videoFile.name.split(".").pop();
             const filePath = `${userId}/${
               sessionData.id
@@ -287,7 +280,6 @@ export default function LinearSessionForm() {
 
             if (uploadError) throw uploadError;
 
-            // Get public URL
             const { data: urlData } = supabase.storage
               .from("solutions")
               .getPublicUrl(filePath);
@@ -300,7 +292,7 @@ export default function LinearSessionForm() {
 
         await supabase.from("solutions").insert(solutionData);
       }
-      // Redirect to sessions page
+
       router.push("/sessions");
     } catch (error) {
       console.error("Error creating session:", error);
@@ -331,15 +323,14 @@ export default function LinearSessionForm() {
     setSolution({
       id: uuidv4(),
       category_id: selectedCategory,
+      session_id: "",
     });
   };
 
-  // Modify the removeSolution handler
   const removeSolution = () => {
     setSolution(null);
   };
 
-  // Modify the updateSolution handler
   const updateSolution = (updates: Partial<Solution>) => {
     if (solution) {
       setSolution({ ...solution, ...updates });
@@ -362,10 +353,7 @@ export default function LinearSessionForm() {
           <CardContent className="space-y-6 px-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
-                <Label
-                  htmlFor="sessionName"
-                  className="text-sm font-medium text-gray-700"
-                >
+                <Label htmlFor="sessionName" className="text-sm font-medium text-gray-700">
                   Session Name
                 </Label>
                 <Input
@@ -378,27 +366,19 @@ export default function LinearSessionForm() {
                 />
               </div>
               <div className="space-y-1">
-                <Label
-                  htmlFor="userId"
-                  className="text-sm font-medium text-gray-700"
-                >
+                <Label htmlFor="userId" className="text-sm font-medium text-gray-700">
                   Session Type
                 </Label>
                 <Input
                   id="userId"
                   value={"Linear Flow"}
                   disabled
-                  // onChange={(e) => setUserId(e.target.value)}
-                  placeholder="e.g., AI2045864"
                   className="h-10"
                   required
                 />
               </div>
               <div className="space-y-1">
-                <Label
-                  htmlFor="userId"
-                  className="text-sm font-medium text-gray-700"
-                >
+                <Label htmlFor="userId" className="text-sm font-medium text-gray-700">
                   User ID
                 </Label>
                 <Input
@@ -442,7 +422,7 @@ export default function LinearSessionForm() {
                 <DragOverlay>
                   {activeId && activeModule ? (
                     <ModuleCard
-                      module={activeModule}
+                      module={activeModule as any} // TODO:fix if needed
                       onUpdate={() => {}}
                       onDelete={() => {}}
                       addVideo={() => {}}
@@ -455,14 +435,13 @@ export default function LinearSessionForm() {
               </DndContext>
             </div>
 
-            {/* Solution section */}
             <div className="mt-8 border rounded-lg">
               <button
                 type="button"
                 className="w-full flex justify-between items-center p-4"
                 onClick={() => setIsSolutionCollapsed(!isSolutionCollapsed)}
               >
-                <h3 className="text-lg font-medium"> Add a Solution</h3>
+                <h3 className="text-lg font-medium">Add a Solution</h3>
                 {isSolutionCollapsed ? (
                   <ChevronDown className="h-5 w-5" />
                 ) : (
@@ -513,7 +492,7 @@ export default function LinearSessionForm() {
                       </Button>
                       <button
                         type="button"
-                        onClick={() => setSolution(null)}
+                        onClick={removeSolution}
                         className="h-10 text-red-600 hover:text-red-800"
                       >
                         Reset
@@ -536,7 +515,7 @@ export default function LinearSessionForm() {
               <Button
                 type="button"
                 onClick={addModule}
-                className="mt-4  border-dashed"
+                className="mt-4 border-dashed"
               >
                 <PlusCircle className="h-4 w-4 mr-2" />
                 Add Module
@@ -604,7 +583,7 @@ function SortableModule({
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       <ModuleCard
-        module={module}
+        module={module as any} // TODo:fix if needed
         onUpdate={(updatedModule) =>
           onUpdate(updatedModule.id, updatedModule.title)
         }

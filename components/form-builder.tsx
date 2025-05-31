@@ -1,3 +1,75 @@
+// types.ts
+export type FormElementType =
+  | "text"
+  | "number"
+  | "dropdown"
+  | "checkbox"
+  | "radio"
+  | "paragraph"
+  | "button";
+
+export type FormElementBase = {
+  id: string;
+  type: FormElementType;
+  label: string;
+  required?: boolean;
+  placeholder?: string;
+  value?: string;
+};
+
+export type TextFormElement = FormElementBase & {
+  type: "text" | "number";
+};
+
+export type DropdownFormElement = FormElementBase & {
+  type: "dropdown";
+  options: string[];
+};
+
+export type CheckboxFormElement = FormElementBase & {
+  type: "checkbox";
+  checked?: boolean;
+};
+
+export type RadioFormElement = FormElementBase & {
+  type: "radio";
+  options: string[];
+};
+
+export type ParagraphFormElement = FormElementBase & {
+  type: "paragraph";
+};
+
+export type ButtonFormElement = FormElementBase & {
+  type: "button";
+  buttonText?: string;
+};
+
+export type FormElement = 
+  | TextFormElement
+  | DropdownFormElement
+  | CheckboxFormElement
+  | RadioFormElement
+  | ParagraphFormElement
+  | ButtonFormElement;
+
+export type FormSolutionData = {
+  description?: string;
+  elements: FormElement[];
+};
+
+export type Solution = {
+  id: string;
+  session_id: string;
+  category_id: number | null;
+  form_data?: FormSolutionData;
+  emailContent?: string;
+  emailTarget?: string;
+  linkUrl?: string;
+  videoFile?: File | null;
+  videoUrl?: string;
+};
+
 // components/form-builder.tsx
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,6 +83,8 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  DragEndEvent,
+  DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -19,12 +93,17 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { FormElement, FormElementType, FormSolutionData } from "@/lib/types";
+// import { FormElement, FormElementType, FormSolutionData } from "@/lib/types";
 
-const DEFAULT_ELEMENT_PROPS = {
+
+const DEFAULT_ELEMENT_PROPS: any = {
   text: { label: "Input Field", value: "" },
+  number: { label: "Number Field", value: "" },
   dropdown: { label: "Dropdown", options: ["Option 1", "Option 2"], value: "Option 1" },
+  // checkbox: { label: "Checkbox", value: "" },
+  // radio: { label: "Radio", options: ["Option 1", "Option 2"], value: "Option 1" },
   paragraph: { label: "Paragraph text", value: "" },
+  // button: { label: "Button", buttonText: "Submit" },
 };
 
 const DEFAULT_FORM_DATA: FormSolutionData = {
@@ -38,15 +117,17 @@ const DEFAULT_FORM_DATA: FormSolutionData = {
   ],
 };
 
+interface FormBuilderProps {
+  form_data?: FormSolutionData;
+  onChange?: (newData: FormSolutionData) => void;
+  editable?: boolean;
+}
+
 export function FormBuilder({
   form_data = DEFAULT_FORM_DATA,
   onChange,
   editable = true,
-}: {
-  form_data?: FormSolutionData;
-  onChange?: (newData: FormSolutionData) => void;
-  editable?: boolean;
-}) {
+}: FormBuilderProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -56,11 +137,11 @@ export function FormBuilder({
   const addElement = (type: FormElementType) => {
     if (!editable || !onChange) return;
 
-    const newElement: FormElement = {
+    const newElement = {
       id: `elem-${Date.now()}`,
       type,
-      ...(DEFAULT_ELEMENT_PROPS[type] as any),
-    };
+      ...DEFAULT_ELEMENT_PROPS[type],
+    } as FormElement;
 
     onChange({
       ...form_data,
@@ -75,7 +156,7 @@ export function FormBuilder({
       ...form_data,
       elements: form_data.elements.map((el) =>
         el.id === id ? { ...el, ...updates } : el
-      ),
+      ) as any,
     });
   };
 
@@ -88,21 +169,31 @@ export function FormBuilder({
     });
   };
 
-  const handleDragEnd = (event: any) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     if (!editable || !onChange) return;
 
     const { active, over } = event;
-    if (active.id !== over?.id) {
-      const oldIndex = form_data.elements.findIndex(
-        (el) => el.id === active.id
-      );
-      const newIndex = form_data.elements.findIndex((el) => el.id === over.id);
+    if (!over || active.id === over.id) {
+      setActiveId(null);
+      return;
+    }
+
+    const oldIndex = form_data.elements.findIndex(
+      (el) => el.id === active.id
+    );
+    const newIndex = form_data.elements.findIndex((el) => el.id === over.id);
+    
+    if (oldIndex !== -1 && newIndex !== -1) {
       onChange({
         ...form_data,
         elements: arrayMove(form_data.elements, oldIndex, newIndex),
       });
     }
     setActiveId(null);
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
   };
 
   return (
@@ -117,7 +208,7 @@ export function FormBuilder({
               onClick={() => addElement(type as FormElementType)}
             >
               <Plus className="h-4 w-4 mr-2" />{" "}
-              {DEFAULT_ELEMENT_PROPS[type].label}
+              {DEFAULT_ELEMENT_PROPS[type as FormElementType].label}
             </Button>
           ))}
         </div>
@@ -127,7 +218,7 @@ export function FormBuilder({
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          onDragStart={(e) => setActiveId(e.active.id as any)}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
           <SortableContext
@@ -158,17 +249,19 @@ export function FormBuilder({
   );
 }
 
+interface SortableFormElementProps {
+  element: FormElement;
+  onUpdate: (updates: Partial<FormElement>) => void;
+  onRemove: () => void;
+  editable: boolean;
+}
+
 function SortableFormElement({
   element,
   onUpdate,
   onRemove,
   editable,
-}: {
-  element: FormElement;
-  onUpdate: (updates: Partial<FormElement>) => void;
-  onRemove: () => void;
-  editable: boolean;
-}) {
+}: SortableFormElementProps) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: element.id });
 
@@ -217,10 +310,10 @@ function SortableFormElement({
               />
             </div>
 
-            {element.type !== "paragraph" && (
+            {element.type !== "paragraph" && element.type !== "button" && (
               <div className="space-y-2">
                 <Label>Value</Label>
-                {element.type === "dropdown" ? (
+                {element.type === "dropdown" || element.type === "radio" ? (
                   <select
                     className="w-full p-2 border rounded"
                     value={element.value}
@@ -237,12 +330,13 @@ function SortableFormElement({
                     value={element.value || ""}
                     onChange={(e) => onUpdate({ value: e.target.value })}
                     placeholder="Field value"
+                    type={element.type === "number" ? "number" : "text"}
                   />
                 )}
               </div>
             )}
 
-            {element.type === "dropdown" && (
+            {(element.type === "dropdown" || element.type === "radio") && (
               <FieldOptions
                 options={element.options || []}
                 onChange={(options) => onUpdate({ options })}
@@ -262,6 +356,17 @@ function SortableFormElement({
                 />
               </div>
             )}
+
+            {element.type === "button" && (
+              <div className="space-y-2">
+                <Label>Button Text</Label>
+                <Input
+                  value={element.buttonText || ""}
+                  onChange={(e) => onUpdate({ buttonText: e.target.value })}
+                  placeholder="Button text"
+                />
+              </div>
+            )}
           </>
         ) : (
           <ReadonlyFormElementContent element={element} />
@@ -271,7 +376,11 @@ function SortableFormElement({
   );
 }
 
-function ReadonlyFormElement({ element }: { element: FormElement }) {
+interface ReadonlyFormElementProps {
+  element: FormElement;
+}
+
+function ReadonlyFormElement({ element }: ReadonlyFormElementProps) {
   return (
     <div className="border rounded-lg p-6 bg-white space-y-4">
       <div className="space-y-2">
@@ -282,16 +391,17 @@ function ReadonlyFormElement({ element }: { element: FormElement }) {
   );
 }
 
-function ReadonlyFormElementContent({ element }: { element: FormElement }) {
-  return (
-    <div>
-      {element.type === "paragraph" ? (
-        <p className="whitespace-pre-line">{element.label}</p>
-      ) : element.type === "dropdown" ? (
+function ReadonlyFormElementContent({ element }: ReadonlyFormElementProps) {
+  switch (element.type) {
+    case "paragraph":
+      return <p className="whitespace-pre-line">{element.label}</p>;
+    case "dropdown":
+    case "radio":
+      return (
         <select
           className="w-full p-2 border rounded"
           value={element.value}
-          onChange={() => {}}
+          disabled
         >
           {element.options?.map((option, index) => (
             <option key={index} value={option}>
@@ -299,27 +409,48 @@ function ReadonlyFormElementContent({ element }: { element: FormElement }) {
             </option>
           ))}
         </select>
-      ) : (
+      );
+    case "checkbox":
+      return (
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={element.checked}
+            disabled
+            className="h-4 w-4"
+          />
+          <span>{element.label}</span>
+        </div>
+      );
+    case "button":
+      return (
+        <Button disabled>
+          {element.buttonText || "Submit"}
+        </Button>
+      );
+    default:
+      return (
         <Input
-          type="text"
+          type={element.type === "number" ? "number" : "text"}
           value={element.value || ""}
           readOnly
           className="w-full"
         />
-      )}
-    </div>
-  );
+      );
+  }
+}
+
+interface FieldOptionsProps {
+  options: string[];
+  onChange: (options: string[]) => void;
+  editable: boolean;
 }
 
 function FieldOptions({
   options,
   onChange,
   editable,
-}: {
-  options: string[];
-  onChange: (options: string[]) => void;
-  editable: boolean;
-}) {
+}: FieldOptionsProps) {
   const addOption = () => {
     onChange([...options, `Option ${options.length + 1}`]);
   };

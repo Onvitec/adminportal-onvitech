@@ -79,14 +79,14 @@ export function VideoUpload({
         <div className="bg-black rounded-lg overflow-hidden relative group">
           <div className="absolute top-0 left-0 right-0 z-10 p-3 flex justify-between items-start pointer-events-none">
             <div className="flex gap-2 pointer-events-auto">
-              <Button
+              {/* <Button
                 variant="ghost"
                 size="icon"
                 onClick={handleClearFile}
                 className="bg-black bg-opacity-50 rounded-full p-2 h-auto w-auto hover:bg-opacity-70"
               >
                 <X className="h-4 w-4 text-white" />
-              </Button>
+              </Button> */}
               <Button
                 variant="ghost"
                 size="icon"

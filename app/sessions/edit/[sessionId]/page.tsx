@@ -3,7 +3,7 @@ import LinearSessionForm from "./LinearPageEdit";
 import InteractiveEditPage from "../InteractivePageEdit";
 import { supabase } from "@/lib/supabase";
 
-async function HelloEdit({ params }: { params: any }) {
+async function EditPage({ params }: { params: any }) {
   const { sessionId } = params;
 
   if (!sessionId) return <div>No session ID provided</div>;
@@ -30,4 +30,4 @@ async function HelloEdit({ params }: { params: any }) {
   return <div>Unknown session type</div>;
 }
 
-export default HelloEdit;
+export default EditPage;
