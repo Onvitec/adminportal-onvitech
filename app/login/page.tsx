@@ -7,10 +7,12 @@ import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -27,11 +29,14 @@ export default function LoginPage() {
     if (authError) {
       setError(authError.message);
       toast.error(authError.message);
-
       return;
     }
     toast.success("Login successful!");
     window.location.href = "/dashboard";
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -74,25 +79,40 @@ export default function LoginPage() {
             <div className="flex justify-between items-center">
               <Label htmlFor="password">Password</Label>
               <a
-                href="/forgot-password"
-                className="text-xs text-red-500 hover:underline"
-              >
-                Forgot Password?
-              </a>
+  href="/forgot-password"
+  className="text-xs text-red-500 hover:underline"
+>
+  Forgot Password?
+</a>
             </div>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="Enter your password"
-              onChange={handleChange}
-              required
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                onChange={handleChange}
+                required
+                className="pr-10" // Add padding to prevent text under icon
+              />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
 
           {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
-          <Button onClick={handleLogin} className="w-full mt-6 bg-[#2E3545]">
+          <Button onClick={handleLogin} className="w-full mt-6 bg-[#2E3545] hover:bg-[#2E3545]/90">
             Sign In
           </Button>
         </div>

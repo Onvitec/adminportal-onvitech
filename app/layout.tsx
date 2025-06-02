@@ -26,16 +26,19 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Get headers - using await if needed
   const headersList = await headers();
   const pathname = headersList.get("x-pathname") || "";
+  
   const isAuthPage =
-    pathname.startsWith("/login") || pathname.startsWith("/signup");
+    pathname.startsWith("/login") || 
+    pathname.startsWith("/signup") || 
+    pathname.startsWith("/reset-password") ||
+    pathname.startsWith("/forgot-password");
 
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <SessionProvider>
           <Toaster
             position="top-center"
@@ -52,11 +55,7 @@ export default async function RootLayout({
               },
             }}
           />
-          {isAuthPage ? (
-            children
-          ) : (
-            <DashboardLayout>{children}</DashboardLayout>
-          )}
+          {isAuthPage ? children : <DashboardLayout>{children}</DashboardLayout>}
         </SessionProvider>
       </body>
     </html>

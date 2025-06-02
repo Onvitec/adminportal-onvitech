@@ -12,6 +12,7 @@ import SelectionSessionView from "./SelectionView";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { TreeViewSession } from "./TreeViewSession";
+import { EditIcon } from "@/components/icons";
 
 export default function SessionViewPage() {
   const { id } = useParams();
@@ -156,6 +157,25 @@ export default function SessionViewPage() {
 
   return (
     <div className=" py-4">
+      <div className="flex items-center justify-between p-4">
+  <div>
+    <p 
+      className="cursor-pointer hover:underline text-[13px] text-[#7E8B9F] font-medium" 
+      onClick={() => router.push("/sessions")}
+    >
+      Back to Session Maker
+    </p>
+  </div>
+  <div className="flex gap-4">
+    <Button variant="outline" className="mt-4 cursor-pointer">
+      Edit Session
+    </Button>
+    <Button className="mt-4 flex items-center gap-2 cursor-pointer">
+      <EditIcon className="w-4 h-4 text-white "/> 
+      Share Session
+    </Button>
+  </div>
+</div>
       <Card className="border-none shadow-none">
         <CardHeader className="px-6 border-b border-gray-200 ">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
