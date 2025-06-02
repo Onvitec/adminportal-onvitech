@@ -13,6 +13,8 @@ export default async function Page({ params }: PageProps) {
     return <InteractiveSessionForm />;
   } else if (type === sessionTypes.LINEAR_FLOW) {
     return <LinearSessionForm />;
+  }else if(type === sessionTypes.SELECTION){
+    return <div> Selection </div>
   }
 
   return <div>My Post: {type}</div>;
