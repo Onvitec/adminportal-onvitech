@@ -42,13 +42,13 @@ import {
   UsersIcon,
   SettingsIcon,
   LogOutIcon,
-} from "../../components/icons"; 
+} from "../../components/icons";
 
 type NavItem = {
   title: string;
   href: string;
   icon: React.ReactNode;
-  onClick?: () => void;  
+  onClick?: () => void;
 };
 
 type NavGroup = {
@@ -93,11 +93,11 @@ export function SidebarNavigation() {
   };
 
   // logout
-   const handleSignOut = async () => {
+  const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
       toast.success("Signed out successfully!");
-      window.location.href="/login"
+      window.location.href = "/login";
     } catch (error) {
       toast.error("Error signing out");
       console.error("Error signing out:", error);
@@ -143,11 +143,11 @@ export function SidebarNavigation() {
           href: "/settings",
           icon: <SettingsIcon className="h-5 w-5" />,
         },
-         {
+        {
           title: "Sign Out",
-          href: "#", // Using href="#" to maintain link styling
+          href: "#",
           icon: <LogOutIcon className="h-5 w-5" />,
-          onClick: handleSignOut, // Add onClick handler
+          onClick: handleSignOut,
         },
       ],
     },
@@ -229,33 +229,55 @@ export function SidebarNavigation() {
                 <TooltipProvider key={itemIndex} delayDuration={0}>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                     <Link
-  href={item.href}
-  className={cn(
-    "group flex items-center py-2.5 text-[15px] font-semibold transition-colors border-l-2",
-    isCollapsed
-      ? "justify-center px-0"
-      : "justify-start pl-6 pr-6",
-    isActive(item.href)
-      ? "bg-[#333B48] text-white border-l-[#F9F9F9]"
-      : cn(
-          "text-[#A5ACBA] border-l-transparent",
-          "hover:bg-[#333B48]  hover:text-white"
-        )
-  )}
->
-  <span
-    className={cn(
-      "flex-shrink-0",
-      !isCollapsed && "mr-3"
-    )}
-  >
-    {item.icon}
-  </span>
-  {!isCollapsed && (
-    <span className="truncate">{item.title}</span>
-  )}
-</Link>
+                      {item.onClick ? (
+                        <button
+                          onClick={item.onClick}
+                          className={cn(
+                            "group w-full text-left flex items-center py-2.5 text-[15px] font-semibold transition-colors border-l-2",
+                            isCollapsed
+                              ? "justify-center px-0"
+                              : "justify-start pl-6 pr-6",
+                            "text-[#A5ACBA] border-l-transparent hover:bg-[#333B48] hover:text-white"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "flex-shrink-0",
+                              !isCollapsed && "mr-3"
+                            )}
+                          >
+                            {item.icon}
+                          </span>
+                          {!isCollapsed && (
+                            <span className="truncate">{item.title}</span>
+                          )}
+                        </button>
+                      ) : (
+                        <Link
+                          href={item.href}
+                          className={cn(
+                            "group flex items-center py-2.5 text-[15px] font-semibold transition-colors border-l-2",
+                            isCollapsed
+                              ? "justify-center px-0"
+                              : "justify-start pl-6 pr-6",
+                            isActive(item.href)
+                              ? "bg-[#333B48] text-white border-l-[#F9F9F9]"
+                              : "text-[#A5ACBA] border-l-transparent hover:bg-[#333B48] hover:text-white"
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "flex-shrink-0",
+                              !isCollapsed && "mr-3"
+                            )}
+                          >
+                            {item.icon}
+                          </span>
+                          {!isCollapsed && (
+                            <span className="truncate">{item.title}</span>
+                          )}
+                        </Link>
+                      )}
                     </TooltipTrigger>
                     {isCollapsed && (
                       <TooltipContent side="right" className="z-[100]">

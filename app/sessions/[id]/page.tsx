@@ -156,8 +156,8 @@ export default function SessionViewPage() {
   }
 
   return (
-    <div className=" py-4">
-      <div className="flex items-center justify-between p-4">
+    <div className=" py-2">
+      <div className="flex items-center justify-between px-4 py-4">
   <div>
     <p 
       className="cursor-pointer hover:underline text-[13px] text-[#7E8B9F] font-medium" 
@@ -167,13 +167,16 @@ export default function SessionViewPage() {
     </p>
   </div>
   <div className="flex gap-4">
-    <Button variant="outline" className="mt-4 cursor-pointer">
+    <Button onClick={() => router.push(`/sessions/edit/${id}`)} variant="outline" className="mt-4 cursor-pointer">
       Edit Session
     </Button>
-    <Button className="mt-4 flex items-center gap-2 cursor-pointer">
-      <EditIcon className="w-4 h-4 text-white "/> 
-      Share Session
-    </Button>
+   <a href={`/sessions/embed/${id}`} target="_blank" rel="noopener noreferrer">
+  <Button className="mt-4 flex items-center gap-2 cursor-pointer">
+    <EditIcon className="w-4 h-4 text-white" />
+    Share Session
+  </Button>
+</a>
+
   </div>
 </div>
       <Card className="border-none shadow-none">

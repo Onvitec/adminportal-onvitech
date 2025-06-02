@@ -124,16 +124,16 @@ const UsersTable = () => {
       header: "Email",
       enableSorting: true,
     },
-    {
-      accessorKey: "role",
-      header: "Role",
-      enableSorting: true,
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      enableSorting: true,
-    },
+    // {
+    //   accessorKey: "role",
+    //   header: "Role",
+    //   enableSorting: true,
+    // },
+    // {
+    //   accessorKey: "status",
+    //   header: "Status",
+    //   enableSorting: true,
+    // },
     // {
     //   accessorKey: "updated_at",
     //   header: "Last Updated",
