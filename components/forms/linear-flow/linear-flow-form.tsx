@@ -266,7 +266,7 @@ export default function LinearSessionForm() {
         } else if (solution.category_id === 2) {
           solutionData.email_content = solution.emailTarget;
         } else if (solution.category_id === 3) {
-          solutionData.link_url = solution.linkUrl;
+          solutionData.link_url = solution.link_url;
         } else if (solution.category_id === 4) {
           if (solution.videoFile) {
             const fileExt = solution.videoFile.name.split(".").pop();
@@ -285,8 +285,8 @@ export default function LinearSessionForm() {
               .getPublicUrl(filePath);
 
             solutionData.video_url = urlData.publicUrl;
-          } else if (solution.videoUrl) {
-            solutionData.video_url = solution.videoUrl;
+          } else if (solution.video_url) {
+            solutionData.video_url = solution.video_url;
           }
         }
 
@@ -503,7 +503,6 @@ export default function LinearSessionForm() {
                   {solution && (
                     <SolutionCard
                       solution={solution}
-                      categories={solutionCategories}
                       onUpdate={updateSolution}
                       onDelete={removeSolution}
                     />

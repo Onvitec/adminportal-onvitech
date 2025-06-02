@@ -72,9 +72,9 @@ export type Solution = {
   form_data?: any;
   emailContent?: string;
   emailTarget?: string;
-  linkUrl?: string;
+  link_url?: string;
   videoFile?: File | null;
-  videoUrl?: string;
+  video_url?: string;
 };
 
 export type FormElementType =

@@ -108,7 +108,6 @@ export function LinearSessionView({ sessionId }: { sessionId: string }) {
                   <SolutionCard
                     key={solution.id}
                     solution={solution}
-                    categories={solutionCategories}
                     readOnly={true}
                   />
                 ))}

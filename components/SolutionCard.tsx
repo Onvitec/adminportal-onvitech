@@ -16,28 +16,27 @@ import { RichTextEditor } from "./rich-text-editor";
 
 export function SolutionCard({
   solution,
-  categories,
   onUpdate,
   onDelete,
   readOnly = false,
 }: {
   solution: Solution;
-  categories: SolutionCategory[];
   onUpdate?: (updates: Partial<Solution>) => void;
   onDelete?: () => void;
   readOnly?: boolean;
 }) {
-  const category = categories.find((c) => c.id === solution.category_id);
   const [localSolution, setLocalSolution] = useState(solution);
 
   const handleChange = (updates: Partial<Solution>) => {
     if (readOnly || !onUpdate) return;
     setLocalSolution({ ...localSolution, ...updates });
+    
     onUpdate(updates);
   };
+console.log("INCOMING SOLUTIOn",solution);
 
   const renderSolutionInput = () => {
-    switch (solution.category_id) {
+    switch (solution?.category_id) {
       case 1: // Form
         return (
           <div className="rounded-lg p-4">
@@ -99,12 +98,12 @@ export function SolutionCard({
         );
       case 3: // Link
         return (
-          <div className="space-y-2">
+          <div className="space-y-2 px-4">
             <Label>Link URL</Label>
             <Input
               placeholder="https://example.com"
-              value={localSolution.linkUrl || ""}
-              onChange={(e) => handleChange({ linkUrl: e.target.value })}
+              value={solution?.link_url || ""}
+              onChange={(e) => handleChange({ link_url: e.target.value })}
               readOnly={readOnly}
             />
           </div>
@@ -113,10 +112,10 @@ export function SolutionCard({
         if (readOnly) {
           return (
             <div className="p-4 border border-gray-200 rounded-lg">
-              {solution.videoUrl && (
+              {solution.video_url && (
                 <div className="bg-black rounded-lg overflow-hidden">
                   <video
-                    src={solution.videoUrl}
+                    src={solution.video_url}
                     controls
                     className="w-full h-[200px] aspect-video object-cover"
                   />
@@ -129,7 +128,7 @@ export function SolutionCard({
         return (
           <div className="p-4 border border-gray-200 rounded-lg">
             {/* If we have a URL but no file (existing video from DB) */}
-            {solution.videoUrl && !solution.videoFile && (
+            {solution.video_url && !solution.videoFile && (
               <div className="bg-black rounded-lg overflow-hidden relative group">
                 <div className="absolute top-0 left-0 right-0 z-10 p-3 flex justify-between items-start pointer-events-none">
                   <div className="flex gap-2 pointer-events-auto">
@@ -149,7 +148,7 @@ export function SolutionCard({
                   </div>
                 </div>
                 <video
-                  src={solution.videoUrl}
+                  src={solution.video_url}
                   controls
                   className="w-full h-[200px] aspect-video object-cover"
                 />
@@ -183,7 +182,7 @@ export function SolutionCard({
             )}
 
             {/* Default state (no file or URL) */}
-            {!solution.videoUrl && !solution.videoFile && (
+            {!solution.video_url && !solution.videoFile && (
               <div className="text-center py-6 border border-dashed border-gray-300 rounded-lg">
                 <div className="space-y-2">
                   <p className="text-sm font-medium">

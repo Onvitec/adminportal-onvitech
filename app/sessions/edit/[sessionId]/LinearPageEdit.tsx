@@ -40,10 +40,17 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import { cn } from "@/lib/utils";
+import { cn, solutionCategories } from "@/lib/utils";
 import { ModuleCard } from "@/components/forms/linear-flow/module";
-import { VideoType } from "@/lib/types";
-
+import { Solution, VideoType } from "@/lib/types";
+import { SolutionCard } from "@/components/SolutionCard";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 type Module = {
   id: string;
   title: string;
@@ -67,6 +74,9 @@ export default function LinearSessionForm() {
   const [isEditing, setIsEditing] = useState(!!sessionId);
   const [sessionName, setSessionName] = useState("");
   const [userId, setUserId] = useState("");
+  const [solution, setSolution] = useState<Solution | null>(null);
+  const [solutionCategory, setSolutionCategory] = useState<number | null>();
+  const [solutionsExpanded, setSolutionsExpanded] = useState(true);
   const [modules, setModules] = useState<Module[]>([
     {
       id: uuidv4(),
@@ -120,11 +130,25 @@ export default function LinearSessionForm() {
           path: video.path, // Store the storage path for deletion
         })),
       }));
+      console.log("SESSION ID", sessionId);
+
+      // Fetch solution if exists
+      const { data: solutionData, error: solutionError } = await supabase
+        .from("solutions")
+        .select("*")
+        .eq("session_id", sessionId);
+      console.log(solutionData);
+
+      if (!solutionError && solutionData) {
+        setSolution(solutionData[0]);
+        console.log(solutionData);
+
+        setSolutionCategory(solutionData[0].category_id);
+      }
 
       setModules(formattedModules);
     } catch (error) {
       console.error("Error loading session data:", error);
-      alert("Failed to load session data");
     } finally {
       setIsLoading(false);
     }
@@ -268,8 +292,101 @@ export default function LinearSessionForm() {
         await createSession();
       }
 
+      if (solution) {
+        if (solution.id) {
+          // Update existing solution
+          let solutionData: any = {
+            category_id: solutionCategory,
+            title: `Solution for ${sessionName}`,
+          };
+
+          // Set appropriate fields based on solution type
+          if (solutionCategory === 1) {
+            solutionData.form_data = solution.form_data;
+          } else if (solutionCategory === 2) {
+            solutionData.email_content = solution.emailTarget;
+          } else if (solutionCategory === 3) {
+            solutionData.link_url = solution.link_url;
+          } else if (solutionCategory === 4) {
+            console.log("VIDEO");
+
+            if (solution.videoFile) {
+              const fileExt = solution.videoFile.name.split(".").pop();
+              const filePath = `${userId}/${sessionId}/solutions/${uuidv4()}.${fileExt}`;
+
+              const { error: uploadError } = await supabase.storage
+                .from("solutions")
+                .upload(filePath, solution.videoFile);
+
+              if (uploadError) throw uploadError;
+
+              const { data: urlData } = supabase.storage
+                .from("solutions")
+                .getPublicUrl(filePath);
+
+              solutionData.video_url = urlData.publicUrl;
+            } else if (solution.video_url) {
+              solutionData.video_url = solution.video_url;
+            }
+          }
+          console.log("SOLUTIOn ID", solution, solutionData);
+
+          //TODO: not updating.
+          console.log(solutionData);
+
+          await supabase
+            .from("solutions")
+            .update(solutionData)
+            .eq("session_id", sessionId); // since solution can be added and removed
+        } else {
+          // Create new solution
+          let solutionData: any = {
+            session_id: sessionId,
+            category_id: solution.category_id,
+            title: `Solution for ${sessionName}`,
+          };
+
+          // Set appropriate fields based on solution type
+          if (solution.category_id === 1) {
+            solutionData.form_data = solution.form_data;
+          } else if (solution.category_id === 2) {
+            solutionData.email_content = solution.emailTarget;
+          } else if (solution.category_id === 3) {
+            solutionData.link_url = solution.link_url;
+          } else if (solution.category_id === 4) {
+            if (solution.videoFile) {
+              const fileExt = solution.videoFile.name.split(".").pop();
+              const filePath = `${userId}/${sessionId}/solutions/${uuidv4()}.${fileExt}`;
+
+              const { error: uploadError } = await supabase.storage
+                .from("solutions")
+                .upload(filePath, solution.videoFile);
+
+              if (uploadError) throw uploadError;
+
+              const { data: urlData } = supabase.storage
+                .from("solutions")
+                .getPublicUrl(filePath);
+
+              solutionData.video_url = urlData.publicUrl;
+            } else if (solution.video_url) {
+              solutionData.video_url = solution.video_url;
+            }
+          }
+
+          await supabase.from("solutions").insert(solutionData);
+        }
+      } else {
+        // Delete solution if it was removed
+        const { error: deleteError } = await supabase
+          .from("solutions")
+          .delete()
+          .eq("session_id", sessionId);
+
+        if (deleteError) throw deleteError;
+      }
       // Redirect to sessions page
-      router.push("/sessions");
+      // router.push("/sessions");
     } catch (error) {
       console.error("Error saving session:", error);
       alert("Failed to save session. Please try again.");
@@ -560,6 +677,28 @@ export default function LinearSessionForm() {
     }
   };
 
+  const addSolution = () => {
+    setSolution({
+      id: (solution?.id as string) || uuidv4(),
+      category_id: solutionCategory!,
+      session_id: solution?.session_id!,
+    });
+    console.log(solution);
+  };
+
+  const removeSolution = () => {
+    setSolution(null);
+    setSolutionCategory(null);
+  };
+
+  const updateSolution = (updates: Partial<Solution>,) => {
+    if (solution) {
+      setSolution({ ...solution, ...updates });
+    }
+  };
+
+  console.log("SOLUTION", solution);
+
   return (
     <div className="container mx-auto py-8 max-w-4xl ">
       <form onSubmit={handleSubmit} className="">
@@ -652,6 +791,84 @@ export default function LinearSessionForm() {
                   ) : null}
                 </DragOverlay>
               </DndContext>
+            </div>
+            <div className="p-4 pt-0 space-y-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <Label className="block text-sm font-medium mb-1">
+                    Solution Category
+                  </Label>
+                  <Select
+                    value={
+                      solutionCategories
+                        .find((c) => c.id === solutionCategory)
+                        ?.id?.toString() || ""
+                    }
+                    onValueChange={(value) =>
+                      setSolutionCategory(Number(value))
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select solution type" />
+                    </SelectTrigger>
+                    <SelectContent className="flex-1">
+                      {solutionCategories.map((category) => (
+                        <SelectItem
+                          key={category.id}
+                          value={String(category.id)}
+                        >
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-end gap-2">
+                  <Button
+                    type="button"
+                    onClick={addSolution}
+                    disabled={solution !== null}
+                    className="h-10"
+                  >
+                    Add Solution
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={removeSolution}
+                    className="h-10 text-red-600 hover:text-red-800"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+
+              <div className="border rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between py-4 px-4 bg-white">
+                  <h2 className="text-xl font-bold">Solution Type</h2>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSolutionsExpanded(!solutionsExpanded)}
+                  >
+                    {solutionsExpanded ? (
+                      <ChevronUp className="h-5 w-5" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5" />
+                    )}
+                  </Button>
+                </div>
+
+                {solutionsExpanded && (
+                  <div className="bg-gray-50 py-4 border-t">
+                    <SolutionCard
+                      solution={solution as Solution}
+                      onDelete={removeSolution}
+                      onUpdate={updateSolution}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-between items-center gap-2 mt-8">

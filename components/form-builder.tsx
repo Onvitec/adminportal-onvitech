@@ -65,7 +65,7 @@ export type Solution = {
   form_data?: FormSolutionData;
   emailContent?: string;
   emailTarget?: string;
-  linkUrl?: string;
+  link_url?: string;
   videoFile?: File | null;
   videoUrl?: string;
 };
