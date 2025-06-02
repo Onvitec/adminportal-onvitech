@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { SessionType, VideoType, Question } from "@/lib/types";
+import { SessionType, VideoType, Question, sessionTypes } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { LinearSessionView } from "./LinearViewSession";
 import { InteractiveSessionView } from "./InteractiveViewSesion";
@@ -167,14 +167,18 @@ export default function SessionViewPage() {
                 Below are the details of the session you have added.
               </p>
             </div>
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="tree-view-mode"
-                checked={treeViewEnabled}
-                onCheckedChange={setTreeViewEnabled}
-              />
-              <Label htmlFor="tree-view-mode text-[16px] text-[#242B42] font-semibold">Enable Tree View</Label>
-            </div>
+            {session.session_type === sessionTypes.INTERACTIVE && (
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="tree-view-mode"
+                  checked={treeViewEnabled}
+                  onCheckedChange={setTreeViewEnabled}
+                />
+                <Label htmlFor="tree-view-mode text-[16px] text-[#242B42] font-semibold">
+                  Enable Tree View
+                </Label>
+              </div>
+            )}
           </div>
         </CardHeader>
 
@@ -182,11 +186,15 @@ export default function SessionViewPage() {
           {/* Session Info Section */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 px-6  pb-8 border-b border-gray-200">
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Session Name</h3>
+              <h3 className="text-sm font-medium text-gray-500">
+                Session Name
+              </h3>
               <p className="text-base font-medium mt-1">{session.title}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-500">Session Type</h3>
+              <h3 className="text-sm font-medium text-gray-500">
+                Session Type
+              </h3>
               <p className="text-base font-medium mt-1 capitalize">
                 {session.session_type}
               </p>
@@ -201,9 +209,7 @@ export default function SessionViewPage() {
           </div>
 
           {/* Content Section */}
-          <div className="px-6">
-            {renderSessionContent()}
-          </div>
+          <div className="px-6">{renderSessionContent()}</div>
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-2 px-6 pt-4 border-t border-gray-200">

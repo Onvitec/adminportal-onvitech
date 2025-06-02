@@ -31,7 +31,7 @@ export interface TableProps<T> {
   showActions?: boolean;
   isSelectable?: boolean;
   className?: string;
-  onSelectionChange: any;
+  onSelectionChange?: any;
   actions?: TableAction<T>[];
   isLoading?: boolean; // Add this line
 }

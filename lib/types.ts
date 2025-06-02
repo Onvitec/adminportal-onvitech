@@ -3,7 +3,7 @@ export type VideoType = {
   title: string;
   file: File | null;
   url: string;
-  is_main:boolean;
+  is_main: boolean;
 };
 
 export type Question = {
@@ -37,6 +37,7 @@ export interface SessionForm {
 export enum sessionTypes {
   LINEAR_FLOW = "linear",
   INTERACTIVE = "interactive",
+  SELECTION = "selection",
 }
 
 export type SessionType = {
@@ -56,8 +57,7 @@ export type UserType = {
   status: string;
   created_at: string;
   updated_at?: string;
-}
-
+};
 
 // Solution Types
 export type SolutionCategory = {
@@ -67,25 +67,24 @@ export type SolutionCategory = {
 
 export type Solution = {
   id: string;
+  session_id: string;
   category_id: number | null;
   form_data?: any;
   emailContent?: string;
-  emailTarget?:string;
+  emailTarget?: string;
   linkUrl?: string;
   videoFile?: File | null;
   videoUrl?: string;
 };
 
-
-export type FormElementType = 
-  | 'text'
-  | 'email'
-  | 'number'
-  | 'dropdown'
-  | 'checkbox'
-  | 'radio'
-  | 'paragraph'
-  | 'button';
+export type FormElementType =
+  | "text"
+  | "number"
+  | "dropdown"
+  | "checkbox"
+  | "radio"
+  | "paragraph"
+  | "button";
 
 export type FormElement = {
   id: string;
@@ -98,8 +97,6 @@ export type FormElement = {
 };
 
 export type FormSolutionData = {
-  title: string;
   description?: string;
   elements: FormElement[];
-  submitText?: string;
 };
