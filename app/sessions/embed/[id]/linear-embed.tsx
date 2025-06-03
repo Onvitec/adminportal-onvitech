@@ -1,7 +1,9 @@
 "use client";
 import { SolutionCard } from "@/components/SolutionCard";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { Solution, SolutionCategory } from "@/lib/types";
+import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
 type Props = {};
@@ -20,11 +22,11 @@ type Video = {
   duration?: number;
 };
 
-// Linear Session Embed Component
 function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
   const [modules, setModules] = useState<Module[]>([]);
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
   const [watchedVideos, setWatchedVideos] = useState<Set<string>>(new Set());
+  const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(true);
   const [videoProgress, setVideoProgress] = useState<{ [key: string]: number }>(
     {}
   );
@@ -33,12 +35,16 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
     SolutionCategory[]
   >([]);
   const [allVideosCompleted, setAllVideosCompleted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSessionData();
   }, [sessionId]);
 
   const fetchSessionData = async () => {
+    setIsLoading(true);
+    setError(null);
     try {
       const { data: modulesData, error: modulesError } = await supabase
         .from("modules")
@@ -64,6 +70,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
           };
         })
       );
+
       const { data: solutionsData, error: solutionsError } = await supabase
         .from("solutions")
         .select("*")
@@ -80,7 +87,6 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
       setModules(modulesWithVideos);
       setSolutions(solutionsData || []);
       setSolutionCategories(categoriesData || []);
-      setModules(modulesWithVideos);
 
       if (
         modulesWithVideos.length > 0 &&
@@ -90,16 +96,17 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
       }
     } catch (error) {
       console.error("Error fetching session data:", error);
+      setError("Failed to load session data. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleVideoEnd = (videoId: string) => {
-    // Mark video as watched
     const newWatched = new Set(watchedVideos);
     newWatched.add(videoId);
     setWatchedVideos(newWatched);
 
-    // Check if all videos are watched
     const totalVideos = modules.reduce(
       (count, module) => count + module.videos.length,
       0
@@ -109,7 +116,6 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
       return;
     }
 
-    // Find and set the next video
     let nextVideo: Video | null = null;
     let foundCurrent = false;
 
@@ -139,7 +145,6 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
   };
 
   const isVideoUnlocked = (video: Video) => {
-    // First video is always unlocked
     if (
       modules.length > 0 &&
       modules[0].videos.length > 0 &&
@@ -148,7 +153,6 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
       return true;
     }
 
-    // Check if previous video is watched
     let foundCurrent = false;
     for (const module of modules) {
       for (const v of module.videos) {
@@ -166,6 +170,30 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
     return true;
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <p className="text-lg font-medium">Loading session content...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <h3 className="text-lg font-medium mb-2 text-red-500">{error}</h3>
+        <Button
+          onClick={fetchSessionData}
+          variant="outline"
+          className="mt-4"
+        >
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
   if (modules.length === 0) {
     return (
       <div className="text-center py-12">
@@ -175,8 +203,8 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <>
-      {/* Current Video Player (large) */}
+    <div className="overflow-y-scroll max-h-screen">
+      {/* Current Video Player */}
       {currentVideo && (
         <div className="mb-8">
           <div className="aspect-w-16 aspect-h-9 bg-black rounded-lg overflow-hidden">
@@ -305,27 +333,45 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
         ))}
       </div>
 
-      {allVideosCompleted && (
-        <div className="space-y-2">
-          <h2 className="text-xl font-bold">Solution</h2>
-          {solutions.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4">
-              {solutions.map((solution) => {
-                return (
+      {/* Solutions Section */}
+      <div className="border rounded-lg overflow-hidden mt-6">
+        <div className="flex items-center justify-between py-4 px-4 bg-white">
+          <h2 className="text-xl font-bold">Solution Type</h2>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSolutionCollapsed(!isSolutionCollapsed)}
+          >
+            {isSolutionCollapsed ? (
+              <ChevronUp className="h-5 w-5" />
+            ) : (
+              <ChevronDown className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
+
+        {isSolutionCollapsed && (
+          <div className="bg-gray-50 py-4 border-t">
+            {solutions.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4">
+                {solutions.map((solution) => (
                   <SolutionCard
                     key={solution.id}
                     solution={solution}
                     readOnly={true}
                   />
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">No solutions added</p>
-          )}
-        </div>
-      )}
-    </>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-4">
+                No solutions added
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
