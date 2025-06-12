@@ -3,7 +3,7 @@ export type VideoType = {
   title: string;
   file: File | null;
   url: string;
-  is_main: boolean;
+  is_main?: boolean;
 };
 
 export type Question = {

@@ -11,8 +11,8 @@ export function LinearSessionView({ sessionId }: { sessionId: string }) {
   const [modules, setModules] = useState<Module[]>([]);
   const [solutions, setSolutions] = useState<Solution[]>([]);
   const [solutionCategories, setSolutionCategories] = useState<SolutionCategory[]>([]);
-  const [loading, setLoading] = useState(true);
   const [solutionsExpanded, setSolutionsExpanded] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {

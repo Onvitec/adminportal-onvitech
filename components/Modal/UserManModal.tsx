@@ -179,7 +179,7 @@ export default function UserManModal({
       >
         <DialogHeader className="border-b px-6 py-4">
           <DialogTitle className="text-[#242B42] text-[18px] font-bold">
-            {mode === "create" ? "Create New User" : "Edit User"}
+            {mode === "create" ? "Create New Comapny" : "Edit Company"}
           </DialogTitle>
         </DialogHeader>
 

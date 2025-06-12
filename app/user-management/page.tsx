@@ -156,7 +156,7 @@ const UsersTable = () => {
     <>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
         <div>
-          <Heading>User Management</Heading>
+          <Heading>Company Management</Heading>
           <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md">
             Create and manage users in one place.
           </p>
@@ -168,8 +168,9 @@ const UsersTable = () => {
             type="button"
             className="inline-flex items-center gap-2 bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
           >
+             
             <Plus className="h-4 w-4" />
-            Add New User
+            Add New Company {/*TODO:  later we can convert this to users  since we have ot be able to add both company and affiliated users  */}
           </button>
         </div>
       </div>

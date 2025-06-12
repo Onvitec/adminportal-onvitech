@@ -134,7 +134,7 @@ export function SidebarNavigation() {
       title: "ADMINISTRATION",
       items: [
         {
-          title: "User Management",
+          title: "Company Management",
           href: "/user-management",
           icon: <UsersIcon className="h-5 w-5" />,
         },

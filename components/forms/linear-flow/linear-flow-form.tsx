@@ -81,8 +81,8 @@ export default function LinearSessionForm() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [solutionCategories, setSolutionCategories] = useState<SolutionCategory[]>([]);
   const [solution, setSolution] = useState<Solution | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const activeModule = modules.find((module) => module.id === activeId);
 
   const sensors = useSensors(
@@ -302,19 +302,7 @@ export default function LinearSessionForm() {
     }
   };
 
-  // Fetch solution categories on mount
-  useEffect(() => {
-    const fetchCategories = async () => {
-      const { data, error } = await supabase
-        .from("solution_categories")
-        .select("*");
 
-      if (!error && data) {
-        setSolutionCategories(data);
-      }
-    };
-    fetchCategories();
-  }, []);
 
   // Add solution handler
   const addSolution = () => {
