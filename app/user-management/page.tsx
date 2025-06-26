@@ -158,7 +158,7 @@ const UsersTable = () => {
         <div>
           <Heading>Company Management</Heading>
           <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md">
-            Create and manage users in one place.
+            Create and manage companies in one place.
           </p>
         </div>
 

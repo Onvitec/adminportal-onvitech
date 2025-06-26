@@ -341,7 +341,7 @@ export default function LinearSessionForm() {
           <CardContent className="space-y-6 px-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
-                <Label htmlFor="sessionName" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="sessionName" className="text-sm font-medium text-[#242B42]">
                   Session Name
                 </Label>
                 <Input
@@ -354,18 +354,18 @@ export default function LinearSessionForm() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="userId" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="userId" className="text-sm font-medium text-[#242B42]">
                   Session Type
                 </Label>
                 <Input
                   id="userId"
                   value={"Linear Flow"}
                   disabled
-                  className="h-10"
+                  className="h-10 bg-[#EEEEEE] text-[#242B42] font-medium"
                   required
                 />
               </div>
-              <div className="space-y-1">
+              {/* <div className="space-y-1">
                 <Label htmlFor="userId" className="text-sm font-medium text-gray-700">
                   User ID
                 </Label>
@@ -377,7 +377,7 @@ export default function LinearSessionForm() {
                   className="h-10"
                   required
                 />
-              </div>
+              </div> */}
             </div>
 
             <div className="mt-8">

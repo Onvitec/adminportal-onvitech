@@ -271,7 +271,7 @@ export default function UserManModal({
           >
             {loading 
               ? mode === "create" ? "Creating..." : "Updating..."
-              : mode === "create" ? "Create User" : "Update User"}
+              : mode === "create" ? "Create New Company" : "Update Company"}
           </Button>
         </DialogFooter>
       </DialogContent>

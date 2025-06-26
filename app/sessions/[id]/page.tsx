@@ -215,10 +215,10 @@ export default function SessionViewPage() {
               <p className="text-base font-medium mt-1">{session.title}</p>
             </div>
             <div>
-              <h3 className="text-sm font-medium text-gray-500">
+              <h3 className="text-sm font-medium text-[#242B42]">
                 Session Type
               </h3>
-              <p className="text-base font-medium mt-1 capitalize">
+              <p className="text-base font-medium mt-1 capitalize ">
                 {session.session_type}
               </p>
             </div>

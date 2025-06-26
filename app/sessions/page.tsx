@@ -143,7 +143,7 @@ const SessionsTable = () => {
     },
     {
       accessorKey: "created_at" as keyof SessionType,
-      header: "Start Date",
+      header: "Published Date",
       enableSorting: true,
       cell: ({ getValue }: { getValue: () => any }) => {
         const rawDate = getValue();

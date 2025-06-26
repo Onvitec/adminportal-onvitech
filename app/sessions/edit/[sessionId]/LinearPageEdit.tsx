@@ -731,7 +731,7 @@ export default function LinearSessionForm() {
                   required
                 />
               </div>
-              <div className="space-y-1">
+              {/* <div className="space-y-1">
                 <Label
                   htmlFor="userId"
                   className="text-sm font-medium text-gray-700"
@@ -747,7 +747,7 @@ export default function LinearSessionForm() {
                   className="h-10"
                   required
                 />
-              </div>
+              </div> */}
             </div>
 
             <div className="mt-8">
