@@ -41,7 +41,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import { cn } from "@/lib/utils";
+import { cn, solutionCategories } from "@/lib/utils";
 import { ModuleCard } from "./module";
 import { SolutionCard } from "@/components/SolutionCard";
 import {
@@ -79,7 +79,6 @@ export default function LinearSessionForm() {
     },
   ]);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [solutionCategories, setSolutionCategories] = useState<SolutionCategory[]>([]);
   const [solution, setSolution] = useState<Solution | null>(null);
   const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
