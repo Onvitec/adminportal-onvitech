@@ -20,6 +20,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<SessionType[]>([]);
   const [tableLoading, setTableLoading] = useState(false);
+   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
   const [stats, setStats] = useState({
     totalSessions: 0,
     activeSessions: 0,
@@ -160,15 +162,15 @@ export default function DashboardPage() {
       action: (session: SessionType) => console.log("Delete", session),
       variant: "outline" as const,
     },
-    {
-      label: "Share Session",
-      icon: <Share2 className="h-4 w-4" />,
-      action: (session: SessionType) =>
-        navigator.clipboard.writeText(
-          `${process.env.NEXT_PUBLIC_FRONTEND_URL}/sessions/embed/${session.id}`
-        ),
-      variant: "outline" as const,
-    },
+     {
+  label: "Share Session",
+  icon: <Share2 className="h-4 w-4" />,
+  action: (session: SessionType) => {
+    setSessionToShare(session);
+    setIsShareModalOpen(true);
+  },
+  variant: "outline" as const,
+},
   ];
 
   const columns = [

@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { SessionType } from "@/lib/types";
 import { fetchSessions } from "@/repos/sessions";
 import { ConfirmModal } from "@/components/Modal/confirmDelete";
+import { IframeModal } from "@/components/Modal/IframeModal";
 
 const SessionsTable = () => {
   const [openModal, setOpenModal] = useState(false);
@@ -20,6 +21,8 @@ const SessionsTable = () => {
   const [selectedSessions, setSelectedSessions] = useState<SessionType[]>([]);
   const [isConfirmModalOpen, setIsconfirmModalOpen] = useState(false);
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
 
   const router = useRouter();
 
@@ -89,15 +92,15 @@ const SessionsTable = () => {
       },
       variant: "outline" as const,
     },
-    {
-      label: "Share Session",
-      icon: <Share2 className="h-4 w-4" />,
-      action: (session: SessionType) =>
-        navigator.clipboard.writeText(
-          `${process.env.NEXT_PUBLIC_FRONTEND_URL}/sessions/embed/${session.id}`
-        ),
-      variant: "outline" as const,
-    },
+   {
+  label: "Share Session",
+  icon: <Share2 className="h-4 w-4" />,
+  action: (session: SessionType) => {
+    setSessionToShare(session);
+    setIsShareModalOpen(true);
+  },
+  variant: "outline" as const,
+},
   ];
 
   const columns = [
@@ -205,6 +208,11 @@ const SessionsTable = () => {
         onSelectionChange={(selected: any) => setSelectedSessions(selected)}
       />
 
+<IframeModal
+  sessionId={sessionToShare?.id || ""}
+  open={isShareModalOpen}
+  onOpenChange={setIsShareModalOpen}
+/>
       <ConfirmModal
         open={isConfirmModalOpen}
         title="Delete this session?"

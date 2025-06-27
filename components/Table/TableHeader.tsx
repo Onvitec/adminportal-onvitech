@@ -53,11 +53,11 @@ export default function TableHeader<T>({
               {column.enableSorting ? (
                 <button className="flex items-center gap-1">
                   {column.header}
-                  {sortConfig?.key === column.accessorKey ? (
+                  {/* {sortConfig?.key === column.accessorKey ? (
                     <ArrowUpDown className="h-4 w-4" />
                   ) : (
                     <DropdownArrow className="h-4 w-4 opacity-50" />
-                  )}
+                  )} */}
                 </button>
               ) : (
                 column.header

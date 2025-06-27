@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { TreeViewSession } from "./TreeViewSession";
 import { EditIcon } from "@/components/icons";
+import { IframeModal } from "@/components/Modal/IframeModal";
 
 export default function SessionViewPage() {
   const { id } = useParams();
@@ -22,6 +23,8 @@ export default function SessionViewPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [treeViewEnabled, setTreeViewEnabled] = useState(false);
+  const [isIframeModalOpen, setIsIframeModalOpen] = useState(false);
+
 
   useEffect(() => {
     if (id) {
@@ -171,10 +174,20 @@ export default function SessionViewPage() {
       Edit Session
     </Button>
    <a href={`/sessions/embed/${id}`} target="_blank" rel="noopener noreferrer">
-  <Button className="mt-4 flex items-center gap-2 cursor-pointer">
-    <EditIcon className="w-4 h-4 text-white" />
-    Share Session
-  </Button>
+  <Button 
+  onClick={() => setIsIframeModalOpen(true)} 
+  className="mt-4 flex items-center gap-2 cursor-pointer"
+>
+  <EditIcon className="w-4 h-4 text-white" />
+  Share Session
+</Button>
+
+{/* Add this at the bottom of your component, just before the final closing div */}
+<IframeModal 
+  sessionId={id as string}
+  open={isIframeModalOpen}
+  onOpenChange={setIsIframeModalOpen}
+/>
 </a>
 
   </div>
