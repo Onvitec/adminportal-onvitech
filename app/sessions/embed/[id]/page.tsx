@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import LinearEmbed from "./linear-embed";
-import InteractiveSessionEmbed from "./linear-embed";
 import SelectionSessionEmbed from "./selection-based-embed";
+import { InteractiveSessionEmbed } from "./interactive-embed";
 
 type SessionType = {
   id: string;
