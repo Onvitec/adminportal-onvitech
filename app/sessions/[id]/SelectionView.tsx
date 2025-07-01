@@ -1,406 +1,319 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { SolutionCard } from "@/components/SolutionCard";
+import { Solution } from "@/lib/types";
 
 type Video = {
   id: string;
   title: string;
   url: string;
-  session_id: string;
   order_index: number;
-  is_solution: boolean;
+  question?: {
+    id: string;
+    question_text: string;
+    answers: {
+      id: string;
+      answer_text: string;
+    }[];
+  };
 };
 
-type Question = {
-  id: string;
-  question_text: string;
-  video_id: string;
-  answers: Answer[];
-};
-
-type Answer = {
-  id: string;
-  answer_text: string;
-  question_id: string;
-};
-
-type AnswerCombination = {
-  id: string;
-  session_id: string;
-  destination_video_id: string;
-  destination_video: Video;
-  combination_answers: {
-    answer_id: string;
-    answer: Answer & {
-      question: Question & {
-        video: Video;
-      };
-    };
-  }[];
-};
-
-export default function SelectionSessionView({
+export default function ViewSelectionSession({
   sessionId,
 }: {
   sessionId: string;
 }) {
   const router = useRouter();
+
+  const [isLoading, setIsLoading] = useState(true);
   const [session, setSession] = useState<any>(null);
   const [videos, setVideos] = useState<Video[]>([]);
-  const [solutionVideos, setSolutionVideos] = useState<Video[]>([]);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [combinations, setCombinations] = useState<AnswerCombination[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [solutions, setSolutions] = useState<Solution[]>([]);
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<
+    Record<string, string>
+  >({});
+  const [showSolution, setShowSolution] = useState(false);
+  const [currentSolution, setCurrentSolution] = useState<Solution | null>(null);
 
+  // Fetch session data
   useEffect(() => {
-    if (sessionId) {
-      fetchSessionData();
-    }
-  }, [sessionId]);
+    const fetchSession = async () => {
+      setIsLoading(true);
+      try {
+        // Get session
+        const { data: sessionData, error: sessionError } = await supabase
+          .from("sessions")
+          .select("*")
+          .eq("id", sessionId)
+          .single();
 
-  const fetchSessionData = async () => {
-    setLoading(true);
-    try {
-      // Fetch session details
-      const { data: sessionData, error: sessionError } = await supabase
-        .from("sessions")
-        .select("*")
-        .eq("id", sessionId)
-        .single();
+        if (sessionError || !sessionData)
+          throw sessionError || new Error("Session not found");
 
-      if (sessionError || !sessionData) {
-        throw sessionError || new Error("Session not found");
-      }
+        setSession(sessionData);
 
-      setSession(sessionData);
-
-      // Fetch all videos (both regular and solution)
-      const { data: videosData, error: videosError } = await supabase
-        .from("videos")
-        .select("*")
-        .eq("session_id", sessionId)
-        .order("order_index", { ascending: true });
-
-      if (videosError) throw videosError;
-
-      // Separate regular videos from solution videos
-      const regularVideos = (videosData || []).filter((v) => !v.is_solution);
-      const solutionVideos = (videosData || []).filter((v) => v.is_solution);
-
-      setVideos(regularVideos);
-      setSolutionVideos(solutionVideos);
-
-      // Fetch questions for these videos
-      const { data: questionsData, error: questionsError } = await supabase
-        .from("questions")
-        .select("*")
-        .in("video_id", videosData?.map((v) => v.id) || []);
-
-      if (questionsError) throw questionsError;
-
-      // Fetch answers for these questions
-      const questionsWithAnswers = await Promise.all(
-        (questionsData || []).map(async (question) => {
-          const { data: answersData, error: answersError } = await supabase
-            .from("answers")
-            .select("*")
-            .eq("question_id", question.id);
-
-          if (answersError) throw answersError;
-
-          return {
-            ...question,
-            answers: answersData || [],
-          };
-        })
-      );
-
-      setQuestions(questionsWithAnswers);
-
-      // Fetch answer combinations
-      const { data: combinationsData, error: combinationsError } =
-        await supabase
-          .from("answer_combinations")
+        // Get videos with questions and answers
+        const { data: videosData, error: videosError } = await supabase
+          .from("videos")
           .select(
             `
-          *,
-          destination_video:destination_video_id(*),
-          combination_answers(
             *,
-            answer:answer_id(
+            questions:questions(
               *,
-              question:question_id(
-                *,
-                video:video_id(*)
-              )
+              answers:answers(*)
             )
+          `
           )
-        `
-          )
+          .eq("session_id", sessionId)
+          .order("order_index");
+
+        if (videosError) throw videosError;
+
+        const processedVideos = videosData.map((video) => ({
+          ...video,
+          question:
+            video.questions.length > 0
+              ? {
+                  ...video.questions[0],
+                  answers: video.questions[0].answers,
+                }
+              : undefined,
+        }));
+
+        setVideos(processedVideos);
+
+        // Get solutions
+        const { data: solutionsData, error: solutionsError } = await supabase
+          .from("solutions")
+          .select("*")
           .eq("session_id", sessionId);
 
-      if (combinationsError) throw combinationsError;
+        if (solutionsError) throw solutionsError;
+        setSolutions(solutionsData || []);
+      } catch (error) {
+        console.error("Error fetching session:", error);
+        router.push("/sessions");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-      setCombinations(combinationsData || []);
-    } catch (error) {
-      console.error("Error fetching session data:", error);
-      router.push("/sessions");
-    } finally {
-      setLoading(false);
+    if (sessionId) {
+      fetchSession();
+    }
+  }, [sessionId, router]);
+
+  // Handle answer selection
+  const handleAnswerSelect = (questionId: string, answerId: string) => {
+    setSelectedAnswers((prev) => ({
+      ...prev,
+      [questionId]: answerId,
+    }));
+  };
+
+  // Move to next video or show solution
+  const handleNext = () => {
+    const currentVideo = videos[currentVideoIndex];
+
+    // Check if answer is selected for current video's question
+    if (currentVideo.question && !selectedAnswers[currentVideo.question.id]) {
+      alert("Please select an answer before proceeding");
+      return;
+    }
+
+    // If last video, find matching solution
+    if (currentVideoIndex === videos.length - 1) {
+      findMatchingSolution();
+    } else {
+      setCurrentVideoIndex((prev) => prev + 1);
     }
   };
 
-  if (loading) {
+  // Move to previous video
+  const handlePrevious = () => {
+    if (showSolution) {
+      setShowSolution(false);
+    } else if (currentVideoIndex > 0) {
+      setCurrentVideoIndex((prev) => prev - 1);
+    }
+  };
+
+  // Find solution that matches the selected answers
+  const findMatchingSolution = async () => {
+    try {
+      // Get all answer combinations for this session
+      const { data: combinations, error: combosError } = await supabase
+        .from("answer_combinations")
+        .select(
+          `
+          *,
+          combination_answers:combination_answers(
+            answer_id
+          )
+        `
+        )
+        .eq("session_id", sessionId);
+
+      if (combosError) throw combosError;
+
+      // Create a hash of our selected answers
+      const selectedAnswerIds = Object.values(selectedAnswers);
+      const selectedHash = selectedAnswerIds.sort().join("-");
+
+      // Find matching combination
+      const matchingCombo = combinations.find((combo) => {
+        const comboAnswerIds = combo.combination_answers.map(
+          (ca: any) => ca.answer_id
+        );
+        const comboHash = comboAnswerIds.sort().join("-");
+        return comboHash === selectedHash;
+      });
+
+      if (!matchingCombo) {
+        alert("No solution found for this combination of answers");
+        return;
+      }
+
+      // Find the solution
+      const solution = solutions.find(
+        (s) => s.id === matchingCombo.solution_id
+      );
+      if (solution) {
+        setCurrentSolution({ ...solution, session_id: sessionId });
+        setShowSolution(true);
+      } else {
+        alert("Solution not found");
+      }
+    } catch (error) {
+      console.error("Error finding solution:", error);
+      alert("Failed to find matching solution");
+    }
+  };
+
+  if (isLoading) {
     return (
-      <div className="container mx-auto py-8 max-w-4xl">
-        <div className="flex justify-center items-center min-h-[300px]">
-          <div className="animate-pulse text-muted-foreground">
-            Loading session details...
-          </div>
-        </div>
+      <div className="container mx-auto py-8 max-w-6xl">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p>Loading session...</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   if (!session) {
     return (
-      <div className="container mx-auto py-8 max-w-4xl">
-        <div className="text-center py-12 ">
-          <h3 className="text-lg font-medium mb-2">Session not found</h3>
-          <Button onClick={() => router.push("/sessions")} className="mt-4">
-            Back to Sessions
-          </Button>
-        </div>
+      <div className="container mx-auto py-8 max-w-6xl">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <p>Session not found</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
+  const currentVideo = videos[currentVideoIndex];
+  const progressPercentage =
+    ((currentVideoIndex + (showSolution ? 1 : 0)) / videos.length) * 100;
+
   return (
-    <div className="container py-8">
-      <Card className="border-none shadow-none px-4">
-        <CardHeader className="px-0">
+    <div className="container mx-auto py-8 max-w-6xl">
+      <Card>
+        <CardHeader>
           <CardTitle className="text-2xl font-semibold">
-            Session details
+            {session.title}
           </CardTitle>
-          <p className="text-sm text-gray-600">
-            Below are the details of the selection-based session.
-          </p>
         </CardHeader>
 
-        <CardContent className="px-0 space-y-6">
-          {/* Session Info Section */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-lg">
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">
-                Session Name
-              </h3>
-              <p className="text-base font-medium">{session.title}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">
-                Session Type
-              </h3>
-              <p className="text-base font-medium">Selection-Based</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">User ID</h3>
-              <p className="text-base font-medium">{session.created_by}</p>
-            </div>
+        <CardContent>
+          {/* Progress bar */}
+          <div className="w-full bg-gray-200 rounded-full h-2.5 mb-6">
+            <div
+              className="bg-blue-600 h-2.5 rounded-full"
+              style={{ width: `${progressPercentage}%` }}
+            ></div>
           </div>
 
-          {/* Content Videos Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Content Videos</h3>
-            {videos.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {videos.map((video) => {
-                  const videoQuestions = questions.filter(
-                    (q) => q.video_id === video.id
-                  );
-                  return (
-                    <div
-                      key={video.id}
-                      className="border rounded-lg overflow-hidden"
-                    >
-                      <video
-                        src={video.url}
-                        controls
-                        className="w-full aspect-video object-cover"
-                      />
-                      <div className="p-3 bg-white">
-                        <h4 className="text-sm font-medium">{video.title}</h4>
-                        {videoQuestions.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            {videoQuestions.length} question
-                            {videoQuestions.length !== 1 ? "s" : ""}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+          {showSolution && currentSolution ? (
+            <div className="space-y-6">
+              <h3 className="text-xl font-semibold">Solution</h3>
+              <SolutionCard
+                solution={currentSolution}
+                readOnly={true}
+              />
+              <div className="flex justify-between mt-6">
+                <Button onClick={handlePrevious}>
+                  <ChevronLeft className="h-4 w-4 mr-2" /> Back
+                </Button>
               </div>
-            ) : (
-              <p className="text-sm text-gray-500 text-center py-4">
-                No content videos added
-              </p>
-            )}
-          </div>
+            </div>
+          ) : currentVideo ? (
+            <div className="space-y-6">
+              <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                <video
+                  src={currentVideo.url}
+                  controls
+                  className="w-full h-full object-contain"
+                />
+              </div>
 
-          {/* Solution Videos Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Solution Videos</h3>
-            {solutionVideos.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {solutionVideos.map((video) => (
-                  <div
-                    key={video.id}
-                    className="border rounded-lg overflow-hidden"
-                  >
-                    <video
-                      src={video.url}
-                      controls
-                      className="w-full aspect-video object-cover"
-                    />
-                    <div className="p-3 bg-white">
-                      <h4 className="text-sm font-medium">{video.title}</h4>
-                      <p className="text-xs text-blue-600 mt-1">
-                        Solution Video
-                      </p>
-                    </div>
+              {currentVideo.question && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">
+                    {currentVideo.question.question_text}
+                  </h3>
+                  <div className="space-y-2">
+                    {currentVideo.question.answers.map((answer) => (
+                      <Button
+                        key={answer.id}
+                        variant={
+                          selectedAnswers[currentVideo.question!.id] ===
+                          answer.id
+                            ? "default"
+                            : "outline"
+                        }
+                        className="w-full justify-start"
+                        onClick={() =>
+                          handleAnswerSelect(
+                            currentVideo.question!.id,
+                            answer.id
+                          )
+                        }
+                      >
+                        {answer.answer_text}
+                      </Button>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500 text-center py-4">
-                No solution videos added
-              </p>
-            )}
-          </div>
+                </div>
+              )}
 
-          {/* Questions Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Questions & Answers</h3>
-            {questions.length > 0 ? (
-              <div className="space-y-6">
-                {questions.map((question) => {
-                  const video =
-                    videos.find((v) => v.id === question.video_id) ||
-                    solutionVideos.find((v) => v.id === question.video_id);
-                  return (
-                    <div
-                      key={question.id}
-                      className="border rounded-lg overflow-hidden"
-                    >
-                      <div className="p-4 bg-white">
-                        <div className="flex items-start gap-4">
-                          {video && (
-                            <video
-                              src={video.url}
-                              controls
-                              className="w-1/3 aspect-video object-cover rounded"
-                            />
-                          )}
-                          <div className="flex-1">
-                            <h4 className="font-medium">
-                              Question: {question.question_text}
-                            </h4>
-                            <div className="mt-3 space-y-2">
-                              <h5 className="text-sm font-medium text-gray-700">
-                                Possible Answers:
-                              </h5>
-                              <ul className="space-y-1">
-                                {question.answers.map((answer) => (
-                                  <li key={answer.id} className="text-sm">
-                                    - {answer.answer_text}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex justify-between mt-6">
+                <Button
+                  onClick={handlePrevious}
+                  disabled={currentVideoIndex === 0 && !showSolution}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" /> Back
+                </Button>
+                <Button onClick={handleNext}>
+                  {currentVideoIndex === videos.length - 1
+                    ? "Show Solution"
+                    : "Next"}
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
               </div>
-            ) : (
-              <p className="text-sm text-gray-500 text-center py-4">
-                No questions added
-              </p>
-            )}
-          </div>
-
-          {/* Answer Combinations Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-medium">Answer Combinations</h3>
-            {combinations.length > 0 ? (
-              <div className="space-y-4">
-                {combinations.map((combination) => (
-                  <div
-                    key={combination.id}
-                    className="border rounded-lg overflow-hidden"
-                  >
-                    <div className="p-4 bg-white">
-                      <div className="flex flex-wrap items-center gap-2 mb-3">
-                        {combination.combination_answers.map((ca, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            {index > 0 && (
-                              <span className="text-gray-400">→</span>
-                            )}
-                            <div className="bg-gray-100 px-3 py-1 rounded-full text-sm">
-                              <span className="font-medium">
-                                {ca.answer.question.video.title}:
-                              </span>{" "}
-                              {ca.answer.answer_text}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">Leads to:</span>
-                        {combination.destination_video ? (
-                          <div className="flex items-center gap-2">
-                            <video
-                              src={combination.destination_video.url}
-                              controls
-                              className="w-24 aspect-video object-cover rounded"
-                            />
-                            <span className="text-sm">
-                              {combination.destination_video.title}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-500">
-                            No destination set
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500 text-center py-4">
-                No answer combinations configured
-              </p>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => router.push("/sessions")}>
-              Back
-            </Button>
-            <Button onClick={() => router.push(`/sessions/edit/${sessionId}`)}>
-              Edit Session
-            </Button>
-          </div>
+            </div>
+          ) : (
+            <p>No videos found in this session</p>
+          )}
         </CardContent>
       </Card>
     </div>
