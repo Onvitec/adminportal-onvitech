@@ -173,7 +173,6 @@ export default function SessionViewPage() {
     <Button onClick={() => router.push(`/sessions/edit/${id}`)} variant="outline" className="mt-4 cursor-pointer">
       Edit Session
     </Button>
-   <a href={`/sessions/embed/${id}`} target="_blank" rel="noopener noreferrer">
   <Button 
   onClick={() => setIsIframeModalOpen(true)} 
   className="mt-4 flex items-center gap-2 cursor-pointer"
@@ -188,7 +187,6 @@ export default function SessionViewPage() {
   open={isIframeModalOpen}
   onOpenChange={setIsIframeModalOpen}
 />
-</a>
 
   </div>
 </div>
