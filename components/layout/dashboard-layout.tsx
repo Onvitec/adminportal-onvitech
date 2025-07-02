@@ -1,12 +1,9 @@
-// components/layout/dashboard-layout.tsx
 "use client";
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { SidebarNavigation } from "./sidebar-navigation";
-import { Search, Menu, ChevronDown } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { Menu, X, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMediaQuery } from "../../hooks/use-media-query";
 import { useSession } from "../session-provider";
+import { cn } from "@/lib/utils";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -82,7 +80,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <SidebarNavigation />
+        <SidebarNavigation onClose={toggleMobileSidebar} />
       </div>
 
       {/* Main Content */}
@@ -93,58 +91,53 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden mr-2"
+              className="lg:hidden mr-2 z-50" // z-50 ensures it stays above overlay
               onClick={toggleMobileSidebar}
             >
-              <Menu className="h-5 w-5" />
+              {isMobileSidebarOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <Menu className="h-5 w-5" />
+              )}
             </Button>
 
             {/* Search Bar */}
             <div className="relative flex-1 max-w-md">
-              
+              {/* Search content here if needed */}
             </div>
 
             {/* Profile */}
-       
-<div className="flex items-center ml-4">
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button
-        variant="ghost"
-        className="flex items-center space-x-3 h-10 px-3 rounded-full focus:outline-none"
-      >
-        {/* Avatar */}
-        <Avatar className="h-8 w-8">
-          <AvatarImage src="/placeholder-avatar.jpg" />
-          <AvatarFallback>{initials}</AvatarFallback>
-        </Avatar>
-
-        {/* Username, Email, Chevron */}
-        <div className="hidden sm:flex flex-col items-start justify-center">
-          <p className="text-sm font-medium">{user.username}</p>
-          <p className="text-xs text-muted-foreground">{user.email}</p>
-        </div>
-
-        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-      </Button>
-    </DropdownMenuTrigger>
-
-    <DropdownMenuContent align="end">
-      <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem>Profile</DropdownMenuItem>
-      <DropdownMenuItem>Settings</DropdownMenuItem>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem onClick={signOut}>
-        <LogOut className="mr-2 h-4 w-4" />
-        <span>Sign out</span>
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
-</div>
-
-
-
+            <div className="flex items-center ml-4">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="flex items-center space-x-3 h-10 px-3 rounded-full focus:outline-none"
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src="/placeholder-avatar.jpg" />
+                      <AvatarFallback>{initials}</AvatarFallback>
+                    </Avatar>
+                    <div className="hidden sm:flex flex-col items-start justify-center">
+                      <p className="text-sm font-medium">{user.username}</p>
+                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>Profile</DropdownMenuItem>
+                  <DropdownMenuItem>Settings</DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </header>
 

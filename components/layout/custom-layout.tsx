@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { SidebarNavigation } from "./sidebar-navigation";
 import { Menu } from "lucide-react";
-import {Search, LogOutIcon} from "../icons"
+import { Search, LogOutIcon } from "../icons";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
@@ -20,15 +20,13 @@ import { useMediaQuery } from "../../hooks/use-media-query";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { toast } from 'sonner'; 
-
+import { toast } from 'sonner';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
 }
 
 export function CustomLayout({ children }: DashboardLayoutProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [user, setUser] = useState<{
     email?: string;
@@ -39,14 +37,6 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const storedState = localStorage.getItem("sidebarCollapsed");
-    if (storedState) setIsCollapsed(storedState === "true");
-
-    const handleStorageChange = () => {
-      const currentState = localStorage.getItem("sidebarCollapsed");
-      setIsCollapsed(currentState === "true");
-    };
-
     // Check user session on mount
     const getSession = async () => {
       const {
@@ -69,16 +59,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
     };
 
     getSession();
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-    };
   }, [router]);
-
-  if (pathname === "/login" || pathname === "/signup") {
-    return null;
-  }
 
   // Close mobile sidebar when switching to desktop
   useEffect(() => {
@@ -93,9 +74,13 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-          toast.success("Sign out successful!");
+    toast.success("Sign out successful!");
     window.location.href = "/login";
   };
+
+  if (pathname === "/login" || pathname === "/signup") {
+    return null;
+  }
 
   if (!user) {
     return null; // or a loading spinner
@@ -141,7 +126,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-14 items-center bg-background px-4 lg:px-6 border-b">
           <div className="flex w-full items-center justify-between">
-            {/* Mobile Menu Button */}
+            {/* Mobile Menu Button - Only one needed */}
             <Button
               variant="ghost"
               size="icon"
@@ -175,7 +160,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>Profile</DropdownMenuItem>
+                  <DropdownMenuItem>Profile new</DropdownMenuItem>
                   <DropdownMenuItem>Settings</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut}>
@@ -192,7 +177,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1  p-4 md:p-6 bg-[#F2F7FC]">
+        <main className="flex-1 p-4 md:p-6 bg-[#F2F7FC]">
           {children}
         </main>
       </div>

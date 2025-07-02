@@ -4,17 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import {
-  BarChart,
-  Database,
-  Settings,
-  Users,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  LayoutDashboard,
-  // LogOutIcon,
-} from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -22,22 +12,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import Image from "next/image";
 import { useMediaQuery } from "../../hooks/use-media-query";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import {
   DashboardIcon,
-  AnalyticsIcon,
   DatabaseIcon,
   UsersIcon,
   SettingsIcon,
@@ -56,7 +36,11 @@ type NavGroup = {
   items: NavItem[];
 };
 
-export function SidebarNavigation() {
+interface SidebarNavigationProps {
+  onClose?: () => void;
+}
+
+export function SidebarNavigation({ onClose }: SidebarNavigationProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const pathname = usePathname();
   const isDesktop = useMediaQuery("(min-width: 1024px)");
@@ -84,15 +68,6 @@ export function SidebarNavigation() {
     }
   };
 
-  const handleMobileLogoClick = () => {
-    if (isDesktop) {
-      toggleSidebar();
-    } else {
-      setIsCollapsed(true);
-    }
-  };
-
-  // logout
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -113,11 +88,6 @@ export function SidebarNavigation() {
           href: "/dashboard",
           icon: <DashboardIcon className="h-5 w-5" />,
         },
-        // {
-        //   title: "Analytics",
-        //   href: "/analytics",
-        //   icon: <AnalyticsIcon className="h-5 w-5" />,
-        // },
       ],
     },
     {
@@ -153,22 +123,19 @@ export function SidebarNavigation() {
     },
   ];
 
-  // Function to check if a nav item is active
   const isActive = (href: string) => {
-    // Make dashboard active when exactly on /dashboard
     if (href === "/dashboard") {
       return pathname === href;
     }
-    // For other routes, check if pathname starts with href
     return pathname.startsWith(href);
   };
 
   return (
     <div
       className={cn(
-        "flex h-screen  flex-col border-r border-border bg-[#1C2534] transition-all duration-300 ease-in-out dark:bg-card",
+        "flex h-screen flex-col border-r border-border bg-[#1C2534] transition-all duration-300 ease-in-out dark:bg-card md:mt-0 mt-[55px]",
         isCollapsed ? "w-[80px]" : "w-[280px]",
-        !isDesktop ? "fixed top-0 left-0 z-50" : "relative"
+        isDesktop ? "relative" : "fixed top-0 left-0 z-40"
       )}
     >
       {/* Header Section */}
@@ -199,7 +166,7 @@ export function SidebarNavigation() {
           ) : (
             <div className="w-full flex justify-center">
               <button
-                onClick={handleMobileLogoClick}
+                onClick={isDesktop ? toggleSidebar : onClose}
                 className="rounded-full hover:opacity-80 transition"
               >
                 <Image
@@ -220,7 +187,7 @@ export function SidebarNavigation() {
         {navGroups.map((group, groupIndex) => (
           <div key={groupIndex} className="mb-4 last:mb-0">
             {!isCollapsed && (
-              <div className="mb-2 text-[#A5ACBA] px-6  font-semibold text-[14px] uppercase tracking-wider">
+              <div className="mb-2 text-[#A5ACBA] px-6 font-semibold text-[14px] uppercase tracking-wider">
                 {group.title}
               </div>
             )}
@@ -231,7 +198,10 @@ export function SidebarNavigation() {
                     <TooltipTrigger asChild>
                       {item.onClick ? (
                         <button
-                          onClick={item.onClick}
+                          onClick={() => {
+                            item.onClick?.();
+                            if (!isDesktop) onClose?.();
+                          }}
                           className={cn(
                             "group w-full text-left flex items-center py-2.5 text-[15px] font-semibold transition-colors border-l-2",
                             isCollapsed
@@ -255,6 +225,7 @@ export function SidebarNavigation() {
                       ) : (
                         <Link
                           href={item.href}
+                          onClick={() => !isDesktop && onClose?.()}
                           className={cn(
                             "group flex items-center py-2.5 text-[15px] font-semibold transition-colors border-l-2",
                             isCollapsed
