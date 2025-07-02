@@ -150,7 +150,7 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                         {/* Question section with border bottom */}
                         <div className="flex items-start gap-3 pb-3 border-b border-gray-200">
                           <div className="pt-1">
-                            <Questions className="w-[15px] h-[14.35px]" />
+                            <Questions className="w-[15px] h-[14.35px] text-[#6096BA]" />
                           </div>
                           <div className="flex-1">
                             <h4 className="font-medium text-[12px] text-[#242B42]">

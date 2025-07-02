@@ -4,7 +4,8 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { VideoType, Question, Answer } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, ChevronLeft } from "lucide-react";
+import { Questions } from "@/components/icons";
 
 export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [videos, setVideos] = useState<VideoType[]>([]);
@@ -15,6 +16,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [showQuestions, setShowQuestions] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [showControls, setShowControls] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         }
 
         setVideos(videosData);
-        setCurrentVideo(videosData[0]); // Set first video as current
+        setCurrentVideo(videosData[0]);
 
         // Fetch questions
         const { data: questionsData, error: questionsError } = await supabase
@@ -105,15 +107,22 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       const videoQuestions = questions.filter(q => q.video_id === currentVideo.id);
       setCurrentQuestions(videoQuestions);
       setShowQuestions(false);
+      
+      // Start paused when video changes
+      if (videoRef.current) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+        setShowControls(true);
+      }
     }
   }, [currentVideo, questions]);
 
   const handleVideoEnd = () => {
     setIsPlaying(false);
+    setShowControls(true);
     if (currentQuestions.length > 0) {
       setShowQuestions(true);
     } else {
-      // If no questions, proceed to next video in order
       const currentIndex = videos.findIndex(v => v.id === currentVideo?.id);
       if (currentIndex < videos.length - 1) {
         setCurrentVideo(videos[currentIndex + 1]);
@@ -124,25 +133,41 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const handleAnswerSelect = (answer: Answer & { destination_video?: VideoType }) => {
     if (answer.destination_video) {
       setCurrentVideo(answer.destination_video);
-      setIsPlaying(true);
     } else {
-      // If no destination video, proceed to next video in order
       const currentIndex = videos.findIndex(v => v.id === currentVideo?.id);
       if (currentIndex < videos.length - 1) {
         setCurrentVideo(videos[currentIndex + 1]);
-        setIsPlaying(true);
       }
     }
+    setShowQuestions(false);
   };
 
   const togglePlayPause = () => {
     if (videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause();
+        setIsPlaying(false);
+        setShowControls(true);
       } else {
         videoRef.current.play();
+        setIsPlaying(true);
+        setShowControls(false);
+        
+        // Hide controls after click animation
+        setTimeout(() => setShowControls(false), 300);
       }
-      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const goToFirstVideo = () => {
+    if (videos.length > 0) {
+      setCurrentVideo(videos[0]);
+      setShowQuestions(false);
+      if (videoRef.current) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+        setShowControls(true);
+      }
     }
   };
 
@@ -171,72 +196,100 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Video Player */}
-      <div className="relative bg-black">
+    <div className="flex flex-col h-full rounded-xl overflow-hidden">
+      {/* Video Player with Floating Questions */}
+      <div className="relative flex-1 bg-black rounded-xl">
         <video
           ref={videoRef}
           src={currentVideo.url}
-          className="w-full aspect-video"
+          className="w-full h-full object-contain rounded-xl"
           controls={false}
           onEnded={handleVideoEnd}
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
+          onPlay={() => {
+            setIsPlaying(true);
+            setShowControls(false);
+          }}
+          onPause={() => {
+            setIsPlaying(false);
+            setShowControls(true);
+          }}
         />
 
-        {!isPlaying && (
+        {/* Back Button (only shown if not on first video) */}
+        {videos.findIndex(v => v.id === currentVideo?.id) > 0 && (
           <div 
-            className="absolute inset-0 flex items-center justify-center cursor-pointer"
+            className="absolute left-4 top-4 bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-colors duration-200"
+            onClick={goToFirstVideo}
+          >
+            <ChevronLeft className="w-6 h-6 text-white font-bold" />
+          </div>
+        )}
+
+        {/* Play/Pause Button (Center) */}
+        {showControls && !showQuestions && (
+          <div 
+            className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${isPlaying ? 'opacity-0' : 'opacity-100'}`}
             onClick={togglePlayPause}
           >
-            <div className="w-16 h-16 bg-white/70 rounded-full flex items-center justify-center">
-              <svg
-                className="w-8 h-8 text-black"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                  clipRule="evenodd"
-                />
-              </svg>
+            <div className={`bg-white/30 backdrop-blur-sm rounded-full p-4 shadow-lg border border-white/60 flex items-center justify-center transform transition-transform duration-300 ${isPlaying ? 'scale-90' : 'scale-100'}`}>
+              {isPlaying ? (
+                <div className="w-10 h-10 flex items-center justify-center">
+                  <div className="w-2 h-8 bg-white mx-1"></div>
+                  <div className="w-2 h-8 bg-white mx-1"></div>
+                </div>
+              ) : (
+                <svg
+                  className="w-10 h-10 text-white transform transition-transform duration-300 hover:scale-110"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              )}
             </div>
           </div>
         )}
-      </div>
 
-      {/* Video Title */}
-      <div className="p-4 bg-white border-b">
-        <h2 className="text-lg font-medium">{currentVideo.title}</h2>
-      </div>
+        {/* Floating Questions on Video */}
+        {showQuestions && currentQuestions.length > 0 && (
+          <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 space-y-4">
+            {currentQuestions.map((question) => (
+              <div key={question.id} className="space-y-4">
+                {/* Question Card */}
+                <div className="bg-white/30 backdrop-blur-sm rounded-lg p-4 shadow-lg border border-white/60">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Questions className="text-white"/>
+                    <span className="text-white font-semibold text-sm uppercase tracking-wider">Question</span>
+                  </div>
+                  <h3 className="text-lg text-white text-[16px] font-bold pl-2">
+                    {question.question_text}
+                  </h3>
+                </div>
 
-      {/* Questions & Answers (shown after video ends) */}
-      {showQuestions && currentQuestions.length > 0 && (
-        <div className="p-4 bg-gray-50 flex-1 overflow-y-auto">
-          {currentQuestions.map((question) => (
-            <div key={question.id} className="mb-6">
-              <h3 className="text-lg font-medium mb-3">{question.question_text}</h3>
-              <div className="space-y-2">
-                {question.answers.map((answer) => (
-                  <Button
-                    key={answer.id}
-                    variant="outline"
-                    className="w-full text-left justify-start py-4 px-4 border-gray-300 hover:bg-gray-100"
-                    onClick={() => handleAnswerSelect(answer)}
-                  >
-                    {answer.answer_text}
-                  </Button>
-                ))}
+                {/* Divider */}
+                <hr className="border-white/60 w-full" />
+
+                {/* Answers List */}
+                <div className="space-y-4">
+                  {question.answers.map((answer) => (
+                    <div
+                      key={answer.id}
+                      className="bg-white/30 backdrop-blur-sm rounded-lg p-4 shadow-lg border border-white/60 cursor-pointer 
+                                hover:bg-white/40 transition-colors duration-200"
+                      onClick={() => handleAnswerSelect(answer)}
+                    >
+                      <p className="text-white font-semibold text-[16px]">{answer.answer_text}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Progress Indicator */}
-      <div className="p-2 bg-white border-t text-sm text-gray-500 text-center">
-        Video {videos.findIndex(v => v.id === currentVideo.id) + 1} of {videos.length}
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
