@@ -164,7 +164,7 @@ const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
     },
      {
   label: "Share Session",
-  icon: <Share2 className="h-4 w-4" />,
+  icon: <EditIcon className="h-4 w-4" />,
   action: (session: SessionType) => {
     setSessionToShare(session);
     setIsShareModalOpen(true);
