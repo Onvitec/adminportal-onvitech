@@ -199,7 +199,7 @@ const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
         onRowSelect={(selectedRows) =>
           console.log("Selected rows:", selectedRows)
         }
-        pageSize={5}
+        pageSize={10}
         showCheckbox={true}
         showActions={true}
         isSelectable={true}

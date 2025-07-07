@@ -38,6 +38,7 @@ import { cn, solutionCategories } from "@/lib/utils";
 import { Solution, SolutionCategory } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
 import { VideoUpload } from "@/components/forms/linear-flow/videoo-upload";
+import { toast } from "sonner";
 
 type Answer = {
   id: string;
@@ -673,9 +674,10 @@ export default function EditInteractiveSession({
       }
 
       router.push("/sessions");
+      toast.success("Interactive Session updated successfully!");
     } catch (error) {
       console.error("Error updating session:", error);
-      alert("Failed to update session. Please try again.");
+      toast.error("Error updating  Interactive Session");
     } finally {
       setIsLoading(false);
     }
@@ -712,7 +714,7 @@ export default function EditInteractiveSession({
   }
 
   return (
-    <div className="container mx-auto py-8 max-w-4xl">
+    <div className="container mx-auto py-8 px-4">
       <form onSubmit={handleSubmit}>
         <Card className="border-none shadow-none px-3">
           <CardHeader className="px-0">

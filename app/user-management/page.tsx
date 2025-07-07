@@ -181,7 +181,7 @@ const UsersTable = () => {
         columns={columns}
         onRowSelect={handleRowSelect}
         onRowClick={handleRowClick}
-        pageSize={5}
+        pageSize={10}
         showCheckbox={true}
         showActions={true}
         isSelectable={true}

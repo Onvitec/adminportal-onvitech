@@ -38,6 +38,7 @@ import { cn, solutionCategories } from "@/lib/utils";
 import { VideoUpload } from "../linear-flow/videoo-upload";
 import { Solution, SolutionCategory } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
+import { toast } from "sonner";
 type Answer = {
   id: string;
   answer_text: string;
@@ -406,9 +407,10 @@ export default function InteractiveSessionForm() {
       }
       // Redirect to sessions page
       router.push("/sessions");
+      toast.success("Interactive Session created successfully!");
     } catch (error) {
       console.error("Error creating session:", error);
-      alert("Failed to create session. Please try again.");
+      toast.error("Error creating Interactive Session"); 
     } finally {
       setIsLoading(false);
     }

@@ -51,6 +51,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from "sonner";
 type Module = {
   id: string;
   title: string;
@@ -386,10 +387,11 @@ export default function LinearSessionForm() {
         if (deleteError) throw deleteError;
       }
       // Redirect to sessions page
-      // router.push("/sessions");
+      router.push("/sessions");
+      toast.success("Linear Session saved successfully!");
     } catch (error) {
       console.error("Error saving session:", error);
-      alert("Failed to save session. Please try again.");
+      toast.error("Error saving session");
     } finally {
       setIsLoading(false);
     }
@@ -697,10 +699,8 @@ export default function LinearSessionForm() {
     }
   };
 
-  console.log("SOLUTION", solution);
-
   return (
-    <div className="container mx-auto py-8 max-w-4xl ">
+    <div className="container mx-auto py-8 px-4">
       <form onSubmit={handleSubmit} className="">
         <Card className="border-none shadow-none px-3">
           <CardHeader className="px-0">

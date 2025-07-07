@@ -52,6 +52,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Solution, SolutionCategory } from "@/lib/types";
+import { toast } from "sonner";
 
 type Module = {
   id: string;
@@ -293,9 +294,10 @@ export default function LinearSessionForm() {
       }
 
       router.push("/sessions");
+      toast.success("Linear Session created successfully!");
     } catch (error) {
       console.error("Error creating session:", error);
-      alert("Failed to create session. Please try again.");
+      toast.error("Error creating Linear Session!");
     } finally {
       setIsLoading(false);
     }
