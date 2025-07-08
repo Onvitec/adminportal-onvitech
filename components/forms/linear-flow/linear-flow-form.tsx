@@ -327,7 +327,7 @@ export default function LinearSessionForm() {
   };
 
   return (
-    <div className="container py-8 max-w-7xl mx-auto">
+    <div className="container py-8  mx-auto">
       <form onSubmit={handleSubmit} className="">
         <Card className="border-none shadow-none px-3">
           <CardHeader className="px-0">

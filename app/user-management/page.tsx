@@ -102,7 +102,7 @@ const UsersTable = () => {
     },
     {
       label: "Delete",
-      icon: <DeleteIcon className="h-4 w-4" />,
+      icon: <DeleteIcon className="h-4 w-4 text-[#505568]" />,
       action: handleDeleteUser,
       variant: "destructive" as const,
     },

@@ -39,6 +39,7 @@ import { VideoUpload } from "../linear-flow/videoo-upload";
 import { Solution, SolutionCategory } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
 import { toast } from "sonner";
+import { showToast } from "@/components/toast";
 type Answer = {
   id: string;
   answer_text: string;
@@ -243,6 +244,11 @@ export default function InteractiveSessionForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+     if (!solution) {
+      showToast("error", "Please add a solution before creating the session");
+      return;
+    }
     setIsLoading(true);
 
     try {
@@ -407,10 +413,10 @@ export default function InteractiveSessionForm() {
       }
       // Redirect to sessions page
       router.push("/sessions");
-      toast.success("Interactive Session created successfully!");
+      showToast("success", "Interactive Session created successfully!");
     } catch (error) {
       console.error("Error creating session:", error);
-      toast.error("Error creating Interactive Session"); 
+      showToast("error", "Error creating Interactive Session"); 
     } finally {
       setIsLoading(false);
     }
@@ -437,7 +443,7 @@ export default function InteractiveSessionForm() {
   };
 
   return (
-    <div className="container mx-auto py-8 max-w-4xl">
+    <div className="container mx-auto py-8">
       <form onSubmit={handleSubmit}>
         <Card className="border-none shadow-none px-3">
           <CardHeader className="px-0">

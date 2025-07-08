@@ -48,7 +48,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       .toUpperCase();
   };
 
-  const initials = user?.username ? getInitials(user.username) : "U";
+  const initials = user?.first_name ? getInitials(user.first_name) : "U";
 
   // For embed routes, just render the children without any layout
   if (isEmbedRoute) {
@@ -119,7 +119,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                       <AvatarFallback>{initials}</AvatarFallback>
                     </Avatar>
                     <div className="hidden sm:flex flex-col items-start justify-center">
-                      <p className="text-sm font-medium">{user.username}</p>
+                      <p className="text-sm font-medium">{user.first_name} {user.last_name}</p>
                       <p className="text-xs text-muted-foreground">{user.email}</p>
                     </div>
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />

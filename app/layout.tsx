@@ -44,20 +44,10 @@ export default async function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <SessionProvider>
           <Toaster
-            position="top-center"
-            theme="light"
-            duration={3000}
-            toastOptions={{
-              className: "custom-toast",
-              style: {
-                backgroundColor: "#BAEDD7",
-                color: "#242B42",
-                fontWeight: 500,
-                fontSize: "14px",
-                border: "none",
-              },
-            }}
-          />
+  position="top-center"
+  theme="light"
+  duration={3000}
+/>
           {isAuthPage ? children : <DashboardLayout>{children}</DashboardLayout>}
         </SessionProvider>
       </body>

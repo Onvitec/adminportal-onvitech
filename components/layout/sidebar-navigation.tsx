@@ -23,6 +23,7 @@ import {
   SettingsIcon,
   LogOutIcon,
 } from "../../components/icons";
+import { showToast } from "../toast";
 
 type NavItem = {
   title: string;
@@ -42,6 +43,7 @@ interface SidebarNavigationProps {
 
 export function SidebarNavigation({ onClose }: SidebarNavigationProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [signingOut, setSigningOut] = useState(false); // Added loading state
   const pathname = usePathname();
   const isDesktop = useMediaQuery("(min-width: 1024px)");
 
@@ -69,13 +71,18 @@ export function SidebarNavigation({ onClose }: SidebarNavigationProps) {
   };
 
   const handleSignOut = async () => {
+    setSigningOut(true); // Start loading
     try {
-      await supabase.auth.signOut();
-      toast.success("Signed out successfully!");
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      showToast("success", "Signed out successfully!");
       window.location.href = "/login";
     } catch (error) {
-      toast.error("Error signing out");
+      showToast("error", "Error signing out");
       console.error("Error signing out:", error);
+    } finally {
+      setSigningOut(false); 
     }
   };
 
@@ -170,7 +177,7 @@ export function SidebarNavigation({ onClose }: SidebarNavigationProps) {
                 className="rounded-full hover:opacity-80 transition"
               >
                 <Image
-                  src="/icons/mobilelogo.png"
+                  src="/icons/mobileLogo.png"
                   alt="icon"
                   width={55}
                   height={27}

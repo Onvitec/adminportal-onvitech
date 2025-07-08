@@ -158,7 +158,7 @@ const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
     },
     {
       label: "Delete",
-      icon: <DeleteIcon className="h-4 w-4" />,
+      icon: <DeleteIcon className="h-4 w-4 text-[#505568]" />,
       action: (session: SessionType) => console.log("Delete", session),
       variant: "outline" as const,
     },
@@ -241,7 +241,7 @@ const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
 
   return (
   <div className="p-4  h-screen"> {/* Changed to h-screen and overflow-y-auto */}
-      <Heading>Hey there, {user?.username}</Heading>
+      <Heading>Hey there, {user?.first_name} {user?.last_name}</Heading>
       <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md">
         Welcome back, we're happy to have you here!{" "}
       </p>

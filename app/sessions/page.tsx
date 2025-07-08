@@ -2,8 +2,8 @@
 
 import Heading from "@/components/Heading";
 import Table from "@/components/Table/Table";
-import { Share2} from "lucide-react";
-import { DeleteIcon, EditIcon, Plus , EyeIcon } from "@/components/icons";
+import { Share2 } from "lucide-react";
+import { DeleteIcon, EditIcon, Plus, EyeIcon } from "@/components/icons";
 import { useEffect, useState } from "react";
 import CreateSessionModal from "../../components/Modal/CreateSessionModal";
 import { supabase } from "@/lib/supabase";
@@ -12,6 +12,7 @@ import { SessionType } from "@/lib/types";
 import { fetchSessions } from "@/repos/sessions";
 import { ConfirmModal } from "@/components/Modal/confirmDelete";
 import { IframeModal } from "@/components/Modal/IframeModal";
+import { showToast } from "@/components/toast";
 
 const SessionsTable = () => {
   const [openModal, setOpenModal] = useState(false);
@@ -22,7 +23,7 @@ const SessionsTable = () => {
   const [isConfirmModalOpen, setIsconfirmModalOpen] = useState(false);
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
+  const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
 
   const router = useRouter();
 
@@ -32,19 +33,34 @@ const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
 
   const loadSessions = async () => {
     setLoading(true);
-    const sessionsData = await fetchSessions();
-    setSessions(sessionsData as SessionType[]);
-    setLoading(false);
+    try {
+      const sessionsData = await fetchSessions();
+      setSessions(sessionsData as SessionType[]);
+    } catch (error) {
+      showToast("error", "Failed to load sessions");
+      console.error("Failed to load sessions:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    const { error } = await supabase
-      .from("sessions")
-      .delete()
-      .eq("id", sessionId);
-    setSelectedSessions([]);
-    if (error) {
-      console.error("Failed to delete session:", error.message);
+    try {
+      const { error } = await supabase
+        .from("sessions")
+        .delete()
+        .eq("id", sessionId);
+
+      if (error) throw error;
+
+      // Optimistic update
+      setSessions(prev => prev.filter(session => session.id !== sessionId));
+      setSelectedSessions(prev => prev.filter(session => session.id !== sessionId));
+      
+      showToast("success", "Session deleted successfully");
+    } catch (error) {
+      showToast("error", "Failed to delete session");
+      console.error("Failed to delete session:", error);
     }
   };
 
@@ -59,15 +75,18 @@ const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
         .delete()
         .in("id", idsToDelete);
 
-      if (error) throw new Error(error.message);
+      if (error) throw error;
 
-      // Refresh session list
-      const refreshedSessions = await fetchSessions();
-      setSessions(refreshedSessions!);
+      // Optimistic update
+      setSessions(prev => prev.filter(session => !idsToDelete.includes(session.id)));
       setSelectedSessions([]);
       setIsBulkDeleteModalOpen(false);
-    } catch (err) {
-      console.error("Failed to delete sessions:", err);
+      window.location.reload();
+      
+      showToast("success", `${idsToDelete.length} sessions deleted successfully`);
+    } catch (error) {
+      showToast("error", "Failed to delete sessions");
+      console.error("Failed to delete sessions:", error);
     }
   };
 
@@ -85,22 +104,22 @@ const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
     },
     {
       label: "Delete",
-      icon: <DeleteIcon className="h-4 w-4" />,
+      icon: <DeleteIcon className="h-4 w-4 text-[#505568]" />,
       action: (session: SessionType) => {
         setSessionToDelete(session.id);
         setIsconfirmModalOpen(true);
       },
       variant: "outline" as const,
     },
-   {
-  label: "Share Session",
-  icon: <EditIcon className="h-4 w-4" />,
-  action: (session: SessionType) => {
-    setSessionToShare(session);
-    setIsShareModalOpen(true);
-  },
-  variant: "outline" as const,
-},
+    {
+      label: "Share Session",
+      icon: <EditIcon className="h-4 w-4" />,
+      action: (session: SessionType) => {
+        setSessionToShare(session);
+        setIsShareModalOpen(true);
+      },
+      variant: "outline" as const,
+    },
   ];
 
   const columns = [
@@ -176,7 +195,7 @@ const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
               type="button"
               className="inline-flex items-center gap-2 bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
             >
-              <DeleteIcon className="h-4 w-4" />
+              <DeleteIcon className="h-4 w-4 text-white" />
               Delete Selected ({selectedSessions.length})
             </button>
           )}
@@ -196,9 +215,7 @@ const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
         data={sessions}
         columns={columns}
         onRowClick={(row) => {}}
-        onRowSelect={(selectedRows) =>
-          console.log("Selected rows:", selectedRows)
-        }
+        onRowSelect={(selectedRows) => setSelectedSessions(selectedRows)}
         pageSize={10}
         showCheckbox={true}
         showActions={true}
@@ -208,11 +225,11 @@ const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
         onSelectionChange={(selected: any) => setSelectedSessions(selected)}
       />
 
-<IframeModal
-  sessionId={sessionToShare?.id || ""}
-  open={isShareModalOpen}
-  onOpenChange={setIsShareModalOpen}
-/>
+      <IframeModal
+        sessionId={sessionToShare?.id || ""}
+        open={isShareModalOpen}
+        onOpenChange={setIsShareModalOpen}
+      />
       <ConfirmModal
         open={isConfirmModalOpen}
         title="Delete this session?"
@@ -222,7 +239,6 @@ const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
         onConfirm={async () => {
           if (sessionToDelete) {
             await handleDeleteSession(sessionToDelete);
-            setSessions((prev) => prev.filter((s) => s.id !== sessionToDelete));
             setSessionToDelete(null);
             setIsconfirmModalOpen(false);
           }
@@ -233,7 +249,7 @@ const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
         open={isBulkDeleteModalOpen}
         title="Delete selected sessions?"
         description={`You are about to delete ${selectedSessions.length} session(s). This action cannot be undone.`}
-        confirmText="Delete All"
+        confirmText="Delete"
         cancelText="Cancel"
         onConfirm={handleBulkDelete}
         onCancel={() => setIsBulkDeleteModalOpen(false)}

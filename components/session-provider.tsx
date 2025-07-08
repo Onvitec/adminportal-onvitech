@@ -6,8 +6,11 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 type User = {
-  email?: string;
-  username?: string;
+  id: string;
+  email: string;
+  username: string;
+  first_name?: string;
+  last_name?: string;
 } | null;
 
 interface SessionContextType {
@@ -28,51 +31,88 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    let mounted = true;
+
     const getSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        setIsLoading(true);
+        const { data: { session }, error } = await supabase.auth.getSession();
 
-      if (!session) {
-        setIsLoading(false);
-        return;
+        if (!mounted) return;
+
+        if (error) {
+          console.error("Session error:", error.message);
+          setIsLoading(false);
+          return;
+        }
+
+        if (!session) {
+          setIsLoading(false);
+          return;
+        }
+
+        const userData = {
+          id: session.user.id,
+          email: session.user.email ?? "",
+          username: session.user.user_metadata?.username ||
+                   session.user.email?.split("@")[0] ||
+                   "User",
+          first_name: session.user.user_metadata?.first_name,
+          last_name: session.user.user_metadata?.last_name,
+        };
+        
+        if (mounted) {
+          setUser(userData);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        if (mounted) {
+          console.error("Failed to get session:", error);
+          setIsLoading(false);
+        }
       }
-
-      const userData = {
-        email: session.user.email,
-        username:
-          session.user.user_metadata?.username ||
-          session.user.email?.split("@")[0] ||
-          "User",
-      };
-      setUser(userData);
-      setIsLoading(false);
     };
 
     getSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT") {
-        setUser(null);
-      } else if (session) {
-        const userData = {
-          email: session.user.email,
-          username:
-            session.user.user_metadata?.username ||
-            session.user.email?.split("@")[0] ||
-            "User",
-        };
-        setUser(userData);
-      }
-    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
 
-    return () => subscription?.unsubscribe();
+        if (event === "SIGNED_OUT") {
+          setUser(null);
+        } else if (session) {
+          const userData = {
+            id: session.user.id,
+            email: session.user.email ?? "",
+            username: session.user.user_metadata?.username ||
+                     session.user.email?.split("@")[0] ||
+                     "User",
+            first_name: session.user.user_metadata?.first_name,
+            last_name: session.user.user_metadata?.last_name,
+          };
+          setUser(userData);
+        }
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription?.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    toast.success("Sign out successful!");
-    window.location.href="/login"
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast.success("Signed out successfully!");
+      router.push("/login");
+    } catch (error) {
+      toast.error("Failed to sign out");
+      console.error("Sign out error:", error);
+    }
   };
 
   return (
@@ -82,4 +122,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useSession = () => useContext(SessionContext);
+export const useSession = () => {
+  const context = useContext(SessionContext);
+  if (context === undefined) {
+    throw new Error("useSession must be used within a SessionProvider");
+  }
+  return context;
+};

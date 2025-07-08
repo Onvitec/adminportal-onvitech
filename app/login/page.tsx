@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
+import { showToast } from "@/components/toast";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -20,19 +21,31 @@ export default function LoginPage() {
 
   const handleLogin = async () => {
     setError("");
+    setLoading(true);
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email: form.email,
-      password: form.password,
-    });
+    try {
+      // Validate form inputs
+      if (!form.email || !form.password) {
+        throw new Error("All fields are required");
+      }
 
-    if (authError) {
-      setError(authError.message);
-      toast.error(authError.message);
-      return;
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password,
+      });
+
+      if (authError) {
+        throw authError;
+      }
+
+      showToast("success", "Login successful!");
+      window.location.href = "/dashboard";
+    } catch (err: any) {
+      setError(err.message);
+      showToast("error", err.message);
+    } finally {
+      setLoading(false);
     }
-    toast.success("Login successful!");
-    window.location.href = "/dashboard";
   };
 
   const togglePasswordVisibility = () => {
@@ -71,6 +84,7 @@ export default function LoginPage() {
               type="email"
               placeholder="Enter your email"
               onChange={handleChange}
+              value={form.email}
               required
             />
           </div>
@@ -79,11 +93,11 @@ export default function LoginPage() {
             <div className="flex justify-between items-center">
               <Label htmlFor="password">Password</Label>
               <a
-  href="/forgot-password"
-  className="text-xs text-red-500 hover:underline"
->
-  Forgot Password?
-</a>
+                href="/forgot-password"
+                className="text-xs text-red-500 hover:underline"
+              >
+                Forgot Password?
+              </a>
             </div>
             <div className="relative">
               <Input
@@ -92,8 +106,9 @@ export default function LoginPage() {
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 onChange={handleChange}
+                value={form.password}
                 required
-                className="pr-10" // Add padding to prevent text under icon
+                className="pr-10"
               />
               <button
                 type="button"
@@ -110,10 +125,14 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+          {error && <p className="text-sm text-red-500 text-start">{error}</p>}
 
-          <Button onClick={handleLogin} className="w-full mt-6 bg-[#2E3545] hover:bg-[#2E3545]/90">
-            Sign In
+          <Button
+            onClick={handleLogin}
+            className="w-full mt-6 bg-[#2E3545] hover:bg-[#2E3545]/90"
+            disabled={loading}
+          >
+            {loading ? "Signing In..." : "Sign In"}
           </Button>
         </div>
 
