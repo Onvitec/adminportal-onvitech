@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { showToast } from "./toast";
 
 type User = {
   id: string;
@@ -107,10 +108,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
-      toast.success("Signed out successfully!");
+      showToast("success", "Signed out successfully!");
       router.push("/login");
     } catch (error) {
-      toast.error("Failed to sign out");
+      showToast("error", "Failed to sign out");
       console.error("Sign out error:", error);
     }
   };

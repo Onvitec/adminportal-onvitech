@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '../../lib/supabase'
+import { showToast } from '@/components/toast'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -26,7 +27,7 @@ export default function ForgotPasswordPage() {
       })
 
       if (error) throw error
-      toast.success('Password reset link sent to your email!')
+      showToast('success', 'Password reset link sent to your email!')
     } catch (error: any) {
       toast.error(error.message)
     } finally {

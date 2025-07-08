@@ -21,6 +21,7 @@ import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { toast } from 'sonner';
+import { showToast } from "../toast";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -74,7 +75,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    toast.success("Sign out successful!");
+    showToast("success", "Signed out successfully!");
     window.location.href = "/login";
   };
 

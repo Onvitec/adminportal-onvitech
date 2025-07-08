@@ -52,6 +52,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { showToast } from "@/components/toast";
 type Module = {
   id: string;
   title: string;
@@ -388,10 +389,10 @@ export default function LinearSessionForm() {
       }
       // Redirect to sessions page
       router.push("/sessions");
-      toast.success("Linear Session saved successfully!");
+      showToast("success", "Linear Session saved successfully!");
     } catch (error) {
       console.error("Error saving session:", error);
-      toast.error("Error saving session");
+      showToast
     } finally {
       setIsLoading(false);
     }

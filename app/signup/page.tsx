@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
-import { toast } from "sonner";
+import { showToast } from "@/components/toast";
 
 export default function SignupPage() {
   const [form, setForm] = useState({ 
@@ -74,10 +74,11 @@ export default function SignupPage() {
         throw new Error("Failed to create user profile");
       }
 
-      toast.success("Signup successful! Please log in.");
+      showToast("success", "Signup successful! Please log in.");
       window.location.href = "/login";
     } catch (err: any) {
       setError(err.message || "Failed to create account");
+      showToast("error", err.message || "Failed to create account");
       console.error("Signup error:", err);
     } finally {
       setLoading(false);

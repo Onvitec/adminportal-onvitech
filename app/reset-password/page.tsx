@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import Image from 'next/image'
 import { supabase } from '@/lib/supabase'
+import { showToast } from '@/components/toast'
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('')
@@ -34,10 +35,10 @@ export default function ResetPasswordPage() {
 
       if (error) throw error
       
-      toast.success('Password updated successfully!')
+      showToast('success', 'Password updated successfully!')
       window.location.href = '/login'
     } catch (error: any) {
-      toast.error(error.message)
+      showToast
     } finally {
       setLoading(false)
     }

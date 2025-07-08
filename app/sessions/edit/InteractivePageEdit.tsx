@@ -39,6 +39,7 @@ import { Solution, SolutionCategory } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
 import { VideoUpload } from "@/components/forms/linear-flow/videoo-upload";
 import { toast } from "sonner";
+import { showToast } from "@/components/toast";
 
 type Answer = {
   id: string;
@@ -674,10 +675,10 @@ export default function EditInteractiveSession({
       }
 
       router.push("/sessions");
-      toast.success("Interactive Session updated successfully!");
+      showToast("success", "Interactive Session updated successfully!");
     } catch (error) {
       console.error("Error updating session:", error);
-      toast.error("Error updating  Interactive Session");
+      showToast("error", "Error updating Interactive Session");
     } finally {
       setIsLoading(false);
     }

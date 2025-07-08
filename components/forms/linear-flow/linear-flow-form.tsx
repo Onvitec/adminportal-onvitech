@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/select";
 import { Solution, SolutionCategory } from "@/lib/types";
 import { toast } from "sonner";
+import { showToast } from "@/components/toast";
 
 type Module = {
   id: string;
@@ -294,10 +295,10 @@ export default function LinearSessionForm() {
       }
 
       router.push("/sessions");
-      toast.success("Linear Session created successfully!");
+      showToast("success", "Linear Session created successfully!");
     } catch (error) {
       console.error("Error creating session:", error);
-      toast.error("Error creating Linear Session!");
+      showToast("error", "Error creating Linear Session!");
     } finally {
       setIsLoading(false);
     }

@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { UserType } from "@/lib/types";
+import { showToast } from "../toast";
 
 interface UserManModalProps {
   open: boolean;
@@ -123,7 +124,7 @@ export default function UserManModal({
         }
 
         onUserCreated?.(data);
-        toast.success("User created successfully! Invitation email sent.");
+        showToast("success", "User created successfully! Invitation email sent.");
       } else {
         if (!user) throw new Error("No user selected for editing");
 

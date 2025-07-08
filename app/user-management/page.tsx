@@ -10,6 +10,7 @@ import { UserType } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { ColumnDef } from "@/components/Table/types";
 import { toast } from "sonner";
+import { showToast } from "@/components/toast";
 
 const UsersTable = () => {
   const [openModal, setOpenModal] = useState(false);
@@ -46,7 +47,7 @@ const UsersTable = () => {
   const handleUserCreated = (newUser: UserType) => {
     setUsers((prevUsers) => [newUser, ...prevUsers]);
     setTableKey(prev => prev + 1); // Update key to force re-render
-    toast.success("User created successfully!");
+    showToast("success", "User created successfully!");
   };
 
   const handleUserUpdated = (updatedUser: UserType) => {
@@ -56,7 +57,7 @@ const UsersTable = () => {
       )
     );
     setTableKey(prev => prev + 1); 
-    toast.success("User updated successfully!");
+    showToast("success", "User updated successfully!");
     handleCloseModal();
   window.location.reload(); 
   };
@@ -72,9 +73,9 @@ const UsersTable = () => {
       
       setUsers(prevUsers => prevUsers.filter((u) => u.id !== user.id));
       setTableKey(prev => prev + 1); // Update key to force re-render
-      toast.success("User deleted successfully!");
+      showToast("success", "User deleted successfully!");
     } catch (error) {
-      toast.error("Error deleting user");
+      showToast("error", "Error deleting user");
       console.error("Error deleting user:", error);
     }
   };
