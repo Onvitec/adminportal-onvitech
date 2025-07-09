@@ -51,8 +51,8 @@ export default function EmbedSessionPage() {
 
   const renderSessionContent = () => {
     if (!session) return null;
-
     switch (session.session_type) {
+      // render accoridgly
       case "linear":
         return <LinearEmbed sessionId={session.id} />;
       case "interactive":
