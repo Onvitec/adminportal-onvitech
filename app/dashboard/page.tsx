@@ -17,6 +17,7 @@ import SessionPieChart from "@/components/charts/PieChart";
 
 export default function DashboardPage() {
   const { user, signOut } = useSession();
+  console.log("useftfur",user)
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<SessionType[]>([]);
   const [tableLoading, setTableLoading] = useState(false);

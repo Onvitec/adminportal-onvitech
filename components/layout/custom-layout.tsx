@@ -33,6 +33,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
     email?: string;
     username?: string;
   } | null>(null);
+  console.log("user", user);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const router = useRouter();
   const pathname = usePathname();
