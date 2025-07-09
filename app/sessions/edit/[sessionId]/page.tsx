@@ -2,6 +2,7 @@ import { sessionTypes } from "@/lib/types";
 import LinearSessionForm from "./LinearPageEdit";
 import InteractiveEditPage from "../InteractivePageEdit";
 import { supabase } from "@/lib/supabase";
+import EditSelectionSession from "../SelectionPageEdit";
 
 async function EditPage({ params }: { params: any }) {
   const { sessionId } = params;
@@ -25,8 +26,10 @@ async function EditPage({ params }: { params: any }) {
   } else if (data.session_type === sessionTypes.INTERACTIVE) {
     return <InteractiveEditPage sessionId={data.id} />;
   }
+  else if (data.session_type === sessionTypes.SELECTION) {
+    return <EditSelectionSession sessionId={data.id} />;;
   }
-
+  }
   return <div>Unknown session type</div>;
 }
 
