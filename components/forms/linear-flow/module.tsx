@@ -121,15 +121,7 @@ export function ModuleCard({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant={"ghost"}
-            size="sm"
-            type="button"
-            onClick={() => onDelete()}
-            className="text-sm h-8 hover:text-red-900"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          
           <Button
             variant={"ghost"}
             size="sm"
@@ -138,6 +130,15 @@ export function ModuleCard({
             className="text-sm h-8 text-blue-600 hover:text-gray-900"
           >
             Rename
+          </Button>
+          <Button
+            variant={"ghost"}
+            size="sm"
+            type="button"
+            onClick={() => onDelete()}
+            className="text-sm h-8 hover:text-red-900"
+          >
+            <Trash2 className="h-4 w-4" />
           </Button>
           <Button
             type="button"

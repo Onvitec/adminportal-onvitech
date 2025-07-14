@@ -109,14 +109,14 @@ export function VideoUpload({
 
   // Default state (no file or URL)
   return (
-    <div className="p-4  border-gray-200 rounded-lg col-start-1 col-end-[-1]">
+    <div className="px-4 py-4 border-gray-200 rounded-lg col-start-1 col-end-[-1]">
       <div
-        className="text-center py-6 border-dashed bg-white border-2 border-blue-100 rounded-lg relative"
+        className="text-center py-12 border-dashed bg-white border-2 border-blue-100 rounded-lg relative"
         style={{
           borderWidth: "2px",
         }}
       >
-        <div className="absolute top-0 right-2 justify-between items-center mb-3">
+        <div className="absolute top-2 right-4 justify-between items-center mb-3">
           <Button
             variant="ghost"
             size="sm"

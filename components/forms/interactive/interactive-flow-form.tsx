@@ -40,6 +40,8 @@ import { Solution, SolutionCategory } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
 import { toast } from "sonner";
 import { showToast } from "@/components/toast";
+import Link from "next/link";
+import Heading from "@/components/Heading";
 type Answer = {
   id: string;
   answer_text: string;
@@ -443,8 +445,17 @@ export default function InteractiveSessionForm() {
   };
 
   return (
-    <div className="container mx-auto py-8">
-      <form onSubmit={handleSubmit}>
+    <div className="container mx-auto">
+          <div>
+          <Link href="/sessions">
+            <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md cursor-pointer hover:underline">
+              Back to Session Maker
+            </p>
+          </Link>
+          
+          <Heading>Add New Session</Heading>
+        </div>
+          <form onSubmit={handleSubmit} className="mt-4">
         <Card className="border-none shadow-none px-3">
           <CardHeader className="px-0">
             <CardTitle className="text-2xl font-semibold">
