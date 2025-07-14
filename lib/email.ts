@@ -1,18 +1,36 @@
 import emailjs from '@emailjs/browser'
 
-export const sendPasswordResetEmail = async (email: string, resetLink: string) => {
+interface EmailResult {
+  success?: boolean
+  error?: string
+  details?: string
+}
+
+export const sendPasswordResetEmail = async (email: string, resetLink: string): Promise<EmailResult> => {
   try {
+    if (!process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY) {
+      throw new Error('EmailJS public key is not configured')
+    }
+    
+    // Initialize EmailJS
+    emailjs.init(process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY)
+
     const templateParams = {
       to_email: email,
       reset_link: resetLink,
-      company_name: 'Onvitec'
+      company_name: 'Onvitec',
+      support_email: 'support@onvitec.com',
+      expiry_hours: 24
+    }
+
+    if (!process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || !process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID) {
+      throw new Error('EmailJS service ID or template ID is not configured')
     }
 
     const result = await emailjs.send(
-      process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID!,
-      process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID!,
-      templateParams,
-      process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY!
+      process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
+      process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
+      templateParams
     )
 
     if (result.status !== 200) {

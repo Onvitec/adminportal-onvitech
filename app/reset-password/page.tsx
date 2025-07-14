@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,23 +17,20 @@ export default function ResetPasswordPage() {
   const [validToken, setValidToken] = useState(false)
   const [tokenChecked, setTokenChecked] = useState(false)
   const router = useRouter()
-  const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Supabase automatically handles the token in the URL fragment
-    // Example: http://localhost:3000/reset-password#access_token=xxx&refresh_token=xxx&expires_in=3600...
-    const handleAuth = async () => {
-      const { data, error } = await supabase.auth.getSession()
-      
-      if (error || !data.session) {
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        setValidToken(!!session)
+      } catch (error) {
         setValidToken(false)
-      } else {
-        setValidToken(true)
+      } finally {
+        setTokenChecked(true)
       }
-      setTokenChecked(true)
     }
 
-    handleAuth()
+    checkSession()
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {

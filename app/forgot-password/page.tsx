@@ -8,6 +8,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { showToast } from '@/components/toast'
 import { supabase } from '@/lib/supabase'
+import { sendPasswordResetEmail } from '@/lib/email'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -25,12 +26,22 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     try {
-      // This will make Supabase send the reset email with proper token
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      // Generate a password reset token
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       })
 
       if (error) throw error
+
+      // Generate a password reset link
+      const resetLink = `${window.location.origin}/reset-password`
+
+      // Send email using EmailJS
+      const emailResult = await sendPasswordResetEmail(email, resetLink)
+      
+      if (emailResult.error) {
+        throw new Error(emailResult.error)
+      }
 
       setEmailSent(true)
       showToast('success', 'Password reset link sent to your email! (Expires in 24 hours)')
