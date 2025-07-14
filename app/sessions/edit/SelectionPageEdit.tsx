@@ -71,10 +71,11 @@ export default function EditSelectionSession({
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [sessionName, setSessionName] = useState("");
-  const [solution, setSolution] = useState<Solution | null>(null);
+  const [solutions, setSolutions] = useState<Solution[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(false);
   const [videos, setVideos] = useState<Video[]>([]);
+  const [editingSolution, setEditingSolution] = useState<Solution | null>(null);
 
   useEffect(() => {
     const fetchSessionData = async () => {
@@ -140,26 +141,24 @@ export default function EditSelectionSession({
 
         setVideos(videosWithQuestions);
 
-        // Get solution if exists
-        const { data: solutionData, error: solutionError } = await supabase
+        // Get all solutions for this session
+        const { data: solutionsData, error: solutionsError } = await supabase
           .from("solutions")
           .select("*")
-          .eq("session_id", sessionId)
-          .maybeSingle();
+          .eq("session_id", sessionId);
 
-        if (solutionError) throw solutionError;
+        if (solutionsError) throw solutionsError;
 
-        if (solutionData) {
-          setSolution({
-            id: solutionData.id,
-            category_id: solutionData.category_id,
-            session_id: solutionData.session_id,
-            form_data: solutionData.form_data,
-            emailTarget: solutionData.email_content,
-            link_url: solutionData.link_url,
-            video_url: solutionData.video_url,
-          });
-          setSelectedCategory(solutionData.category_id);
+        if (solutionsData && solutionsData.length > 0) {
+          setSolutions(solutionsData.map(sol => ({
+            id: sol.id,
+            category_id: sol.category_id,
+            session_id: sol.session_id,
+            form_data: sol.form_data,
+            emailTarget: sol.email_content,
+            link_url: sol.link_url,
+            video_url: sol.video_url,
+          })));
         }
       } catch (error) {
         console.error("Error fetching session data:", error);
@@ -442,6 +441,8 @@ export default function EditSelectionSession({
               })
               .eq("id", video.question.db_id);
 
+            if (questionError) throw questionError;
+
             // Process answers
             const existingAnswerIds = video.question.answers
               .filter((a) => a.db_id)
@@ -473,6 +474,7 @@ export default function EditSelectionSession({
                     answer_text: answer.answer_text,
                   })
                   .eq("id", answer.db_id);
+                if (answerError) throw answerError;
               } else {
                 // Create new answer
                 const { error: answerError } = await supabase
@@ -481,6 +483,7 @@ export default function EditSelectionSession({
                     answer_text: answer.answer_text,
                     question_id: video.question.db_id,
                   });
+                if (answerError) throw answerError;
               }
             }
           } else {
@@ -499,10 +502,13 @@ export default function EditSelectionSession({
 
             // Create answers
             for (const answer of video.question.answers) {
-              await supabase.from("answers").insert({
-                answer_text: answer.answer_text,
-                question_id: questionData.id,
-              });
+              const { error: answerError } = await supabase
+                .from("answers")
+                .insert({
+                  answer_text: answer.answer_text,
+                  question_id: questionData.id,
+                });
+              if (answerError) throw answerError;
             }
           }
         } else if (video.db_id) {
@@ -525,8 +531,25 @@ export default function EditSelectionSession({
         }
       }
 
-      // Handle solution
-      if (solution) {
+      // Handle solutions
+      const existingSolutionIds = solutions.map(s => s.id);
+      
+      // Delete solutions that were removed
+      const { data: existingSolutions, error: existingSolutionsError } = 
+        await supabase.from("solutions").select("id").eq("session_id", sessionId);
+      
+      if (existingSolutionsError) throw existingSolutionsError;
+
+      const solutionsToDelete = existingSolutions
+        .filter(s => !existingSolutionIds.includes(s.id))
+        .map(s => s.id);
+
+      for (const solutionId of solutionsToDelete) {
+        await supabase.from("solutions").delete().eq("id", solutionId);
+      }
+
+      // Update or create solutions
+      for (const solution of solutions) {
         let solutionData: any = {
           session_id: sessionId,
           category_id: solution.category_id,
@@ -572,29 +595,19 @@ export default function EditSelectionSession({
 
         if (solution.id) {
           // Update existing solution
-          await supabase
+          const { error: solutionError } = await supabase
             .from("solutions")
             .update(solutionData)
             .eq("id", solution.id);
+          
+          if (solutionError) throw solutionError;
         } else {
           // Create new solution
-          await supabase.from("solutions").insert(solutionData);
-        }
-      } else {
-        // Delete solution if it existed but was removed
-        const { data: existingSolution, error: solutionError } = await supabase
-          .from("solutions")
-          .select("id")
-          .eq("session_id", sessionId)
-          .maybeSingle();
-
-        if (solutionError) throw solutionError;
-
-        if (existingSolution) {
-          await supabase
+          const { error: solutionError } = await supabase
             .from("solutions")
-            .delete()
-            .eq("id", existingSolution.id);
+            .insert(solutionData);
+          
+          if (solutionError) throw solutionError;
         }
       }
 
@@ -610,21 +623,41 @@ export default function EditSelectionSession({
   const addSolution = () => {
     if (!selectedCategory) return;
 
-    setSolution({
+    const newSolution: Solution = {
       id: uuidv4(),
       category_id: selectedCategory,
       session_id: sessionId,
-    });
+      form_data: null,
+      emailTarget: "",
+      link_url: "",
+      video_url: "",
+      videoFile: null,
+    };
+
+    setSolutions([...solutions, newSolution]);
+    setEditingSolution(newSolution);
   };
 
-  const removeSolution = () => {
-    setSolution(null);
-  };
-
-  const updateSolution = (updates: Partial<Solution>) => {
-    if (solution) {
-      setSolution({ ...solution, ...updates });
+  const removeSolution = (solutionId: string) => {
+    setSolutions(solutions.filter(s => s.id !== solutionId));
+    if (editingSolution?.id === solutionId) {
+      setEditingSolution(null);
     }
+  };
+
+  const updateSolution = (updatedSolution: Solution) => {
+    setSolutions(solutions.map(s => 
+      s.id === updatedSolution.id ? updatedSolution : s
+    ));
+    setEditingSolution(null);
+  };
+
+  const startEditingSolution = (solution: Solution) => {
+    setEditingSolution(solution);
+  };
+
+  const cancelEditing = () => {
+    setEditingSolution(null);
   };
 
   if (isFetching) {
@@ -638,7 +671,7 @@ export default function EditSelectionSession({
   }
 
   return (
-    <div className="container mx-auto py-8 ">
+    <div className="container mx-auto py-8">
       <form onSubmit={handleSubmit}>
         <Card className="border-none shadow-none px-3">
           <CardHeader className="px-0">
@@ -839,14 +872,14 @@ export default function EditSelectionSession({
               </div>
             </div>
 
-            {/* Solution */}
+            {/* Solutions Section */}
             <div className="mt-8 border rounded-lg">
               <button
                 type="button"
                 className="w-full flex justify-between items-center p-4"
                 onClick={() => setIsSolutionCollapsed(!isSolutionCollapsed)}
               >
-                <h3 className="text-lg font-medium">Solution</h3>
+                <h3 className="text-lg font-medium">Solutions</h3>
                 {isSolutionCollapsed ? (
                   <ChevronDown className="h-5 w-5" />
                 ) : (
@@ -862,11 +895,7 @@ export default function EditSelectionSession({
                         Solution Category
                       </Label>
                       <Select
-                        value={
-                          solutionCategories
-                            .find((c) => c.id === selectedCategory)
-                            ?.id?.toString() || ""
-                        }
+                        value={selectedCategory?.toString() || ""}
                         onValueChange={(value) =>
                           setSelectedCategory(Number(value))
                         }
@@ -890,30 +919,59 @@ export default function EditSelectionSession({
                       <Button
                         type="button"
                         onClick={addSolution}
-                        disabled={solution !== null}
+                        disabled={!selectedCategory}
                         className="h-10"
                       >
-                        {solution ? "Solution Added" : "Add Solution"}
+                        Add Solution
                       </Button>
-                      {solution && (
-                        <button
-                          type="button"
-                          onClick={removeSolution}
-                          className="h-10 text-red-600 hover:text-red-800"
-                        >
-                          Remove
-                        </button>
-                      )}
                     </div>
                   </div>
 
-                  {solution && (
-                    <SolutionCard
-                      solution={solution}
-                      onUpdate={updateSolution}
-                      onDelete={removeSolution}
-                    />
-                  )}
+                  <div className="space-y-4">
+                    {solutions.map((solution) => (
+                      <div key={solution.id} className="border rounded-lg p-4">
+                        {editingSolution?.id === solution.id ? (
+                          <SolutionCard
+                            solution={editingSolution}
+                            onUpdate={updateSolution}
+                            onCancel={cancelEditing}
+                          />
+                        ) : (
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <h4 className="font-medium">
+                                {solutionCategories.find(
+                                  (c) => c.id === solution.category_id
+                                )?.name || "Solution"}
+                              </h4>
+                              {solution.category_id === 3 && solution.link_url && (
+                                <p className="text-sm text-gray-600 truncate">
+                                  {solution.link_url}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => startEditingSolution(solution)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => removeSolution(solution.id)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

@@ -602,7 +602,7 @@ export default function SelectionSessionForm() {
   };
 
   return (
-    <div className="container mx-auto py-8 max-w-6xl">
+    <div className="container mx-auto py-8">
       <form onSubmit={handleSubmit}>
         <Card className="border-none shadow-none px-3">
           <CardHeader className="px-0">
@@ -632,22 +632,7 @@ export default function SelectionSessionForm() {
                   required
                 />
               </div>
-              <div className="space-y-1">
-                <Label
-                  htmlFor="userId"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  User ID
-                </Label>
-                <Input
-                  id="userId"
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  placeholder="e.g., AI2045864"
-                  className="h-10"
-                  required
-                />
-              </div>
+             
             </div>
 
             <div className="mt-8">
