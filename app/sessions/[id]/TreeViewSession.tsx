@@ -1,246 +1,217 @@
 "use client";
 
+import React, { useEffect, useState, useCallback } from "react";
 import ReactFlow, {
   Controls,
   Background,
   useNodesState,
   useEdgesState,
+  addEdge,
+  Connection,
+  Edge,
+  Node,
   MarkerType,
-  Panel,
-  BezierEdge,
+  NodeProps,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { useEffect } from "react";
 import { VideoType, Question, Answer } from "@/lib/types";
+import { Handle, Position } from "reactflow";
 
-// Custom edge type for beautiful curved lines
-const edgeTypes = {
-  custom: BezierEdge,
-};
+function CustomVideoNode({ data }: NodeProps<{ video: VideoType }>) {
+  return (
+    <div className="p-4 rounded-lg shadow-md bg-white border border-gray-300 text-gray-800 relative w-64">
+      <div className="font-semibold flex items-center gap-2 text-sm text-gray-600 mb-1">
+        🎥 {data.video.title}
+      </div>
+
+      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
+    </div>
+  );
+}
+
+function CustomQuestionNode({ data }: NodeProps<{ question: Question }>) {
+  return (
+    <div className="p-4 rounded-lg shadow-sm bg-white border border-gray-300 text-gray-800 relative w-72">
+      <div className="text-blue-600 font-semibold text-sm flex items-center gap-1 mb-1">
+        ❓ Question
+      </div>
+      <div className="text-sm text-gray-700">{data.question.question_text}</div>
+      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
+    </div>
+  );
+}
+
+function CustomAnswerNode({ data }: NodeProps<{ answer: Answer }>) {
+  return (
+    <div className="p-4 rounded-lg shadow-sm bg-blue-50 border border-blue-200 text-gray-800 relative w-72">
+      <div className="text-blue-700 font-medium text-sm flex items-center gap-1 mb-1">
+        🌟 Answer
+      </div>
+      <div className="text-sm text-gray-700">{data.answer.answer_text}</div>
+      {data.answer.destination_video_id && (
+        <div className="text-xs text-gray-400 mt-2">Leads to another video</div>
+      )}
+      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
+    </div>
+  );
+}
 
 const nodeTypes = {
-  question: QuestionNode,
-  answer: AnswerNode,
-  video: VideoNode,
+  video: CustomVideoNode,
+  question: CustomQuestionNode,
+  answer: CustomAnswerNode,
 };
 
-function QuestionNode({ data }: { data: { label: string; emoji?: string } }) {
-  return (
-    <div className="px-4 py-2 rounded-xl bg-white border-2 border-blue-300 shadow-lg w-[260px] min-h-[100px] flex flex-col justify-center">
-      <div className="flex items-center gap-2">
-        <span className="text-xl">{data.emoji || "❓"}</span>
-        <div>
-          <div className="font-semibold text-blue-800 text-sm">Question</div>
-          <div className="text-blue-600 text-sm mt-1 line-clamp-2">{data.label}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AnswerNode({ data }: { data: { label: string; emoji?: string } }) {
-  return (
-    <div className="px-4 py-2 rounded-xl bg-white border-2 border-green-300 shadow-lg w-[260px] min-h-[100px] flex flex-col justify-center">
-      <div className="flex items-center gap-2">
-        <span className="text-xl">{data.emoji || "💡"}</span>
-        <div>
-          <div className="font-semibold text-green-800 text-sm">Answer</div>
-          <div className="text-green-600 text-sm mt-1 line-clamp-2">{data.label}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function VideoNode({ data }: { data: { label: string; emoji?: string } }) {
-  return (
-    <div className="px-4 py-2 rounded-xl bg-white border-2 border-purple-300 shadow-lg w-[260px] min-h-[100px] flex flex-col justify-center">
-      <div className="flex items-center gap-2">
-        <span className="text-xl">{data.emoji || "🎬"}</span>
-        <div>
-          <div className="font-semibold text-purple-800 text-sm">Video</div>
-          <div className="text-purple-600 text-sm mt-1 line-clamp-2">{data.label}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function TreeViewSession({
-  videos,
-  questions,
-}: {
+interface TreeViewSessionProps {
   videos: VideoType[];
   questions: Question[];
-}) {
+}
+
+export function TreeViewSession({ videos, questions }: TreeViewSessionProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   useEffect(() => {
-    if (videos.length > 0 && questions.length > 0) {
-      const initialNodes: any = [];
-      const initialEdges: any = [];
-      const horizontalSpacing = 360;
-      const verticalSpacing = 200;
-      let currentY = 50;
+    if (!videos.length) return;
 
-      const mainVideo = videos.find((v) => v.is_main) || videos[0];
-      const mainVideoNode = {
-        id: `video-${mainVideo.id}`,
+    const orderedVideos = [...videos].sort(
+      (a:any, b:any) => a.order_index - b.order_index
+    );
+    const visitedVideos = new Set<string>();
+    const createdNodes = new Map<string, Node>();
+    const createdEdges: Edge[] = [];
+
+    const xSpacing = 250;
+    const ySpacing = 180;
+
+    const processVideo = (
+      video: VideoType,
+      parentId: string | null,
+      parentX: number,
+      depth: number
+    ) => {
+      if (visitedVideos.has(video.id)) return;
+      visitedVideos.add(video.id);
+
+      const videoNodeId = `video-${video.id}`;
+      const videoX = parentX;
+
+      const videoNode: Node = {
+        id: videoNodeId,
         type: "video",
-        position: { x: 0, y: currentY },
-        data: {
-          label: mainVideo.title || "Main Video",
-          emoji: "📺",
-        },
+        position: { x: videoX, y: ySpacing * depth },
+        data: { video },
       };
-      initialNodes.push(mainVideoNode);
-      currentY += verticalSpacing;
+      createdNodes.set(videoNodeId, videoNode);
 
-      const mainVideoQuestions = questions.filter((q) => q.video_id === mainVideo.id);
-
-      mainVideoQuestions.forEach((question, qIndex) => {
-        const questionX = (qIndex - (mainVideoQuestions.length - 1) / 2) * horizontalSpacing;
-
-        const questionNode = {
-          id: `question-${question.id}`,
-          type: "question",
-          position: { x: questionX, y: currentY },
-          data: {
-            label: question.question_text,
-            emoji: "❓",
-          },
-        };
-        initialNodes.push(questionNode);
-
-        initialEdges.push({
-          id: `edge-video-${mainVideo.id}-question-${question.id}`,
-          source: `video-${mainVideo.id}`,
-          target: `question-${question.id}`,
-          type: "custom",
+      if (parentId) {
+        createdEdges.push({
+          id: `edge-${parentId}-to-${videoNodeId}`,
+          source: parentId,
+          target: videoNodeId,
           markerEnd: { type: MarkerType.ArrowClosed },
-          style: { strokeWidth: 2, stroke: "#3B82F6" },
+          style: { strokeWidth: 2, stroke: "#9CA3AF" },
+        });
+      }
+
+      const videoQuestions = questions.filter((q) => q.video_id === video.id);
+      const questionStartX =
+        videoX - ((videoQuestions.length - 1) * xSpacing) / 2;
+
+      videoQuestions.forEach((question, qIndex) => {
+        const questionNodeId = `question-${question.id}`;
+        const questionX = questionStartX + qIndex * xSpacing;
+
+        const questionNode: Node = {
+          id: questionNodeId,
+          type: "question",
+          position: { x: questionX, y: ySpacing * (depth + 1) },
+          data: { question },
+        };
+        createdNodes.set(questionNodeId, questionNode);
+
+        createdEdges.push({
+          id: `edge-${videoNodeId}-to-${questionNodeId}`,
+          source: videoNodeId,
+          target: questionNodeId,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { strokeWidth: 2, stroke: "#9CA3AF" },
         });
 
-        const answerY = currentY + verticalSpacing;
-        question.answers.forEach((answer, aIndex) => {
-          const answerX =
-            questionX + (aIndex - (question.answers.length - 1) / 2) * (horizontalSpacing * 0.8);
+        const answers = question.answers || [];
+        const answerStartX =
+          questionX - ((answers.length - 1) * xSpacing * 0.7) / 2;
 
-          const answerNode = {
-            id: `answer-${answer.id}`,
+        answers.forEach((answer, aIndex) => {
+          const answerNodeId = `answer-${answer.id}`;
+          const answerX = answerStartX + aIndex * xSpacing * 0.7;
+
+          const answerNode: Node = {
+            id: answerNodeId,
             type: "answer",
-            position: { x: answerX, y: answerY },
-            data: {
-              label: answer.answer_text,
-              emoji: aIndex === 0 ? "✅" : "💡",
-            },
+            position: { x: answerX, y: ySpacing * (depth + 2) },
+            data: { answer },
           };
-          initialNodes.push(answerNode);
+          createdNodes.set(answerNodeId, answerNode);
 
-          initialEdges.push({
-            id: `edge-question-${question.id}-answer-${answer.id}`,
-            source: `question-${question.id}`,
-            target: `answer-${answer.id}`,
-            type: "custom",
+          createdEdges.push({
+            id: `edge-${questionNodeId}-to-${answerNodeId}`,
+            source: questionNodeId,
+            target: answerNodeId,
             markerEnd: { type: MarkerType.ArrowClosed },
-            style: { strokeWidth: 2, stroke: "#10B981" },
+            style: { strokeWidth: 2, stroke: "#9CA3AF" },
           });
 
-          if (answer.destination_video) {
-            const destVideo = videos.find((v) => v.id === answer.destination_video?.id);
+          if (answer.destination_video_id) {
+            const destVideo = videos.find(
+              (v) => v.id === answer.destination_video_id
+            );
             if (destVideo) {
-              const destVideoY = answerY + verticalSpacing;
-              const destVideoX = answerX;
-
-if (!initialNodes.some((n: { id: string }) => n.id === `video-${destVideo.id}`)) {
-                const destVideoNode = {
-                  id: `video-${destVideo.id}`,
-                  type: "video",
-                  position: { x: destVideoX, y: destVideoY },
-                  data: {
-                    label: destVideo.title || "Next Video",
-                    emoji: "⏭️",
-                  },
-                };
-                initialNodes.push(destVideoNode);
-              }
-
-              initialEdges.push({
-                id: `edge-answer-${answer.id}-video-${destVideo.id}`,
-                source: `answer-${answer.id}`,
-                target: `video-${destVideo.id}`,
-                type: "custom",
-                markerEnd: { type: MarkerType.ArrowClosed },
-                animated: true,
-                style: { strokeWidth: 2, stroke: "#8B5CF6" },
-              });
-
-              const destVideoQuestions = questions.filter((q) => q.video_id === destVideo.id);
-              if (destVideoQuestions.length > 0) {
-                const nextLevelY = destVideoY + verticalSpacing;
-
-                destVideoQuestions.forEach((destQuestion, destQIndex) => {
-                  const destQuestionX =
-                    destVideoX +
-                    (destQIndex - (destVideoQuestions.length - 1) / 2) * (horizontalSpacing * 0.6);
-
-                  if 
-                  (!initialNodes.some((n: { id: string }) => n.id === `video-${destVideo.id}`)
-) 
-                  {
-                    const destQuestionNode = {
-                      id: `question-${destQuestion.id}`,
-                      type: "question",
-                      position: { x: destQuestionX, y: nextLevelY },
-                      data: {
-                        label: destQuestion.question_text,
-                        emoji: "❔",
-                      },
-                    };
-                    initialNodes.push(destQuestionNode);
-
-                    initialEdges.push({
-                      id: `edge-video-${destVideo.id}-question-${destQuestion.id}`,
-                      source: `video-${destVideo.id}`,
-                      target: `question-${destQuestion.id}`,
-                      type: "custom",
-                      markerEnd: { type: MarkerType.ArrowClosed },
-                      style: { strokeWidth: 2, stroke: "#3B82F6" },
-                    });
-                  }
-                });
-              }
+              processVideo(destVideo, answerNodeId, answerX, depth + 3);
             }
           }
         });
       });
+    };
 
-      setNodes(initialNodes);
-      setEdges(initialEdges);
-    }
+    processVideo(orderedVideos[0], null, 0, 0);
+
+    setNodes(Array.from(createdNodes.values()));
+    setEdges(createdEdges);
   }, [videos, questions]);
 
+  const onConnect = useCallback(
+    (params: Connection) => setEdges((eds) => addEdge(params, eds)),
+    [setEdges]
+  );
+
   return (
-    <div className="w-full h-[1000px] bg-gray-50 rounded-xl overflow-hidden border-2 border-gray-200">
+    <div style={{ height: "100vh", width: "100%" }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
         nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
         fitView
-        fitViewOptions={{ padding: 0.5 }}
+        fitViewOptions={{ padding: 0.3 }}
+        defaultEdgeOptions={{
+          style: {
+            strokeWidth: 2,
+            stroke: "#9CA3AF", // Gray color
+          },
+          markerEnd: { type: MarkerType.ArrowClosed },
+        }}
+        nodesDraggable
+        nodesConnectable={false}
+        proOptions={{ hideAttribution: true }}
       >
-        <Controls className="bg-white p-1 rounded-md shadow-sm border" />
-        <Background color="#ddd" gap={30} className="opacity-30" />
-        <Panel position="top-right" className="bg-white p-2 rounded shadow-sm border text-sm">
-          <div className="flex items-center gap-2 font-medium text-purple-700">
-            <span className="text-lg">📊</span>
-            Flowchart View
-          </div>
-        </Panel>
+        <Controls />
+        <Background />
       </ReactFlow>
     </div>
   );

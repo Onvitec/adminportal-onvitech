@@ -108,7 +108,6 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
     fetchData();
   }, [sessionId]);
 
-  console.log(solutions)
   if (loading) {
     return (
       <div className="p-6 text-center">Loading interactive session...</div>
