@@ -1,5 +1,6 @@
 import InteractiveSessionForm from "@/components/forms/interactive/interactive-flow-form";
 import LinearSessionForm from "@/components/forms/linear-flow/linear-flow-form";
+import SelectionSessionForm from "@/components/forms/selection/selection-form";
 import { sessionTypes } from "@/lib/types";
 
 interface PageProps {
@@ -13,8 +14,8 @@ export default async function Page({ params }: PageProps) {
     return <InteractiveSessionForm />;
   } else if (type === sessionTypes.LINEAR_FLOW) {
     return <LinearSessionForm />;
-  }else if(type === sessionTypes.SELECTION){
-    return <div> Selection </div>
+  } else if (type === sessionTypes.SELECTION) {
+    return <SelectionSessionForm />;
   }
 
   return <div>My Post: {type}</div>;

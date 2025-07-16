@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { TreeViewSession } from "./TreeViewSession";
 import { EditIcon } from "@/components/icons";
 import { IframeModal } from "@/components/Modal/IframeModal";
+import ViewSelectionSession from "./SelectionView";
 
 export default function SessionViewPage() {
   const { id } = useParams();
@@ -127,7 +128,7 @@ export default function SessionViewPage() {
       case "interactive":
         return <InteractiveSessionView sessionId={session.id} />;
       case "selection":
-        return <SelectionSessionView sessionId={session.id} />;
+        return <ViewSelectionSession sessionId={session.id} />;
       default:
         return <div>Unknown session type</div>;
     }
