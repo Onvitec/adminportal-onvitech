@@ -75,6 +75,7 @@ export type Solution = {
   link_url?: string;
   videoFile?: File | null;
   video_url?: string;
+  email_content?: string;
 };
 
 export type FormElementType =

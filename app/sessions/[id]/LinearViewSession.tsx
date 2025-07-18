@@ -14,6 +14,8 @@ export function LinearSessionView({ sessionId }: { sessionId: string }) {
   const [solutionsExpanded, setSolutionsExpanded] = useState(true);
   const [loading, setLoading] = useState(true);
 
+  console.log("solutions",solutions)
+
   useEffect(() => {
     const fetchData = async () => {
       try {

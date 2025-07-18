@@ -1019,9 +1019,9 @@ export default function SelectionSessionForm() {
 
             {modalSolution.category_id && (
               <SolutionCard
-                solution={modalSolution}
+                solution={modalSolution as any} //TODO:check again
                 onUpdate={updateModalSolution}
-                isInModal={true}
+                
               />
             )}
 

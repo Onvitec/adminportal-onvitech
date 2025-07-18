@@ -12,7 +12,6 @@ import { Solution, SolutionCategory } from "@/lib/types";
 import { Trash2, Upload, X } from "lucide-react";
 import { Suspense, useState } from "react";
 import { FormBuilder } from "./form-builder";
-import { RichTextEditor } from "./rich-text-editor";
 
 export function SolutionCard({
   solution,
@@ -29,11 +28,10 @@ export function SolutionCard({
 
   const handleChange = (updates: Partial<Solution>) => {
     if (readOnly || !onUpdate) return;
-    setLocalSolution({ ...localSolution, ...updates });
-    
+    const updatedSolution = { ...localSolution, ...updates };
+    setLocalSolution(updatedSolution);
     onUpdate(updates);
   };
-console.log("INCOMING SOLUTIOn",solution);
 
   const renderSolutionInput = () => {
     switch (solution?.category_id) {
@@ -75,43 +73,81 @@ console.log("INCOMING SOLUTIOn",solution);
         );
       case 2: // Email
         return (
-          <div className="space-y-2">
-            <Label>Enter Email</Label>
-            <input
-              value={localSolution.emailTarget || ""}
-              onChange={(e) => handleChange({ emailTarget: e.target.value })}
-              className="w-full p-2 border rounded mb-2"
-              placeholder="Email address to send to"
-              readOnly={readOnly}
-            />
-            <div className="mt-4">
-              <Label className="my-2">Body</Label>
-              <Suspense>
-                <RichTextEditor
-                  value={localSolution.emailContent || ""}
-                  onChange={(value) => handleChange({ emailContent: value })}
-                  // readOnly={readOnly}
+          <div className="space-y-2 p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="font-medium">Email Solution</h4>
+              {!readOnly && onDelete && (
+                <button
+                  onClick={onDelete}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <div className="space-y-4">
+              <div>
+                <Label>Recipient Email</Label>
+                <Input
+                  value={solution.email_content || ""}
+                  onChange={(e) => handleChange({ email_content: e.target.value })}
+                  className="w-full mt-1"
+                  placeholder="Email address to send to"
                 />
-              </Suspense>
+              </div>
+              <div>
+                <Label>Email Subject</Label>
+                <Input
+                  value={solution.emailContent || ""}
+                  onChange={(e) => handleChange({ emailContent: e.target.value })}
+                  className="w-full mt-1"
+                  placeholder="Email subject"
+                />
+              </div>
+             
             </div>
           </div>
         );
       case 3: // Link
         return (
-          <div className="space-y-2 px-4">
-            <Label>Link URL</Label>
-            <Input
-              placeholder="https://example.com"
-              value={solution?.link_url || ""}
-              onChange={(e) => handleChange({ link_url: e.target.value })}
-              readOnly={readOnly}
-            />
+          <div className="space-y-2 p-4">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="font-medium">Link Solution</h4>
+              {!readOnly && onDelete && (
+                <button
+                  onClick={onDelete}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <div>
+              <Label>Link URL</Label>
+              <Input
+                placeholder="https://example.com"
+                value={solution.link_url || ""}
+                onChange={(e) => handleChange({ link_url: e.target.value })}
+                readOnly={readOnly}
+              />
+            </div>
           </div>
         );
       case 4: // Video
         if (readOnly) {
           return (
             <div className="p-4 border border-gray-200 rounded-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="font-medium">Video Solution</h4>
+                {!readOnly && onDelete && (
+                  <button
+                    onClick={onDelete}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
               {solution.video_url && (
                 <div className="bg-black rounded-lg overflow-hidden">
                   <video
@@ -127,6 +163,18 @@ console.log("INCOMING SOLUTIOn",solution);
 
         return (
           <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h4 className="font-medium">Video Solution</h4>
+              {!readOnly && onDelete && (
+                <button
+                  onClick={onDelete}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            
             {/* If we have a URL but no file (existing video from DB) */}
             {solution.video_url && !solution.videoFile && (
               <div className="bg-black rounded-lg overflow-hidden relative group">

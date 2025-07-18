@@ -308,7 +308,7 @@ export default function LinearSessionForm() {
           if (solutionCategory === 1) {
             solutionData.form_data = solution.form_data;
           } else if (solutionCategory === 2) {
-            solutionData.email_content = solution.emailTarget;
+            solutionData.email_content = solution.email_content;
           } else if (solutionCategory === 3) {
             solutionData.link_url = solution.link_url;
           } else if (solutionCategory === 4) {
