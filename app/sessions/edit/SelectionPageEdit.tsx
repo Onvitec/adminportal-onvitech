@@ -75,7 +75,8 @@ export default function EditSelectionSession({
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(false);
   const [videos, setVideos] = useState<Video[]>([]);
-  const [editingSolution, setEditingSolution] = useState<Solution | null>(null);
+  const [editingSolutionId, setEditingSolutionId] = useState<string | null>(null);
+  const [editingSolutionDraft, setEditingSolutionDraft] = useState<Solution | null>(null);
 
   useEffect(() => {
     const fetchSessionData = async () => {
@@ -156,6 +157,7 @@ export default function EditSelectionSession({
             session_id: sol.session_id,
             form_data: sol.form_data,
             emailTarget: sol.email_content,
+            emailContent: sol.email_content,
             link_url: sol.link_url,
             video_url: sol.video_url,
           })));
@@ -560,7 +562,7 @@ export default function EditSelectionSession({
         if (solution.category_id === 1) {
           solutionData.form_data = solution.form_data;
         } else if (solution.category_id === 2) {
-          solutionData.email_content = solution.emailTarget;
+          solutionData.email_content = solution.emailContent || solution.emailTarget;
         } else if (solution.category_id === 3) {
           solutionData.link_url = solution.link_url;
         } else if (solution.category_id === 4) {
@@ -627,37 +629,62 @@ export default function EditSelectionSession({
       id: uuidv4(),
       category_id: selectedCategory,
       session_id: sessionId,
-      form_data: null,
-      emailTarget: "",
-      link_url: "",
-      video_url: "",
+      form_data: selectedCategory === 1 ? {
+        title: "",
+        elements: [{
+          id: `elem-${Date.now()}`,
+          type: "text",
+          label: "Name",
+          value: "",
+        }]
+      } : null,
+      emailTarget: selectedCategory === 2 ? "" : undefined,
+      emailContent: selectedCategory === 2 ? "" : undefined,
+      link_url: selectedCategory === 3 ? "" : undefined,
+      video_url: selectedCategory === 4 ? "" : undefined,
       videoFile: null,
     };
 
     setSolutions([...solutions, newSolution]);
-    setEditingSolution(newSolution);
+    setEditingSolutionId(newSolution.id);
+    setEditingSolutionDraft({ ...newSolution });
   };
 
   const removeSolution = (solutionId: string) => {
     setSolutions(solutions.filter(s => s.id !== solutionId));
-    if (editingSolution?.id === solutionId) {
-      setEditingSolution(null);
+    if (editingSolutionId === solutionId) {
+      setEditingSolutionId(null);
+      setEditingSolutionDraft(null);
     }
   };
 
-  const updateSolution = (updatedSolution: Solution) => {
-    setSolutions(solutions.map(s => 
-      s.id === updatedSolution.id ? updatedSolution : s
-    ));
-    setEditingSolution(null);
+  const startEditingSolution = (solutionId: string) => {
+    const solutionToEdit = solutions.find(s => s.id === solutionId);
+    if (solutionToEdit) {
+      setEditingSolutionId(solutionId);
+      setEditingSolutionDraft({ ...solutionToEdit });
+    }
   };
 
-  const startEditingSolution = (solution: Solution) => {
-    setEditingSolution(solution);
+  const updateSolutionDraft = (updatedFields: Partial<Solution>) => {
+    if (editingSolutionDraft) {
+      setEditingSolutionDraft({ ...editingSolutionDraft, ...updatedFields });
+    }
+  };
+
+  const saveSolution = () => {
+    if (editingSolutionDraft && editingSolutionId) {
+      setSolutions(solutions.map(s => 
+        s.id === editingSolutionId ? { ...editingSolutionDraft } : s
+      ));
+      setEditingSolutionId(null);
+      setEditingSolutionDraft(null);
+    }
   };
 
   const cancelEditing = () => {
-    setEditingSolution(null);
+    setEditingSolutionId(null);
+    setEditingSolutionDraft(null);
   };
 
   if (isFetching) {
@@ -930,12 +957,29 @@ export default function EditSelectionSession({
                   <div className="space-y-4">
                     {solutions.map((solution) => (
                       <div key={solution.id} className="border rounded-lg p-4">
-                        {editingSolution?.id === solution.id ? (
-                          <SolutionCard
-                            solution={editingSolution}
-                            onUpdate={updateSolution}
-                            onCancel={cancelEditing}
-                          />
+                        {editingSolutionId === solution.id ? (
+                          <div className="space-y-4">
+                            <SolutionCard
+                              solution={editingSolutionDraft || solution}
+                              onUpdate={updateSolutionDraft}
+                              onDelete={() => removeSolution(solution.id)}
+                            />
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                onClick={cancelEditing}
+                                className="h-10"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                onClick={saveSolution}
+                                className="h-10"
+                              >
+                                Save
+                              </Button>
+                            </div>
+                          </div>
                         ) : (
                           <div className="flex justify-between items-center">
                             <div>
@@ -944,9 +988,24 @@ export default function EditSelectionSession({
                                   (c) => c.id === solution.category_id
                                 )?.name || "Solution"}
                               </h4>
+                              {solution.category_id === 1 && (
+                                <p className="text-sm text-gray-600 truncate">
+                                  Form solution
+                                </p>
+                              )}
+                              {solution.category_id === 2 && solution.emailTarget && (
+                                <p className="text-sm text-gray-600 truncate">
+                                  Email: {solution.emailTarget}
+                                </p>
+                              )}
                               {solution.category_id === 3 && solution.link_url && (
                                 <p className="text-sm text-gray-600 truncate">
-                                  {solution.link_url}
+                                  Link: {solution.link_url}
+                                </p>
+                              )}
+                              {solution.category_id === 4 && solution.video_url && (
+                                <p className="text-sm text-gray-600 truncate">
+                                  Video solution
                                 </p>
                               )}
                             </div>
@@ -954,7 +1013,7 @@ export default function EditSelectionSession({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => startEditingSolution(solution)}
+                                onClick={() => startEditingSolution(solution.id)}
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
