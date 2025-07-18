@@ -26,7 +26,6 @@ export default function SessionViewPage() {
   const [treeViewEnabled, setTreeViewEnabled] = useState(false);
   const [isIframeModalOpen, setIsIframeModalOpen] = useState(false);
 
-
   useEffect(() => {
     if (id) {
       fetchSession();
@@ -119,7 +118,13 @@ export default function SessionViewPage() {
 
   const renderSessionContent = () => {
     if (treeViewEnabled) {
-      return <TreeViewSession videos={videos} questions={questions} />;
+      return (
+        <TreeViewSession
+          videos={videos}
+          questions={questions}
+          sessionId={session?.id || ""}
+        />
+      );
     }
 
     switch (session?.session_type) {
@@ -162,35 +167,38 @@ export default function SessionViewPage() {
   return (
     <div className=" py-2">
       <div className="flex items-center justify-between px-4 py-4">
-  <div>
-    <p 
-      className="cursor-pointer hover:underline text-[13px] text-[#7E8B9F] font-medium" 
-      onClick={() => router.push("/sessions")}
-    >
-      Back to Session Maker
-    </p>
-  </div>
-  <div className="flex gap-4">
-    <Button onClick={() => router.push(`/sessions/edit/${id}`)} variant="outline" className="mt-4 cursor-pointer">
-      Edit Session
-    </Button>
-  <Button 
-  onClick={() => setIsIframeModalOpen(true)} 
-  className="mt-4 flex items-center gap-2 cursor-pointer"
->
-  <EditIcon className="w-4 h-4 text-white" />
-  Share Session
-</Button>
+        <div>
+          <p
+            className="cursor-pointer hover:underline text-[13px] text-[#7E8B9F] font-medium"
+            onClick={() => router.push("/sessions")}
+          >
+            Back to Session Maker
+          </p>
+        </div>
+        <div className="flex gap-4">
+          <Button
+            onClick={() => router.push(`/sessions/edit/${id}`)}
+            variant="outline"
+            className="mt-4 cursor-pointer"
+          >
+            Edit Session
+          </Button>
+          <Button
+            onClick={() => setIsIframeModalOpen(true)}
+            className="mt-4 flex items-center gap-2 cursor-pointer"
+          >
+            <EditIcon className="w-4 h-4 text-white" />
+            Share Session
+          </Button>
 
-{/* Add this at the bottom of your component, just before the final closing div */}
-<IframeModal 
-  sessionId={id as string}
-  open={isIframeModalOpen}
-  onOpenChange={setIsIframeModalOpen}
-/>
-
-  </div>
-</div>
+          {/* Add this at the bottom of your component, just before the final closing div */}
+          <IframeModal
+            sessionId={id as string}
+            open={isIframeModalOpen}
+            onOpenChange={setIsIframeModalOpen}
+          />
+        </div>
+      </div>
       <Card className="border-none shadow-none">
         <CardHeader className="px-6 border-b border-gray-200 ">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -235,7 +243,7 @@ export default function SessionViewPage() {
               </p>
             </div>
 
-             <div>
+            <div>
               <h3 className="text-sm font-medium text-gray-500">Session Id</h3>
               <p className="text-base font-medium mt-1 capitalize">
                 {session.id}
