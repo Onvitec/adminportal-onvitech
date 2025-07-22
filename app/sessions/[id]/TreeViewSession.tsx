@@ -18,6 +18,7 @@ import { VideoType, Question, Answer, Solution } from "@/lib/types";
 import { Handle, Position } from "reactflow";
 import { supabase } from "@/lib/supabase";
 import { solutionCategories } from "@/lib/utils";
+import { Loader } from "@/components/Loader";
 
 function CustomVideoNode({ data }: NodeProps<{ video: VideoType }>) {
   return (
@@ -284,7 +285,7 @@ export function TreeViewSession({
   );
 
   if (loading) {
-    return <div className="text-center py-8">Loading session tree...</div>;
+    return <div className="text-center py-8"><Loader size="md"/></div>;
   }
 
   return (

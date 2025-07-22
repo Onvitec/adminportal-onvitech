@@ -6,6 +6,7 @@ import { Module, Solution, SolutionCategory } from "@/lib/types";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SolutionCard } from "@/components/SolutionCard";
+import { Loader } from "@/components/Loader";
 
 export function LinearSessionView({ sessionId }: { sessionId: string }) {
   const [modules, setModules] = useState<Module[]>([]);
@@ -73,7 +74,7 @@ export function LinearSessionView({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   if (loading) {
-    return <div>Loading session data...</div>;
+    return <div><Loader size="md"/></div>;
   }
 
   return (

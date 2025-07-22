@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import LinearEmbed from "./linear-embed";
 import InteractiveSessionEmbed from "./linear-embed";
 import { SelectionSessionEmbed } from "./selection-based-embed";
+import { Loader } from "@/components/Loader";
 
 type SessionType = {
   id: string;
@@ -68,7 +69,8 @@ export default function EmbedSessionPage() {
     return (
       <div className="flex justify-center items-center min-h-[300px]">
         <div className="animate-pulse text-muted-foreground">
-          Loading session...
+               <div><Loader size="md"/></div>;
+          
         </div>
       </div>
     );

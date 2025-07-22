@@ -1,5 +1,6 @@
 
 "use client";
+import { Loader } from "@/components/Loader";
 import { SolutionCard } from "@/components/SolutionCard";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -225,7 +226,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <p className="text-lg font-medium">Loading session content...</p>
+     <div><Loader size="md"/></div>;
       </div>
     );
   }

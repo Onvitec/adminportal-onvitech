@@ -7,6 +7,7 @@ import { Answers, DestinationVedio, Questions } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { SolutionCard } from "@/components/SolutionCard";
+import { Loader } from "@/components/Loader";
 
 export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
   const [videos, setVideos] = useState<VideoType[]>([]);
@@ -110,7 +111,7 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
 
   if (loading) {
     return (
-      <div className="p-6 text-center">Loading interactive session...</div>
+      <div className="p-6 text-center"><Loader size="md"/></div>
     );
   }
 

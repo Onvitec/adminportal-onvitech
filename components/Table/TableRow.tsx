@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import TableCell from "./TableCell";
 import TableCheckbox from "./TableCheckbox";
 import TableActions from "./TableActions";
@@ -35,16 +35,29 @@ export default function TableRow({
   showActions,
   actions,
 }: TableRowProps<any>) {
+  const router = useRouter();
+
+  const handleRowClick = (e: React.MouseEvent) => {
+    // Prevent navigation if clicking on checkbox or actions
+    const target = e.target as HTMLElement;
+    if (
+      target.closest('input[type="checkbox"]') || 
+      target.closest('.table-actions')
+    ) {
+      return;
+    }
+    
+    onClick?.(); // Call the original onClick if it exists
+    router.push(`/sessions/${row.id}`); // Navigate to session view page
+  };
+
   return (
     <tr
       key={rowIndex}
       className={`${isSelected ? "bg-gray-50" : ""} ${
-        isSelectable ? "cursor-pointer hover:bg-gray-50" : ""
-      }`}
-      // Remove hover handlers since not needed
-      // onMouseEnter={() => setIsHovered(true)}
-      // onMouseLeave={() => setIsHovered(false)}
-      onClick={onClick}
+        isSelectable ? "cursor-pointer hover:bg-gray-100" : ""
+      } transition-colors duration-100`} // Added smooth transition
+      onClick={handleRowClick}
     >
       {showCheckbox && (
         <td className="relative w-12 px-6 sm:w-16 sm:px-8">
@@ -65,14 +78,17 @@ export default function TableRow({
         />
       ))}
 
-       {showActions && actions && (
-        <td className="whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium">
+      {showActions && actions && (
+        <td 
+          className="whitespace-nowrap py-4 pl-3 pr-6 text-right text-sm font-medium table-actions"
+          onClick={(e) => e.stopPropagation()} // Prevent row click when clicking actions
+        >
           <TableActions 
             actions={actions.map(action => ({
               ...action,
               action: () => action.action(row)
-            }))} 
-            isVisible={true} 
+            }))}
+            isVisible={true}
           />
         </td>
       )}

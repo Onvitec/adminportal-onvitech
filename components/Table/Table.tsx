@@ -101,24 +101,24 @@ function TableInner<T extends { id: string | number }>(
                     </td>
                   </tr>
                 ) : (
-                  paginatedData.map((row, rowIndex) => (
-                    <TableRow
-                      key={row.id ?? rowIndex}
-                      row={row}
-                      rowIndex={rowIndex}
-                      columns={columns}
-                      showCheckbox={showCheckbox}
-                      isSelected={selectedRows.includes(row)}
-                      onSelect={(isSelected: boolean) => {
-                        handleSelectRow(row, isSelected);
-                        onRowSelect?.(row as any);
-                      }}
-                      onClick={() => onRowClick?.(row)}
-                      isSelectable={isSelectable}
-                      showActions={showActions}
-                      actions={actions}
-                    />
-                  ))
+                  // Inside the TableInner component's return statement:
+paginatedData.map((row, rowIndex) => (
+  <TableRow
+    key={row.id ?? rowIndex}
+    row={row}
+    rowIndex={rowIndex}
+    columns={columns}
+    showCheckbox={showCheckbox}
+    isSelected={selectedRows.includes(row)}
+    onSelect={(isSelected: boolean) => {
+      handleSelectRow(row, isSelected);
+      onRowSelect?.(row as any);
+    }}
+    isSelectable={isSelectable}
+    showActions={showActions}
+    actions={actions}
+  />
+))
                 )}
               </tbody>
             </table>

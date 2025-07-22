@@ -38,6 +38,7 @@ import { cn, solutionCategories } from "@/lib/utils";
 import { Solution, SolutionCategory } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
 import { VideoUpload } from "@/components/forms/linear-flow/videoo-upload";
+import { Loader } from "@/components/Loader";
 
 type Answer = {
   id: string;
@@ -691,7 +692,8 @@ export default function EditSelectionSession({
     return (
       <div className="container mx-auto py-8">
         <div className="flex justify-center items-center h-64">
-          <p>Loading session data...</p>
+               <div><Loader size="md"/></div>;
+          
         </div>
       </div>
     );

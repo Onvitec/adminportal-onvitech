@@ -15,6 +15,7 @@ import { TreeViewSession } from "./TreeViewSession";
 import { EditIcon } from "@/components/icons";
 import { IframeModal } from "@/components/Modal/IframeModal";
 import ViewSelectionSession from "./SelectionView";
+import { Loader } from "@/components/Loader";
 
 export default function SessionViewPage() {
   const { id } = useParams();
@@ -144,7 +145,8 @@ export default function SessionViewPage() {
       <div className=" w-full mx-auto py-8">
         <div className="flex justify-center items-center min-h-[300px]">
           <div className="animate-pulse text-muted-foreground">
-            Loading session details...
+                 <div><Loader size="md"/></div>;
+            
           </div>
         </div>
       </div>
@@ -243,12 +245,7 @@ export default function SessionViewPage() {
               </p>
             </div>
 
-            <div>
-              <h3 className="text-sm font-medium text-gray-500">Session Id</h3>
-              <p className="text-base font-medium mt-1 capitalize">
-                {session.id}
-              </p>
-            </div>
+            
           </div>
 
           {/* Content Section */}

@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import { showToast } from "@/components/toast";
 import Link from "next/link";
 import Heading from "@/components/Heading";
+import { Loader } from "@/components/Loader";
 
 type Answer = {
   id: string;
@@ -710,7 +711,7 @@ export default function EditInteractiveSession({
     return (
       <div className="container mx-auto py-8 max-w-4xl">
         <div className="flex justify-center items-center h-64">
-          <p>Loading session data...</p>
+     <div><Loader size="md"/></div>;
         </div>
       </div>
     );
