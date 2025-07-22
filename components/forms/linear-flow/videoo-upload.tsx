@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { VideoType } from "@/lib/types";
 import { Trash2, Upload, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 export function VideoUpload({
   video,
@@ -15,11 +15,22 @@ export function VideoUpload({
   handleFileChange: (file: File | null) => void;
 }) {
   const [file, setFile] = useState<File | null>(video.file);
-  const [showControls, setShowControls] = useState(false);
+
+  // Memoize the video URL to prevent unnecessary recreations
+  const videoUrl = useMemo(() => {
+    return file ? URL.createObjectURL(file) : null;
+  }, [file]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
+      const sizeInMB = selectedFile.size / (1024 * 1024);
+
+      if (sizeInMB > 50) {
+        alert("File size exceeds 50mb. Please upload a smaller file.");
+        return;
+      }
+
       setFile(selectedFile);
       handleFileChange(selectedFile);
     }
@@ -34,7 +45,7 @@ export function VideoUpload({
   if (video.url && !file) {
     return (
       <div className="p-4 border border-gray-200 rounded-lg">
-        <div className=" rounded-lg overflow-hidden relative group">
+        <div className="rounded-lg overflow-hidden relative group">
           <div className="absolute top-0 left-0 right-0 z-10 p-3 flex justify-between items-start pointer-events-none">
             <h4 className="text-sm font-medium text-white bg-opacity-50 px-2 py-1 rounded">
               {video.title || `Video ${video.id.split("-")[0]}`}
@@ -71,7 +82,6 @@ export function VideoUpload({
 
   // If we have a file (new upload)
   if (file) {
-    const videoUrl = URL.createObjectURL(file);
     const fileName = file.name.split(".").slice(0, -1).join(".");
 
     return (
@@ -79,14 +89,6 @@ export function VideoUpload({
         <div className="bg-black rounded-lg overflow-hidden relative group">
           <div className="absolute top-0 left-0 right-0 z-10 p-3 flex justify-between items-start pointer-events-none">
             <div className="flex gap-2 pointer-events-auto">
-              {/* <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleClearFile}
-                className="bg-black bg-opacity-50 rounded-full p-2 h-auto w-auto hover:bg-opacity-70"
-              >
-                <X className="h-4 w-4 text-white" />
-              </Button> */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -98,9 +100,10 @@ export function VideoUpload({
             </div>
           </div>
           <video
-            src={videoUrl}
+            src={videoUrl!}
             controls
             className="w-full h-[200px] aspect-video object-cover"
+            key={videoUrl} 
           />
         </div>
       </div>

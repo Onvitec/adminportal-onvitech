@@ -116,7 +116,7 @@ export default function InteractiveSessionForm() {
     setVideos(
       videos.map((v) =>
         v.id === videoId
-          ? { ...v, file, title: file?.name.split(".")[0] || v.title }
+          ? { ...v, file} // to add a video title change this to { ...v, file, title: file?.name.split(".")[0] || v.title }
           : v
       )
     );
@@ -517,7 +517,9 @@ export default function InteractiveSessionForm() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             const newTitle = prompt(
                               "Enter new video title",
                               video.title
@@ -533,6 +535,7 @@ export default function InteractiveSessionForm() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          type="button"
                           onClick={() => toggleExpandVideo(video.id)}
                           className="h-8 w-8 p-0 text-gray-500 hover:text-gray-900"
                         >
@@ -544,6 +547,7 @@ export default function InteractiveSessionForm() {
                         </Button>
                         <Button
                           variant="ghost"
+                          type="button"
                           size="sm"
                           onClick={() => removeVideo(video.id)}
                           className="h-8 w-8 p-0 text-gray-500 hover:text-gray-900"
