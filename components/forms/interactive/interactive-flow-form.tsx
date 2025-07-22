@@ -247,10 +247,10 @@ export default function InteractiveSessionForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-     if (!solution) {
-      showToast("error", "Please add a solution before creating the session");
-      return;
-    }
+    //  if (!solution) {
+    //   showToast("error", "Please add a solution before creating the session");
+    //   return;
+    // }
     setIsLoading(true);
 
     try {

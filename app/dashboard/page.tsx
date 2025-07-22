@@ -14,6 +14,7 @@ import Table from "@/components/Table/Table";
 import { SessionType } from "@/lib/types";
 import { ColumnDef } from "@/components/Table/types";
 import SessionPieChart from "@/components/charts/PieChart";
+import { Loader } from "@/components/Loader";
 
 export default function DashboardPage() {
   const { user, signOut } = useSession();
@@ -238,8 +239,7 @@ const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
     router.push(`sessions/${row.id}`);
   };
 
-  if (loading) return <p>Loading...</p>;
-
+if (loading) return <Loader size="lg" className="h-screen" />;
   return (
   <div className="p-4  h-screen"> {/* Changed to h-screen and overflow-y-auto */}
       <Heading>Hey there, {user?.first_name} {user?.last_name}</Heading>

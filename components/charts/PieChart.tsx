@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { supabase } from '../../lib/supabase';
+import { Loader } from '../Loader';
 
 const COLORS = ['#00C27C', '#242B42']; // Green = Completed, Dark = In Progress
 
@@ -65,7 +66,7 @@ export default function SessionPieChart() {
       </div>
 
       {loading ? (
-        <div className="text-sm text-gray-500 mt-2">Loading...</div>
+        <div className="text-sm text-gray-500 mt-2"><Loader size='sm'/></div>
       ) : (
         <div className="flex gap-4 mt-2">
           {data.map((entry, index) => (

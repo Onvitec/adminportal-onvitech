@@ -6,6 +6,7 @@ import { useTable } from "./useTable";
 import TableHeader from "./TableHeader";
 import TableRow from "./TableRow";
 import TablePagination from "./TablePagination";
+import { Loader } from "../Loader";
 
 function TableInner<T extends { id: string | number }>(
   {
@@ -80,8 +81,8 @@ function TableInner<T extends { id: string | number }>(
                       className="py-8 text-center"
                     >
                       <div className="flex justify-center">
-                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] motion-reduce:animate-[spin_1.5s_linear_infinite]">
-                          <span className="sr-only">Loading...</span>
+                        <div className="">
+                          <Loader size="sm"/>
                         </div>
                       </div>
                     </td>

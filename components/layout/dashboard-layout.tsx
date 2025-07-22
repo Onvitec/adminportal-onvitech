@@ -18,12 +18,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useMediaQuery } from "../../hooks/use-media-query";
 import { useSession } from "../session-provider";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const { user, signOut } = useSession();
+  const router = useRouter();
 
   // Close mobile sidebar when switching to desktop
   useEffect(() => {
@@ -119,8 +121,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                       <AvatarFallback>{initials}</AvatarFallback>
                     </Avatar>
                     <div className="hidden sm:flex flex-col items-start justify-center">
-                      <p className="text-sm font-medium">{user.first_name} {user.last_name}</p>
-                      <p className="text-xs text-muted-foreground">{user.email}</p>
+                      <p className="text-sm font-medium">
+                        {user.first_name} {user.last_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {user.email}
+                      </p>
                     </div>
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </Button>
@@ -128,11 +134,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>Profile</DropdownMenuItem>
-                  <DropdownMenuItem>Settings</DropdownMenuItem>
+                  {/* <DropdownMenuItem>Profile</DropdownMenuItem> */}
+                  <DropdownMenuItem onClick={() => router.push("/settings")} className="cursor-pointer">
+                    Settings
+                  </DropdownMenuItem>{" "}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem onClick={signOut} className="cursor-pointer">
+                    <LogOut className=" h-4 w-4 cursor-pointer" />
                     <span>Sign out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
