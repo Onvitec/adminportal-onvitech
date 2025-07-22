@@ -37,7 +37,7 @@ export function SolutionCard({
     switch (solution?.category_id) {
       case 1: // Form
         return (
-          <div className="rounded-lg p-4">
+          <div className="rounded-lg py-4">
             <div className="flex justify-between items-center mb-4">
               <h4 className="font-medium">Form Solution</h4>
               {!readOnly && onDelete && (
@@ -73,7 +73,7 @@ export function SolutionCard({
         );
       case 2: // Email
         return (
-          <div className="space-y-2 p-4">
+          <div className="space-y-2 py-4">
             <div className="flex justify-between items-center mb-4">
               <h4 className="font-medium">Email Solution</h4>
               {!readOnly && onDelete && (
@@ -110,7 +110,7 @@ export function SolutionCard({
         );
       case 3: // Link
         return (
-          <div className="space-y-2 p-4">
+          <div className="space-y-2  py-4">
             <div className="flex justify-between items-center mb-4">
               <h4 className="font-medium">Link Solution</h4>
               {!readOnly && onDelete && (
@@ -136,7 +136,7 @@ export function SolutionCard({
       case 4: // Video
         if (readOnly) {
           return (
-            <div className="p-4 border border-gray-200 rounded-lg">
+            <div className="py-2 border border-gray-200 rounded-lg">
               <div className="flex justify-between items-center mb-4">
                 <h4 className="font-medium">Video Solution</h4>
                 {!readOnly && onDelete && (
