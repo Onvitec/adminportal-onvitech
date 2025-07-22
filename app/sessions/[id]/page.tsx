@@ -218,6 +218,7 @@ export default function SessionViewPage() {
                   id="tree-view-mode"
                   checked={treeViewEnabled}
                   onCheckedChange={setTreeViewEnabled}
+                  className="cursor-pointer"
                 />
                 <Label htmlFor="tree-view-mode text-[16px] text-[#242B42] font-semibold">
                   Enable Tree View

@@ -19,12 +19,13 @@ import { Handle, Position } from "reactflow";
 import { supabase } from "@/lib/supabase";
 import { solutionCategories } from "@/lib/utils";
 import { Loader } from "@/components/Loader";
+import { Answers, DestinationVedio, Questions } from "@/components/icons";
 
 function CustomVideoNode({ data }: NodeProps<{ video: VideoType }>) {
   return (
-    <div className="p-4 rounded-lg shadow-md bg-white border border-gray-300 text-gray-800 relative w-64">
-      <div className="font-semibold flex items-center gap-2 text-sm text-gray-600 mb-1">
-        🎥 {data.video.title}
+    <div className="p-4 rounded-lg shadow-md bg-white border border-gray-300 text-gray-800 w-64 h-full flex flex-col justify-center items-center text-center">
+      <div className="font-semibold flex items-center gap-2 text-[16px] text-[#242B42] mb-1">
+        <DestinationVedio /> {data.video.title}
       </div>
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
@@ -34,11 +35,13 @@ function CustomVideoNode({ data }: NodeProps<{ video: VideoType }>) {
 
 function CustomQuestionNode({ data }: NodeProps<{ question: Question }>) {
   return (
-    <div className="p-4 rounded-lg shadow-sm bg-white border border-gray-300 text-gray-800 relative w-72">
-      <div className="text-blue-600 font-semibold text-sm flex items-center gap-1 mb-1">
-        ❓ Question
+    <div className="p-4 rounded-lg shadow-sm bg-white border border-gray-300 text-gray-800 w-72 h-full flex flex-col justify-center items-center text-center">
+      <div className="text-[#242B42] font-medium text-[12px] flex items-center gap-1 mb-1">
+        <Questions /> Question
       </div>
-      <div className="text-sm text-gray-700">{data.question.question_text}</div>
+      <div className="text-[16px] text-[#242B42] font-semibold">
+        {data.question.question_text}
+      </div>
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
     </div>
@@ -47,11 +50,13 @@ function CustomQuestionNode({ data }: NodeProps<{ question: Question }>) {
 
 function CustomAnswerNode({ data }: NodeProps<{ answer: Answer }>) {
   return (
-    <div className="p-4 rounded-lg shadow-sm bg-blue-50 border border-blue-200 text-gray-800 relative w-72">
-      <div className="text-blue-700 font-medium text-sm flex items-center gap-1 mb-1">
-        🌟 Answer
+    <div className="p-4 rounded-lg shadow-sm bg-[#EBEEF4] border border-blue-200 text-gray-800 w-72 h-full flex flex-col justify-center items-center text-center">
+      <div className="text-[#242B42] font-medium text-[12px] flex items-center gap-1 mb-1">
+        <Answers /> Answer
       </div>
-      <div className="text-sm text-gray-700">{data.answer.answer_text}</div>
+      <div className="text-[16px] text-[#242B42] font-semibold">
+        {data.answer.answer_text}
+      </div>
       {data.answer.destination_video_id && (
         <div className="text-xs text-gray-400 mt-2">Leads to another video</div>
       )}
@@ -63,18 +68,16 @@ function CustomAnswerNode({ data }: NodeProps<{ answer: Answer }>) {
 
 function CustomSolutionNode({ data }: NodeProps<{ solution: Solution }>) {
   return (
-    <div className="p-4 rounded-lg bg-blue-100 shadow-sm border  text-gray-800 relative w-72">
-      <div className="text-sm text-gray-700">
-        {solutionCategories.map((sol) => {
-          if (sol.id === data.solution.category_id) {
-            return (
-              <div key={sol.id} className="text-blue-700 font-semibold">
-                {sol.name}
-              </div>
-            );
-          }
-        })}{" "}
-      </div>
+    <div className="p-4 rounded-lg bg-[#EBEEF4] shadow-sm border text-gray-800 w-72 h-full flex flex-col justify-center items-center text-center">
+      {solutionCategories.map((sol) => {
+        if (sol.id === data.solution.category_id) {
+          return (
+            <div key={sol.id} className="text-[#242B42] font-semibold text-[16px]">
+              {sol.name}
+            </div>
+          );
+        }
+      })}
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
     </div>
@@ -301,8 +304,8 @@ export function TreeViewSession({
         fitViewOptions={{ padding: 0.3 }}
         defaultEdgeOptions={{
           style: {
-            strokeWidth: 2,
-            stroke: "#9CA3AF", // Gray color
+            strokeWidth: 3,
+            stroke: "#CDD5DD", // Gray color
           },
           markerEnd: { type: MarkerType.ArrowClosed },
         }}
