@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import LinearEmbed from "./linear-embed";
-import InteractiveSessionEmbed from "./linear-embed";
+import {InteractiveSessionEmbed} from "./interactive-embed";
 import { SelectionSessionEmbed } from "./selection-based-embed";
 import { Loader } from "@/components/Loader";
 
@@ -52,12 +52,13 @@ export default function EmbedSessionPage() {
 
   const renderSessionContent = () => {
     if (!session) return null;
+    console.log("SESSION" , session);
     switch (session.session_type) {
       // render accoridgly
-      case "linear":
-        return <LinearEmbed sessionId={session.id} />;
       case "interactive":
         return <InteractiveSessionEmbed sessionId={session.id} />;
+      case "linear":
+        return <LinearEmbed sessionId={session.id} />;
       case "selection":
         return <SelectionSessionEmbed sessionId={session.id} />;
       default:

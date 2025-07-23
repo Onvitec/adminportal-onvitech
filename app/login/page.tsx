@@ -19,7 +19,8 @@ export default function LoginPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleLogin = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setError("");
     setLoading(true);
 
@@ -75,7 +76,7 @@ export default function LoginPage() {
         </p>
 
         {/* Form */}
-        <div className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -128,13 +129,13 @@ export default function LoginPage() {
           {error && <p className="text-sm text-red-500 text-start">{error}</p>}
 
           <Button
-            onClick={handleLogin}
-            className="w-full mt-6 bg-[#2E3545] hover:bg-[#2E3545]/90"
+            type="submit"
+            className="w-full mt-6 bg-[#2E3545] hover:bg-[#2E3545]/90 cursor-pointer"
             disabled={loading}
           >
             {loading ? "Signing In..." : "Sign In"}
           </Button>
-        </div>
+        </form>
 
         <div className="mt-8 text-center text-sm text-gray-500">
           Don't have an account?{" "}

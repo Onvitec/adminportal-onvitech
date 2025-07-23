@@ -187,6 +187,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     );
   }
 
+  console.log("Current " , currentVideo, videos)
   if (!currentVideo) {
     return (
       <div className="text-center p-4">
