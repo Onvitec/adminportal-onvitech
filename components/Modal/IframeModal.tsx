@@ -1,18 +1,7 @@
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "../ui/textarea";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { showToast } from "../toast";
 
 interface IframeModalProps {
   sessionId: string;
@@ -32,8 +21,15 @@ export function IframeModal({
   const [shared, setShared] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [privateUrl, setPrivateUrl] = useState("");
 
-  const privateUrl = `<iframe src="${window.location.origin}/sessions/embed/${sessionId}" width="100%" height="600px" frameborder="0" allowfullscreen></iframe>`;
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setPrivateUrl(
+        `<iframe src="${window.location.origin}/sessions/embed/${sessionId}" width="100%" height="600px" frameborder="0" allowfullscreen></iframe>`
+      );
+    }
+  }, [sessionId]);
 
   useEffect(() => {
     async function fetchUsers() {
@@ -56,7 +52,6 @@ export function IframeModal({
 
   useEffect(() => {
     if (!open) {
-      // Reset form state when modal closes
       setEmailMessage("");
       setSelectedUserId("");
       setShared(false);
@@ -67,7 +62,6 @@ export function IframeModal({
   const handleCopy = () => {
     navigator.clipboard.writeText(privateUrl);
     setCopied(true);
-    showToast("success", "Link Copied");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -86,7 +80,6 @@ export function IframeModal({
     console.log("Sharing to:", selectedUser.email);
     console.log("Payload:", payload);
 
-    // TODO: Integrate email sending API
     setTimeout(() => {
       setShared(true);
       setSharing(false);
@@ -94,81 +87,132 @@ export function IframeModal({
     }, 1000);
   };
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] rounded-xl space-y-2">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-gray-900">
-            Share this Session
-          </DialogTitle>
-        </DialogHeader>
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-black/20 bg-opacity-50 transition-opacity"
+        onClick={() => onOpenChange(false)}
+      />
 
-        <hr className="bg-gray-500" />
+      {/* Modal container */}
+      <div className="flex min-h-screen items-center justify-center p-4 text-center">
+        <div
+          className="relative transform overflow-hidden rounded-xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-[600px]"
+          onClick={(e) => e.stopPropagation()} // Prevent clicks from closing modal
+        >
+          {/* Modal content */}
+          <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4 space-y-4">
+            {/* Header */}
+            <div className="text-center sm:text-left flex justify-between items-center">
+              <h3 className="text-xl font-bold text-gray-900">
+                Share this Session
+              </h3>
 
-        {/* Private Link */}
-        <div>
-          <Label className="text-lg font-semibold text-black">Private Link</Label>
-          <p className="text-sm text-gray-500">
-            You can share this link, but only authorized users can access it.
-          </p>
-          <Input
-            value={privateUrl}
-            readOnly
-            className="h-10 text-sm mt-2 text-gray-500"
-          />
-        </div>
+              <button
+                onClick={() => onOpenChange(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+                aria-label="Close modal"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
 
-        <hr className="bg-gray-500" />
+            <hr className="border-gray-300" />
 
-        {/* Add People */}
-        <div className="space-y-2">
-          <Label className="text-lg font-semibold text-black">Add People</Label>
-          <div className="flex gap-2">
-            <select
-              value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
-              disabled={loadingUsers}
-              className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm text-gray-800"
-            >
-              <option value="">Select user...</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.first_name || user.email}
-                </option>
-              ))}
-            </select>
-            <Button
-              onClick={handleShare}
-              className="h-10 min-w-[80px]"
-              disabled={!selectedUserId || sharing}
-            >
-              {sharing ? "Sharing..." : shared ? "Shared!" : "Share"}
-            </Button>
+            {/* Private Link */}
+            <div>
+              <label className="text-lg font-semibold text-black">
+                Private Link
+              </label>
+              <p className="text-sm text-gray-500">
+                You can share this link, but only authorized users can access
+                it.
+              </p>
+              <input
+                value={privateUrl}
+                readOnly
+                className="w-full h-10 px-3 py-2 border border-gray-300 rounded-md text-sm mt-2 text-gray-500"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+            </div>
+
+            <hr className="border-gray-300" />
+
+            {/* Add People */}
+            <div className="space-y-2">
+              <label className="text-lg font-semibold text-black">
+                Add People
+              </label>
+              <div className="flex gap-2">
+                <select
+                  value={selectedUserId}
+                  onChange={(e) => setSelectedUserId(e.target.value)}
+                  disabled={loadingUsers}
+                  className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm text-gray-800"
+                >
+                  <option value="">Select user...</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.first_name || user.email}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleShare}
+                  className="h-10 min-w-[80px] px-4 py-2 bg-[#2C3444] text-white rounded-md disabled:opacity-50"
+                  disabled={!selectedUserId || sharing}
+                >
+                  {sharing ? "Sharing..." : shared ? "Shared!" : "Share"}
+                </button>
+              </div>
+            </div>
+
+            {/* Message */}
+            <div className="space-y-2">
+              <label className="text-md font-semibold text-black">
+                Message
+              </label>
+              <textarea
+                value={emailMessage}
+                onChange={(e) => setEmailMessage(e.target.value)}
+                className="w-full h-20 p-2 border border-gray-300 rounded-md text-sm"
+                placeholder="Write a short message..."
+              />
+            </div>
+
+            {/* Copy Link */}
+            <div className="flex justify-end">
+              <button
+                onClick={handleCopy}
+                className="h-10 text-sm text-blue-600 flex items-center gap-2 cursor-pointer"
+              >
+                <img
+                  src={"/icons/clipart.png"}
+                  alt="copy"
+                  className="w-4 h-4"
+                />
+                {copied ? "Copied!" : "Copy Link"}
+              </button>
+            </div>
           </div>
         </div>
-
-        {/* Message */}
-        <div className="space-y-2">
-          <Label className="text-md font-semibold text-black">Message</Label>
-          <Textarea
-            value={emailMessage}
-            onChange={(e) => setEmailMessage(e.target.value)}
-            className="h-20 text-sm"
-            placeholder="Write a short message..."
-          />
-        </div>
-
-        {/* Copy Link */}
-        <div className="flex justify-end">
-          <button
-            onClick={handleCopy}
-            className="h-10 text-sm text-blue-600 flex items-center gap-2 cursor-pointer"
-          >
-            <img src={"/icons/clipart.png"} alt="copy" className="w-4 h-4" />
-            {copied ? "Copied!" : "Copy Link"}
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
