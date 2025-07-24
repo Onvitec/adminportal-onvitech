@@ -194,10 +194,10 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                                       <DestinationVedio className="w-[15px] h-[14.35px" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <h5 className="font-medium text-gray-800 truncate">
+                                      <h5 className="font-medium text-[12px] text-gray-800 truncate">
                                         Destination Video
                                       </h5>
-                                      <p className="text-gray-600 text-sm truncate">
+                                      <p className="text-gray-600 text-[16px] font-semibold truncate">
                                         {answer.destination_video.title}
                                       </p>
                                     </div>
@@ -229,6 +229,7 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
             variant="ghost"
             size="icon"
             onClick={() => setSolutionsExpanded(!solutionsExpanded)}
+            className="cursor-pointer"
           >
             {solutionsExpanded ? (
               <ChevronUp className="h-5 w-5" />

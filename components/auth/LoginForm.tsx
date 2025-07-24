@@ -43,7 +43,7 @@ export default function LoginForm() {
         onChange={handleChange}
       />
       <button
-        className="bg-green-500 text-white px-4 py-2 rounded"
+        className="bg-green-500 text-white px-4 py-2 rounded cursor-pointer"
         onClick={handleLogin}
         disabled={loading}
       >

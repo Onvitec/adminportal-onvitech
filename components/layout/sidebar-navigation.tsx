@@ -174,7 +174,7 @@ export function SidebarNavigation({ onClose }: SidebarNavigationProps) {
             <div className="w-full flex justify-center">
               <button
                 onClick={isDesktop ? toggleSidebar : onClose}
-                className="rounded-full hover:opacity-80 transition"
+                className="rounded-full hover:opacity-80 transition "
               >
                 <Image
                   src="/icons/mobileLogo.png"
@@ -210,11 +210,11 @@ export function SidebarNavigation({ onClose }: SidebarNavigationProps) {
                             if (!isDesktop) onClose?.();
                           }}
                           className={cn(
-                            "group w-full text-left flex items-center py-2.5 text-[15px] font-semibold transition-colors border-l-2",
+                            "group w-full text-left flex items-center py-2.5 text-[15px] font-semibold transition-colors border-l-2 cursor-pointer",
                             isCollapsed
                               ? "justify-center px-0"
                               : "justify-start pl-6 pr-6",
-                            "text-[#A5ACBA] border-l-transparent hover:bg-[#333B48] hover:text-white"
+                            "text-[#A5ACBA] border-l-transparent hover:bg-[#333B48] hover:text-white cursor-pointer"
                           )}
                         >
                           <span

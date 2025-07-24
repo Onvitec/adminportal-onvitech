@@ -94,6 +94,7 @@ export function LinearSessionView({ sessionId }: { sessionId: string }) {
             variant="ghost"
             size="icon"
             onClick={() => setSolutionsExpanded(!solutionsExpanded)}
+            className="cursor-pointer"
           >
             {solutionsExpanded ? (
               <ChevronUp className="h-5 w-5" />
@@ -138,6 +139,7 @@ function ModuleCard({ module }: { module: Module }) {
           variant="ghost"
           size="icon"
           onClick={() => setIsExpanded(!isExpanded)}
+          className="cursor-pointer"
         >
           {isExpanded ? (
             <ChevronUp className="h-5 w-5" />

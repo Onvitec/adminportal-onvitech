@@ -439,7 +439,7 @@ export default function LinearSessionForm() {
             <div className="mt-8 border rounded-lg">
               <button
                 type="button"
-                className="w-full flex justify-between items-center p-4"
+                className="w-full flex justify-between items-center p-4 cursor-pointer"
                 onClick={() => setIsSolutionCollapsed(!isSolutionCollapsed)}
               >
                 <h3 className="text-lg font-medium">Add a Solution</h3>

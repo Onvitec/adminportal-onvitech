@@ -51,7 +51,7 @@ export default function TableHeader<T>({
           >
             <div className="flex items-center border-l border-[#C5D2E799] pl-3">
               {column.enableSorting ? (
-                <button className="flex items-center gap-1">
+                <button className="flex items-center gap-1 cursor-pointer">
                   {column.header}
                   {/* {sortConfig?.key === column.accessorKey ? (
                     <ArrowUpDown className="h-4 w-4" />

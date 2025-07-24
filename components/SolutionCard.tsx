@@ -43,7 +43,7 @@ export function SolutionCard({
               {!readOnly && onDelete && (
                 <button
                   onClick={onDelete}
-                  className="text-red-600 hover:text-red-800"
+                  className="text-red-600 hover:text-red-800 cursor-pointer"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -79,7 +79,7 @@ export function SolutionCard({
               {!readOnly && onDelete && (
                 <button
                   onClick={onDelete}
-                  className="text-red-600 hover:text-red-800"
+                  className="text-red-600 hover:text-red-800 cursor-pointer"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -116,7 +116,7 @@ export function SolutionCard({
               {!readOnly && onDelete && (
                 <button
                   onClick={onDelete}
-                  className="text-red-600 hover:text-red-800"
+                  className="text-red-600 hover:text-red-800 cursor-pointer"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -142,7 +142,7 @@ export function SolutionCard({
                 {!readOnly && onDelete && (
                   <button
                     onClick={onDelete}
-                    className="text-red-600 hover:text-red-800"
+                    className="text-red-600 hover:text-red-800 cursor-pointer"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -168,7 +168,7 @@ export function SolutionCard({
               {!readOnly && onDelete && (
                 <button
                   onClick={onDelete}
-                  className="text-red-600 hover:text-red-800"
+                  className="text-red-600 hover:text-red-800 cursor-pointer"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

@@ -158,7 +158,7 @@ export default function SessionViewPage() {
       <div className=" w-full mx-auto py-8">
         <div className="text-center py-12">
           <h3 className="text-lg font-medium mb-2">Session not found</h3>
-          <Button onClick={() => router.push("/sessions")} className="mt-4">
+          <Button onClick={() => router.push("/sessions")} className="mt-4 cursor-pointer">
             Back to Sessions
           </Button>
         </div>

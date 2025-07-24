@@ -54,10 +54,20 @@ export function IframeModal({
     if (open) fetchUsers();
   }, [open]);
 
+  useEffect(() => {
+    if (!open) {
+      // Reset form state when modal closes
+      setEmailMessage("");
+      setSelectedUserId("");
+      setShared(false);
+      setCopied(false);
+    }
+  }, [open]);
+
   const handleCopy = () => {
     navigator.clipboard.writeText(privateUrl);
     setCopied(true);
-    showToast("success","Link Copied")
+    showToast("success", "Link Copied");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -84,13 +94,8 @@ export function IframeModal({
     }, 1000);
   };
 
-  const handleClose = () => {
-    onOpenChange(false);
-    window.location.reload();
-  };
-
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] rounded-xl space-y-2">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-gray-900">
@@ -99,11 +104,10 @@ export function IframeModal({
         </DialogHeader>
 
         <hr className="bg-gray-500" />
+
         {/* Private Link */}
-        <div className="">
-          <Label className="text-lg font-semibold text-black">
-            Private Link
-          </Label>
+        <div>
+          <Label className="text-lg font-semibold text-black">Private Link</Label>
           <p className="text-sm text-gray-500">
             You can share this link, but only authorized users can access it.
           </p>
@@ -115,6 +119,7 @@ export function IframeModal({
         </div>
 
         <hr className="bg-gray-500" />
+
         {/* Add People */}
         <div className="space-y-2">
           <Label className="text-lg font-semibold text-black">Add People</Label>
@@ -157,7 +162,7 @@ export function IframeModal({
         <div className="flex justify-end">
           <button
             onClick={handleCopy}
-            className="h-10 text-sm text-blue-600 flex items-center gap-2"
+            className="h-10 text-sm text-blue-600 flex items-center gap-2 cursor-pointer"
           >
             <img src={"/icons/clipart.png"} alt="copy" className="w-4 h-4" />
             {copied ? "Copied!" : "Copy Link"}

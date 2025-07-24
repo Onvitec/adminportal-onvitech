@@ -193,7 +193,7 @@ const SessionsTable = () => {
             <button
               onClick={() => setIsBulkDeleteModalOpen(true)}
               type="button"
-              className="inline-flex items-center gap-2 bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
+              className="inline-flex items-center gap-2 bg-[#2C3444] cursor-pointer text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
             >
               <DeleteIcon className="h-4 w-4 text-white" />
               Delete Selected ({selectedSessions.length})
@@ -203,7 +203,7 @@ const SessionsTable = () => {
           <button
             onClick={() => setOpenModal(true)}
             type="button"
-            className="inline-flex items-center gap-2 bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
+            className="inline-flex items-center gap-2 cursor-pointer bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
           >
             <Plus className="h-4 w-4" />
             Create New Session

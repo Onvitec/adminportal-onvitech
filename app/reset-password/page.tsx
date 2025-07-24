@@ -160,7 +160,7 @@ export default function ResetPasswordPage() {
             />
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full cursor-pointer" disabled={loading}>
             {loading ? 'Updating...' : 'Update Password'}
           </Button>
         </form>

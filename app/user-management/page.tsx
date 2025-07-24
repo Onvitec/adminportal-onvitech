@@ -167,7 +167,7 @@ const UsersTable = () => {
           <button
             onClick={() => handleOpenModal()}
             type="button"
-            className="inline-flex items-center gap-2 bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
+            className="inline-flex items-center gap-2 cursor-pointer bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
           >
              
             <Plus className="h-4 w-4" />
