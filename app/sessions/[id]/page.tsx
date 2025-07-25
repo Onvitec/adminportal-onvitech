@@ -145,8 +145,10 @@ export default function SessionViewPage() {
       <div className=" w-full mx-auto py-8">
         <div className="flex justify-center items-center min-h-[300px]">
           <div className="animate-pulse text-muted-foreground">
-                 <div><Loader size="md"/></div>;
-            
+            <div>
+              <Loader size="md" />
+            </div>
+            ;
           </div>
         </div>
       </div>
@@ -158,7 +160,10 @@ export default function SessionViewPage() {
       <div className=" w-full mx-auto py-8">
         <div className="text-center py-12">
           <h3 className="text-lg font-medium mb-2">Session not found</h3>
-          <Button onClick={() => router.push("/sessions")} className="mt-4 cursor-pointer">
+          <Button
+            onClick={() => router.push("/sessions")}
+            className="mt-4 cursor-pointer"
+          >
             Back to Sessions
           </Button>
         </div>
@@ -196,6 +201,7 @@ export default function SessionViewPage() {
           {/* Add this at the bottom of your component, just before the final closing div */}
           <IframeModal
             sessionId={id as string}
+            sessionname={session.title}
             open={isIframeModalOpen}
             onOpenChange={setIsIframeModalOpen}
           />
@@ -245,8 +251,6 @@ export default function SessionViewPage() {
                 {session.session_type}
               </p>
             </div>
-
-            
           </div>
 
           {/* Content Section */}

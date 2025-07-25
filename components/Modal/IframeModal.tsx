@@ -2,17 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useSession } from "../session-provider";
+import emailjs from "emailjs-com";
+
 
 interface IframeModalProps {
   sessionId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  sessionname?: string;
 }
 
 export function IframeModal({
   sessionId,
   open,
   onOpenChange,
+  sessionname = "Session",
 }: IframeModalProps) {
   const [copied, setCopied] = useState(false);
   const [emailMessage, setEmailMessage] = useState("");
@@ -22,6 +27,8 @@ export function IframeModal({
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [privateUrl, setPrivateUrl] = useState("");
+  const { user} = useSession();
+ 
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -65,27 +72,40 @@ export function IframeModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleShare = async () => {
-    const selectedUser = users.find((u) => u.id === selectedUserId);
-    if (!selectedUser) return;
+const handleShare = async () => {
+  const selectedUser = users.find((u) => u.id === selectedUserId);
+  if (!selectedUser) return;
 
-    setSharing(true);
+  setSharing(true);
 
-    const payload = {
-      to: selectedUser.email,
-      subject: "Shared Session",
-      body: `${emailMessage} PRIVATE URL: ${privateUrl}`,
-    };
-
-    console.log("Sharing to:", selectedUser.email);
-    console.log("Payload:", payload);
-
-    setTimeout(() => {
-      setShared(true);
-      setSharing(false);
-      setTimeout(() => setShared(false), 1500);
-    }, 1000);
+  const payload = {
+    name: user?.username || "Unknown User",
+    private_url: privateUrl,
+    message: emailMessage,
+    session: sessionname,
+    to_email: selectedUser.email,
+    to_name: selectedUser.first_name || selectedUser.email,
   };
+
+  try {
+    const result = await emailjs.send(
+      "service_y8vwpg5",        // service ID
+      "template_vt3cxj7",       // template ID
+      payload,                  // template variables
+      "dVdABZfh0aukWIT6n"       // public key
+    );
+    console.log("Email sent:", result.text);
+
+    setShared(true);
+    setTimeout(() => setShared(false), 1500);
+  } catch (error) {
+    console.error("Email send failed:", error);
+    alert("Failed to send email. Please try again.");
+  } finally {
+    setSharing(false);
+  }
+};
+
 
   if (!open) return null;
 
@@ -169,7 +189,7 @@ export function IframeModal({
                   <option value="">Select user...</option>
                   {users.map((user) => (
                     <option key={user.id} value={user.id}>
-                      {user.first_name || user.email}
+                      {user.first_name + "       .......  "+ user.email}
                     </option>
                   ))}
                 </select>

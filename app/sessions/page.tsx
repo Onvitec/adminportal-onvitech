@@ -24,11 +24,14 @@ const FILTERS = [
 export default function SessionsTable() {
   const [sessions, setSessions] = useState<SessionType[]>([]);
   const [filtered, setFiltered] = useState<SessionType[]>([]);
-  const [activeFilter, setActiveFilter] = useState<typeof FILTERS[number]["key"]>("all");
+  const [activeFilter, setActiveFilter] =
+    useState<(typeof FILTERS)[number]["key"]>("all");
   const [loading, setLoading] = useState(true);
   const [selectedSessions, setSelectedSessions] = useState<SessionType[]>([]);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
-  const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
+  const [sessionToShare, setSessionToShare] = useState<SessionType | null>(
+    null
+  );
   const [isConfirmModalOpen, setIsconfirmModalOpen] = useState(false);
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -63,7 +66,10 @@ export default function SessionsTable() {
 
   const handleDeleteSession = async (sessionId: string) => {
     try {
-      const { error } = await supabase.from("sessions").delete().eq("id", sessionId);
+      const { error } = await supabase
+        .from("sessions")
+        .delete()
+        .eq("id", sessionId);
       if (error) throw error;
       setSessions((prev) => prev.filter((x) => x.id !== sessionId));
       showToast("success", "Session deleted");
@@ -202,13 +208,13 @@ export default function SessionsTable() {
       </div>
 
       {/* Connected Toggle Filter Buttons */}
-     <div className="flex justify-start mb-6">
-  <div className="inline-flex bg-white rounded-md border border-gray-200 px-1 py-0.5 gap-[10px]">
-    {FILTERS.map((f) => (
-      <button
-        key={f.key}
-        onClick={() => setActiveFilter(f.key)}
-        className={`cursor-pointer py-2 text-[14px] text-[#5F6D7E] font-medium rounded-md focus:outline-none transition-colors duration-150
+      <div className="flex justify-start mb-6">
+        <div className="inline-flex bg-white rounded-md border border-gray-200 px-1 py-0.5 gap-[10px]">
+          {FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setActiveFilter(f.key)}
+              className={`cursor-pointer py-2 text-[14px] text-[#5F6D7E] font-medium rounded-md focus:outline-none transition-colors duration-150
           whitespace-nowrap
           w-40
           ${
@@ -217,13 +223,12 @@ export default function SessionsTable() {
               : "bg-white text-[#5F6D7E] hover:bg-gray-100"
           }
         `}
-      >
-        {f.label}
-      </button>
-    ))}
-  </div>
-</div>
-
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <Table<SessionType>
         data={filtered}
@@ -241,6 +246,7 @@ export default function SessionsTable() {
       <IframeModal
         sessionId={sessionToShare?.id || ""}
         open={isShareModalOpen}
+        sessionname={sessionToShare?.title}
         onOpenChange={setIsShareModalOpen}
       />
       <ConfirmModal
