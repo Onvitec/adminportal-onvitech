@@ -305,7 +305,7 @@ if (loading) return <Loader size="lg" className="h-screen" />;
             </div>
             <div>
               <p className="text-3xl font-bold text-[#272D37]">{stats.totalUsers}</p>
-              <p className="text-sm text-[#5F6D7E] font-medium">Total Registered Users</p>
+              <p className="text-sm text-[#5F6D7E] font-medium">Total Registered Companies</p>
             </div>
           </div>
           <div className={`flex items-center ${stats.userPercentageChange >= 0 ? 'text-[#2D8A39]' : 'text-[#E2341D]'}`}>

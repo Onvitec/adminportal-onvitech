@@ -2,7 +2,7 @@
 
 import Heading from "@/components/Heading";
 import Table from "@/components/Table/Table";
-import { EyeIcon, EditIcon, Plus, DeleteIcon } from "lucide-react";
+import { EyeIcon, EditIcon, Plus } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import UserManModal from "@/components/Modal/UserManModal";
@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { ColumnDef } from "@/components/Table/types";
 import { toast } from "sonner";
 import { showToast } from "@/components/toast";
+import { DeleteIcon } from "@/components/icons";
 
 const UsersTable = () => {
   const [openModal, setOpenModal] = useState(false);
@@ -18,7 +19,8 @@ const UsersTable = () => {
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
-  const [tableKey, setTableKey] = useState(0); 
+  const [tableKey, setTableKey] = useState(0);
+  const [selectedRows, setSelectedRows] = useState<UserType[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -47,7 +49,7 @@ const UsersTable = () => {
 
   const handleUserCreated = (newUser: UserType) => {
     setUsers((prevUsers) => [newUser, ...prevUsers]);
-    setTableKey(prev => prev + 1); // Update key to force re-render
+    setTableKey(prev => prev + 1);
     showToast("success", "User created successfully!");
   };
 
@@ -60,7 +62,7 @@ const UsersTable = () => {
     setTableKey(prev => prev + 1); 
     showToast("success", "User updated successfully!");
     handleCloseModal();
-  window.location.reload(); 
+    window.location.reload(); 
   };
 
   const handleDeleteUser = async (user: UserType) => {
@@ -73,11 +75,37 @@ const UsersTable = () => {
       if (error) throw error;
       
       setUsers(prevUsers => prevUsers.filter((u) => u.id !== user.id));
-      setTableKey(prev => prev + 1); // Update key to force re-render
+      setTableKey(prev => prev + 1);
       showToast("success", "User deleted successfully!");
     } catch (error) {
       showToast("error", "Error deleting user");
       console.error("Error deleting user:", error);
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedRows.length === 0) {
+      showToast("warning", "Please select at least one user to delete");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("users")
+        .delete()
+        .in("id", selectedRows.map(user => user.id));
+      
+      if (error) throw error;
+      
+      setUsers(prevUsers => 
+        prevUsers.filter(user => !selectedRows.some(selected => selected.id === user.id))
+      );
+      setSelectedRows([]);
+      setTableKey(prev => prev + 1);
+      showToast("success", `${selectedRows.length} user(s) deleted successfully!`);
+    } catch (error) {
+      showToast("error", "Error deleting selected users");
+      console.error("Error deleting users:", error);
     }
   };
 
@@ -91,24 +119,18 @@ const UsersTable = () => {
     setEditingUser(null);
   };
 
+  const handleRowSelect = (selectedRows: UserType[]) => {
+    setSelectedRows(selectedRows);
+  };
+
   const userActions = useMemo(() => [
-    {
-      label: "View",
-      icon: <EyeIcon className="h-4 w-4" />,
-      action: (user: UserType) => router.push(`/user-management/${user.id}`),
-    },
-    {
-      label: "Edit",
-      icon: <EditIcon className="h-4 w-4" />,
-      action: (user: UserType) => handleOpenModal(user),
-    },
     {
       label: "Delete",
       icon: <DeleteIcon className="h-4 w-4 text-[#505568]" />,
       action: handleDeleteUser,
       variant: "destructive" as const,
     },
-  ], [router]);
+  ], []);
 
   const columns: ColumnDef<UserType>[] = useMemo(() => [
     {
@@ -126,29 +148,7 @@ const UsersTable = () => {
       header: "Email",
       enableSorting: true,
     },
-    // {
-    //   accessorKey: "role",
-    //   header: "Role",
-    //   enableSorting: true,
-    // },
-    // {
-    //   accessorKey: "status",
-    //   header: "Status",
-    //   enableSorting: true,
-    // },
-    // {
-    //   accessorKey: "updated_at",
-    //   header: "Last Updated",
-    //   cell: ({ getValue }) => {
-    //     const value = getValue() as string;
-    //     return value ? new Date(value).toLocaleString() : "Never";
-    //   },
-    // },
   ], []);
-
-  const handleRowSelect = (selectedRows: UserType[]) => {
-    console.log("Selected rows:", selectedRows);
-  };
 
   const handleRowClick = (row: UserType) => {
     console.log("Row clicked:", row);
@@ -164,15 +164,24 @@ const UsersTable = () => {
           </p>
         </div>
 
-        <div>
+        <div className="flex gap-2">
+          {selectedRows.length > 0 && (
+            <button
+              onClick={handleDeleteSelected}
+              type="button"
+              className="inline-flex items-center gap-2 cursor-pointer bg-red-600 text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-red-700 transition"
+            >
+              <DeleteIcon className="h-4 w-4" />
+              Delete Selected ({selectedRows.length})
+            </button>
+          )}
           <button
             onClick={() => handleOpenModal()}
             type="button"
             className="inline-flex items-center gap-2 cursor-pointer bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
           >
-             
             <Plus className="h-4 w-4" />
-            Add New Company {/*TODO:  later we can convert this to users  since we have ot be able to add both company and affiliated users  */}
+            Add New Company
           </button>
         </div>
       </div>
