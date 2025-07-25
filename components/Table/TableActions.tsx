@@ -27,19 +27,19 @@ export default function TableActions({ actions, isVisible }: TableActionsProps) 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
+        <Button variant="ghost" className="h-8 w-8 p-0 cursor-pointer">
           <span className="sr-only">Open menu</span>
           <ActionIcon className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="cursor-pointer">
         {actions.map((action, index) => (
           <DropdownMenuItem
             key={index}
             onClick={action.action}
             className={action.variant === "destructive" ? "text-red-600" : ""}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 cursor-pointer">
               {action.icon}
               {action.label}
             </div>

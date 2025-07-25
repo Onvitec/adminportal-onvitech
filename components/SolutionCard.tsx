@@ -110,7 +110,7 @@ export function SolutionCard({
         );
       case 3: // Link
         return (
-          <div className="space-y-2  py-4">
+          <div className="space-y-2   py-4">
             <div className="flex justify-between items-center mb-4">
               <h4 className="font-medium">Link Solution</h4>
               {!readOnly && onDelete && (
@@ -129,6 +129,7 @@ export function SolutionCard({
                 value={solution.link_url || ""}
                 onChange={(e) => handleChange({ link_url: e.target.value })}
                 readOnly={readOnly}
+                className="mt-2"
               />
             </div>
           </div>

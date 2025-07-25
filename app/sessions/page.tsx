@@ -193,7 +193,7 @@ export default function SessionsTable() {
           )}
           <button
             onClick={() => setOpenModal(true)}
-            className="inline-flex items-center gap-2 bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] hover:bg-gray-900"
+            className="inline-flex items-center gap-2 bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] hover:bg-gray-900 cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             Create New Session
