@@ -186,7 +186,7 @@ const handleShare = async () => {
                   disabled={loadingUsers}
                   className="w-full h-10 border border-gray-300 rounded-md px-3 text-sm text-gray-800"
                 >
-                  <option value="">Select user...</option>
+                  <option value="">Select Company...</option>
                   {users.map((user) => (
                     <option key={user.id} value={user.id}>
                       {user.first_name + "       .......  "+ user.email}

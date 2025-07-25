@@ -17,7 +17,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [showQuestions, setShowQuestions] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showControls, setShowControls] = useState(true);
+  const [mouseActive, setMouseActive] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const mouseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -100,6 +102,12 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     };
 
     fetchData();
+
+    return () => {
+      if (mouseTimeoutRef.current) {
+        clearTimeout(mouseTimeoutRef.current);
+      }
+    };
   }, [sessionId]);
 
   useEffect(() => {
@@ -108,7 +116,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       setCurrentQuestions(videoQuestions);
       setShowQuestions(false);
       
-      // Start paused when video changes
       if (videoRef.current) {
         videoRef.current.pause();
         setIsPlaying(false);
@@ -151,12 +158,28 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       } else {
         videoRef.current.play();
         setIsPlaying(true);
-        setShowControls(false);
-        
-        // Hide controls after click animation
-        setTimeout(() => setShowControls(false), 300);
+        setMouseActive(true);
+        resetMouseTimeout();
       }
     }
+  };
+
+  const handleMouseMove = () => {
+    setMouseActive(true);
+    setShowControls(true);
+    resetMouseTimeout();
+  };
+
+  const resetMouseTimeout = () => {
+    if (mouseTimeoutRef.current) {
+      clearTimeout(mouseTimeoutRef.current);
+    }
+    mouseTimeoutRef.current = setTimeout(() => {
+      setMouseActive(false);
+      if (isPlaying) {
+        setShowControls(false);
+      }
+    }, 2000);
   };
 
   const goToFirstVideo = () => {
@@ -187,7 +210,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     );
   }
 
-  console.log("Current " , currentVideo, videos)
   if (!currentVideo) {
     return (
       <div className="text-center p-4">
@@ -198,41 +220,53 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="flex flex-col h-full rounded-xl overflow-hidden">
-      {/* Video Player with Floating Questions */}
-      <div className="relative flex-1 bg-black rounded-xl">
+      <div 
+        className="relative flex-1 bg-black rounded-xl"
+        onMouseMove={handleMouseMove}
+        onMouseEnter={() => {
+          setMouseActive(true);
+          setShowControls(true);
+        }}
+        onMouseLeave={() => {
+          setMouseActive(false);
+          if (isPlaying) {
+            setShowControls(false);
+          }
+        }}
+      >
         <video
           ref={videoRef}
           src={currentVideo.url}
-          className="w-full h-full object-contain rounded-xl"
+          className="w-full h-full object-contain rounded-xl cursor-pointer"
           controls={false}
+          onClick={togglePlayPause}
           onEnded={handleVideoEnd}
-          onPlay={() => {
-            setIsPlaying(true);
-            setShowControls(false);
-          }}
+          onPlay={() => setIsPlaying(true)}
           onPause={() => {
             setIsPlaying(false);
             setShowControls(true);
           }}
         />
 
-        {/* Back Button (only shown if not on first video) */}
         {videos.findIndex(v => v.id === currentVideo?.id) > 0 && (
           <div 
-            className="absolute left-4 top-4 bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-colors duration-200"
+            className={`absolute left-4 top-4 bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 ${
+              showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
             onClick={goToFirstVideo}
           >
             <ChevronLeft className="w-6 h-6 text-white font-bold" />
           </div>
         )}
 
-        {/* Play/Pause Button (Center) */}
-        {showControls && !showQuestions && (
+        {(showControls || !isPlaying) && (
           <div 
-            className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${isPlaying ? 'opacity-0' : 'opacity-100'}`}
+            className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${
+              (mouseActive || !isPlaying) ? 'opacity-100' : 'opacity-0'
+            }`}
             onClick={togglePlayPause}
           >
-            <div className={`bg-white/30 backdrop-blur-sm rounded-full p-4 shadow-lg border border-white/60 flex items-center justify-center transform transition-transform duration-300 ${isPlaying ? 'scale-90' : 'scale-100'}`}>
+            <div className={`bg-white/30 backdrop-blur-sm rounded-full p-4 shadow-lg border border-white/60 flex items-center justify-center transform transition-all duration-300 hover:scale-110`}>
               {isPlaying ? (
                 <div className="w-10 h-10 flex items-center justify-center">
                   <div className="w-2 h-8 bg-white mx-1"></div>
@@ -240,7 +274,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
                 </div>
               ) : (
                 <svg
-                  className="w-10 h-10 text-white transform transition-transform duration-300 hover:scale-110"
+                  className="w-10 h-10 text-white"
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
@@ -255,12 +289,10 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           </div>
         )}
 
-        {/* Floating Questions on Video */}
         {showQuestions && currentQuestions.length > 0 && (
           <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 space-y-4">
             {currentQuestions.map((question) => (
               <div key={question.id} className="space-y-4">
-                {/* Question Card */}
                 <div className="bg-white/30 backdrop-blur-sm rounded-lg p-4 shadow-lg border border-white/60">
                   <div className="flex items-center gap-2 mb-2">
                     <Questions className="text-white"/>
@@ -271,10 +303,8 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
                   </h3>
                 </div>
 
-                {/* Divider */}
                 <hr className="border-white/60 w-full" />
 
-                {/* Answers List */}
                 <div className="space-y-4">
                   {question.answers.map((answer) => (
                     <div
