@@ -25,7 +25,6 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // Validate form inputs
       if (!form.email || !form.password) {
         throw new Error("All fields are required");
       }
@@ -91,15 +90,7 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <Label htmlFor="password">Password</Label>
-              <a
-                href="/forgot-password"
-                className="text-xs text-red-500 hover:underline"
-              >
-                Forgot Password?
-              </a>
-            </div>
+            <Label htmlFor="password">Password</Label>
             <div className="relative">
               <Input
                 id="password"
@@ -124,9 +115,21 @@ export default function LoginPage() {
                 )}
               </button>
             </div>
+
+            {/* Forgot password aligned under input */}
+            <div className="text-right mt-1">
+              <a
+                href="/forgot-password"
+                className="text-xs text-[#FF2125] hover:underline"
+              >
+                Forgot Password?
+              </a>
+            </div>
           </div>
 
-          {error && <p className="text-sm text-red-500 text-start">{error}</p>}
+          {error && (
+            <p className="text-sm text-[#FF2125] text-start">{error}</p>
+          )}
 
           <Button
             type="submit"

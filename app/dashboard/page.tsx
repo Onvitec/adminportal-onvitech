@@ -256,7 +256,7 @@ if (loading) return <Loader size="lg" className="h-screen" />;
             <div>
               <p className="text-3xl font-bold text-[#272D37]">{stats.totalSessions}</p>
               <p className="text-sm font-medium text-[#5F6D7E]">
-                Total Session
+                Total Sessions Created
               </p>
             </div>
           </div>
@@ -281,7 +281,7 @@ if (loading) return <Loader size="lg" className="h-screen" />;
             <div>
               <p className="text-3xl font-bold text-[#272D37]">{stats.activeSessions}</p>
               <p className="text-sm text-[#5F6D7E] font-medium">
-                Active Session
+                Active Sessions
               </p>
             </div>
           </div>
@@ -305,7 +305,7 @@ if (loading) return <Loader size="lg" className="h-screen" />;
             </div>
             <div>
               <p className="text-3xl font-bold text-[#272D37]">{stats.totalUsers}</p>
-              <p className="text-sm text-[#5F6D7E] font-medium">Total Users</p>
+              <p className="text-sm text-[#5F6D7E] font-medium">Total Registered Users</p>
             </div>
           </div>
           <div className={`flex items-center ${stats.userPercentageChange >= 0 ? 'text-[#2D8A39]' : 'text-[#E2341D]'}`}>
@@ -323,7 +323,7 @@ if (loading) return <Loader size="lg" className="h-screen" />;
 
       {/* charts */}
       <div className="bg-white md:p-6 px-2 py-4 rounded-lg shadow-[0_1px_2px_0_rgba(16,24,40,0.04)] md:mt-6 mt-4">
-        <h2 className="text-lg font-semibold mb-4">Analytics Overview</h2>
+        <h2 className="text-[16px] font-semibold mb-4">Sessions Overview</h2>
         <CleanBarChart />
       </div>
 
@@ -333,7 +333,7 @@ if (loading) return <Loader size="lg" className="h-screen" />;
         <div className="w-full md:w-[70%] bg-white rounded-lg p-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <div>
-              <h2 className="text-xl font-semibold">Sessions</h2>
+              <h2 className="text-[16px] font-semibold">Recent Sessions Created</h2>
             </div>
           </div>
 
@@ -355,7 +355,7 @@ if (loading) return <Loader size="lg" className="h-screen" />;
 
         {/* Right side - 30% width */}
         <div className="w-full md:w-[30%] bg-white rounded-lg p-4">
-          <h2 className="text-lg font-semibold mb-4">Session Status</h2>
+          <h2 className="text-[16px] font-semibold mb-4">Session Status</h2>
           <SessionPieChart />
         </div>
       </div>

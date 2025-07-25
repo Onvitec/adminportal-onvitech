@@ -2,10 +2,9 @@
 
 import Heading from "@/components/Heading";
 import Table from "@/components/Table/Table";
-import { Share2 } from "lucide-react";
-import { DeleteIcon, EditIcon, Plus, EyeIcon } from "@/components/icons";
+import { DeleteIcon, EditIcon, Plus } from "@/components/icons";
+import { EyeIcon } from "@/components/icons";
 import { useEffect, useState } from "react";
-import CreateSessionModal from "../../components/Modal/CreateSessionModal";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { SessionType } from "@/lib/types";
@@ -13,17 +12,27 @@ import { fetchSessions } from "@/repos/sessions";
 import { ConfirmModal } from "@/components/Modal/confirmDelete";
 import { IframeModal } from "@/components/Modal/IframeModal";
 import { showToast } from "@/components/toast";
+import CreateSessionModal from "@/components/Modal/CreateSessionModal";
 
-const SessionsTable = () => {
-  const [openModal, setOpenModal] = useState(false);
+const FILTERS = [
+  { label: "All", key: "all" },
+  { label: "Linear Flow", key: "linear" },
+  { label: "Interactive Video", key: "interactive" },
+  { label: "Selection Based", key: "selection" },
+] as const;
+
+export default function SessionsTable() {
   const [sessions, setSessions] = useState<SessionType[]>([]);
+  const [filtered, setFiltered] = useState<SessionType[]>([]);
+  const [activeFilter, setActiveFilter] = useState<typeof FILTERS[number]["key"]>("all");
   const [loading, setLoading] = useState(true);
-  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [selectedSessions, setSelectedSessions] = useState<SessionType[]>([]);
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
   const [isConfirmModalOpen, setIsconfirmModalOpen] = useState(false);
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
+  const [openModal, setOpenModal] = useState(false);
 
   const router = useRouter();
 
@@ -31,14 +40,22 @@ const SessionsTable = () => {
     loadSessions();
   }, []);
 
+  useEffect(() => {
+    if (activeFilter === "all") {
+      setFiltered(sessions);
+    } else {
+      setFiltered(sessions.filter((s) => s.session_type === activeFilter));
+    }
+    setSelectedSessions([]);
+  }, [activeFilter, sessions]);
+
   const loadSessions = async () => {
     setLoading(true);
     try {
       const sessionsData = await fetchSessions();
       setSessions(sessionsData as SessionType[]);
-    } catch (error) {
+    } catch {
       showToast("error", "Failed to load sessions");
-      console.error("Failed to load sessions:", error);
     } finally {
       setLoading(false);
     }
@@ -46,47 +63,24 @@ const SessionsTable = () => {
 
   const handleDeleteSession = async (sessionId: string) => {
     try {
-      const { error } = await supabase
-        .from("sessions")
-        .delete()
-        .eq("id", sessionId);
-
+      const { error } = await supabase.from("sessions").delete().eq("id", sessionId);
       if (error) throw error;
-
-      // Optimistic update
-      setSessions(prev => prev.filter(session => session.id !== sessionId));
-      setSelectedSessions(prev => prev.filter(session => session.id !== sessionId));
-      
-      showToast("success", "Session deleted successfully");
-    } catch (error) {
-      showToast("error", "Failed to delete session");
-      console.error("Failed to delete session:", error);
+      setSessions((prev) => prev.filter((x) => x.id !== sessionId));
+      showToast("success", "Session deleted");
+    } catch {
+      showToast("error", "Failed to delete");
     }
   };
 
   const handleBulkDelete = async () => {
-    if (selectedSessions.length === 0) return;
-
+    const ids = selectedSessions.map((s) => s.id);
     try {
-      const idsToDelete = selectedSessions.map((s) => s.id);
-
-      const { error } = await supabase
-        .from("sessions")
-        .delete()
-        .in("id", idsToDelete);
-
-      if (error) throw error;
-
-      // Optimistic update
-      setSessions(prev => prev.filter(session => !idsToDelete.includes(session.id)));
-      setSelectedSessions([]);
+      await supabase.from("sessions").delete().in("id", ids);
+      setSessions((prev) => prev.filter((s) => !ids.includes(s.id)));
       setIsBulkDeleteModalOpen(false);
-      window.location.reload();
-      
-      showToast("success", `${idsToDelete.length} sessions deleted successfully`);
-    } catch (error) {
-      showToast("error", "Failed to delete sessions");
-      console.error("Failed to delete sessions:", error);
+      showToast("success", `${ids.length} sessions deleted`);
+    } catch {
+      showToast("error", "Bulk delete failed");
     }
   };
 
@@ -94,19 +88,18 @@ const SessionsTable = () => {
     {
       label: "View Session",
       icon: <EyeIcon className="h-4 w-4" />,
-      action: (session: SessionType) => router.push(`sessions/${session.id}`),
+      action: (s: SessionType) => router.push(`sessions/${s.id}`),
     },
     {
       label: "Edit",
       icon: <EditIcon className="h-4 w-4" />,
-      action: (session: SessionType) =>
-        router.push(`sessions/edit/${session.id}`),
+      action: (s: SessionType) => router.push(`sessions/edit/${s.id}`),
     },
     {
       label: "Delete",
       icon: <DeleteIcon className="h-4 w-4 text-[#505568]" />,
-      action: (session: SessionType) => {
-        setSessionToDelete(session.id);
+      action: (s: SessionType) => {
+        setSessionToDelete(s.id);
         setIsconfirmModalOpen(true);
       },
       variant: "outline" as const,
@@ -114,8 +107,8 @@ const SessionsTable = () => {
     {
       label: "Share Session",
       icon: <EditIcon className="h-4 w-4" />,
-      action: (session: SessionType) => {
-        setSessionToShare(session);
+      action: (s: SessionType) => {
+        setSessionToShare(s);
         setIsShareModalOpen(true);
       },
       variant: "outline" as const,
@@ -158,7 +151,7 @@ const SessionsTable = () => {
                 : "text-red-600 font-semibold"
             }
           >
-            {isActive ? "Active" : "Inactive"}
+            {isActive ? "Completed" : "In Progress"}
           </span>
         );
       },
@@ -192,18 +185,15 @@ const SessionsTable = () => {
           {selectedSessions.length > 0 && (
             <button
               onClick={() => setIsBulkDeleteModalOpen(true)}
-              type="button"
-              className="inline-flex items-center gap-2 bg-[#2C3444] cursor-pointer text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
+              className="inline-flex items-center gap-2 bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] hover:bg-gray-900"
             >
-              <DeleteIcon className="h-4 w-4 text-white" />
+              <DeleteIcon className="h-4 w-4" />
               Delete Selected ({selectedSessions.length})
             </button>
           )}
-
           <button
             onClick={() => setOpenModal(true)}
-            type="button"
-            className="inline-flex items-center gap-2 cursor-pointer bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
+            className="inline-flex items-center gap-2 bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] hover:bg-gray-900"
           >
             <Plus className="h-4 w-4" />
             Create New Session
@@ -211,20 +201,43 @@ const SessionsTable = () => {
         </div>
       </div>
 
+      {/* Connected Toggle Filter Buttons */}
+     <div className="flex justify-start mb-6">
+  <div className="inline-flex bg-white rounded-md border border-gray-200 px-1 py-0.5 gap-[10px]">
+    {FILTERS.map((f) => (
+      <button
+        key={f.key}
+        onClick={() => setActiveFilter(f.key)}
+        className={`cursor-pointer py-2 text-[14px] text-[#5F6D7E] font-medium rounded-md focus:outline-none transition-colors duration-150
+          whitespace-nowrap
+          w-40
+          ${
+            activeFilter === f.key
+              ? "bg-[#2C3444] text-white"
+              : "bg-white text-[#5F6D7E] hover:bg-gray-100"
+          }
+        `}
+      >
+        {f.label}
+      </button>
+    ))}
+  </div>
+</div>
+
+
       <Table<SessionType>
-        data={sessions}
+        data={filtered}
         columns={columns}
-        onRowClick={(row) => {}}
-        onRowSelect={(selectedRows) => setSelectedSessions(selectedRows)}
+        onSelectionChange={setSelectedSessions}
         pageSize={10}
-        showCheckbox={true}
-        showActions={true}
-        isSelectable={true}
+        showCheckbox
+        showActions
+        isSelectable
         actions={sessionActions}
         isLoading={loading}
-        onSelectionChange={(selected: any) => setSelectedSessions(selected)}
       />
 
+      {/* Modals */}
       <IframeModal
         sessionId={sessionToShare?.id || ""}
         open={isShareModalOpen}
@@ -239,7 +252,6 @@ const SessionsTable = () => {
         onConfirm={async () => {
           if (sessionToDelete) {
             await handleDeleteSession(sessionToDelete);
-            setSessionToDelete(null);
             setIsconfirmModalOpen(false);
           }
         }}
@@ -254,10 +266,7 @@ const SessionsTable = () => {
         onConfirm={handleBulkDelete}
         onCancel={() => setIsBulkDeleteModalOpen(false)}
       />
-
       <CreateSessionModal open={openModal} setOpen={setOpenModal} />
     </>
   );
-};
-
-export default SessionsTable;
+}

@@ -22,6 +22,7 @@ export default function SessionPieChart() {
 
       if (error) {
         console.error('Failed to fetch session data:', error);
+        setLoading(false);
         return;
       }
 
@@ -41,9 +42,10 @@ export default function SessionPieChart() {
 
   return (
     <div className="flex flex-col items-center h-full p-2">
+      {/* Chart */}
       <div className="w-full h-[180px]">
         <ResponsiveContainer width="100%" height="100%">
-          <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+          <PieChart>
             <Pie
               data={data}
               cx="50%"
@@ -65,19 +67,30 @@ export default function SessionPieChart() {
         </ResponsiveContainer>
       </div>
 
+      {/* Legend */}
       {loading ? (
-        <div className="text-sm text-gray-500 mt-2"><Loader size='sm'/></div>
+        <div className="text-sm text-gray-500 mt-2">
+          <Loader size="sm" />
+        </div>
       ) : (
-        <div className="flex gap-4 mt-2">
+        <div className="flex flex-col gap-2 mt-4 w-full px-4">
           {data.map((entry, index) => (
-            <div key={entry.name} className="flex items-center gap-2">
-              <div
-                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: COLORS[index] }}
-              />
-              <span className="text-xs text-gray-600 whitespace-nowrap">
-                {entry.name}
-              </span>
+            <div
+              key={entry.name}
+              className="flex items-center justify-between text-sm text-gray-700 font-medium"
+            >
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: COLORS[index] }}
+                />
+                <span>
+                  {entry.name === 'Completed'
+                    ? 'Completed Sessions'
+                    : 'In Progress Sessions'}
+                </span>
+              </div>
+              <span>{entry.value}</span>
             </div>
           ))}
         </div>

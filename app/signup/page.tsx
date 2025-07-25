@@ -7,36 +7,45 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import Image from "next/image";
 import { showToast } from "@/components/toast";
+import { Eye, EyeOff } from "lucide-react";
 
 export default function SignupPage() {
-  const [form, setForm] = useState({ 
-    firstName: "", 
-    lastName: "", 
-    email: "", 
-    password: "", 
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
   });
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSignup = async () => {
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const handleSignup = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      // Validate form inputs
-      if (!form.email || !form.password || !form.firstName || !form.lastName) {
+      const { firstName, lastName, email, password } = form;
+
+      if (!firstName || !lastName || !email || !password) {
         throw new Error("All fields are required");
       }
 
       // Check if email already exists
-      const { data: existingUser, error: userCheckError } = await supabase
+      const { data: existingUser } = await supabase
         .from("users")
         .select("email")
-        .eq("email", form.email)
+        .eq("email", email)
         .maybeSingle();
 
       if (existingUser) {
@@ -45,12 +54,12 @@ export default function SignupPage() {
 
       // Sign up with Supabase Auth
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
+        email,
+        password,
         options: {
           data: {
-            first_name: form.firstName,
-            last_name: form.lastName,
+            first_name: firstName,
+            last_name: lastName,
           },
         },
       });
@@ -58,18 +67,17 @@ export default function SignupPage() {
       if (signUpError) throw signUpError;
       if (!authData.user) throw new Error("User creation failed");
 
-      // Insert into custom users table with Admin role by default
+      // Insert user into your own DB
       const { error: dbError } = await supabase.from("users").insert({
         id: authData.user.id,
-        first_name: form.firstName,
-        last_name: form.lastName,
-        email: form.email,
-        role: "Admin", 
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        role: "Admin",
         created_at: new Date().toISOString(),
       });
 
       if (dbError) {
-        console.error("Database error:", dbError);
         await supabase.auth.admin.deleteUser(authData.user.id);
         throw new Error("Failed to create user profile");
       }
@@ -79,7 +87,6 @@ export default function SignupPage() {
     } catch (err: any) {
       setError(err.message || "Failed to create account");
       showToast("error", err.message || "Failed to create account");
-      console.error("Signup error:", err);
     } finally {
       setLoading(false);
     }
@@ -99,13 +106,15 @@ export default function SignupPage() {
       </div>
 
       {/* Signup Card */}
-      <div className="w-full max-w-[464px] bg-white rounded-lg shadow-sm p-8 flex flex-col">
+      <form
+        onSubmit={handleSignup}
+        className="w-full max-w-[464px] bg-white rounded-lg shadow-sm p-8 flex flex-col"
+      >
         <h1 className="text-2xl font-semibold text-center mb-2">Sign Up</h1>
         <p className="text-sm text-gray-600 text-center mb-8">
           Please create an account to continue.
         </p>
 
-        {/* Form */}
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -149,22 +158,37 @@ export default function SignupPage() {
 
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              placeholder="Enter your password"
-              onChange={handleChange}
-              value={form.password}
-              required
-              minLength={6}
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                onChange={handleChange}
+                value={form.password}
+                required
+                minLength={6}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
 
           {error && <p className="text-sm text-red-500 text-center">{error}</p>}
 
           <Button
-            onClick={handleSignup}
+            type="submit"
             className="w-full mt-4 bg-[#2E3545] hover:bg-[#3A4255]"
             disabled={loading}
           >
@@ -181,9 +205,8 @@ export default function SignupPage() {
             Log in
           </a>
         </div>
-      </div>
+      </form>
 
-      {/* Copyright */}
       <div className="mt-8 text-sm text-gray-500">
         Copyright © 2025 Onvitec. All Rights Reserved
       </div>
