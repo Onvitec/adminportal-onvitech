@@ -31,6 +31,7 @@ const UsersTable = () => {
       const { data, error } = await supabase
         .from("users")
         .select("*")
+        .eq("role", "User")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
