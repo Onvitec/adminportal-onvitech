@@ -74,7 +74,7 @@ export default function InteractiveSessionForm() {
   const [videos, setVideos] = useState<Video[]>([
     {
       id: uuidv4(),
-      title: "Video 1",
+      title: "Video Name",
       file: null,
       url: "",
       question: null,

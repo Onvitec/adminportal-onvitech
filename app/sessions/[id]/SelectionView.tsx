@@ -7,6 +7,7 @@ import { Answers, DestinationVedio, Questions } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { SolutionCard } from "@/components/SolutionCard";
+import { Loader } from "@/components/Loader";
 
 export default function SelectionViewSession({ sessionId }: { sessionId: string }) {
   const [videos, setVideos] = useState<VideoType[]>([]);
@@ -79,7 +80,7 @@ export default function SelectionViewSession({ sessionId }: { sessionId: string 
 
   if (loading) {
     return (
-      <div className="p-6 text-center">Loading selection session...</div>
+      <div className="p-6 text-center"><Loader size="lg" /></div>   
     );
   }
 
@@ -190,8 +191,8 @@ export default function SelectionViewSession({ sessionId }: { sessionId: string 
       })}
 
       {/* Solutions Section */}
-      <div className="border rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between py-4 px-4 bg-white">
+      <div className="border rounded-lg overflow-hidden px-4 bg-white">
+        <div className="flex items-center justify-between py-4 ">
           <h2 className="text-xl font-bold">Solution Type</h2>
           <Button
             type="button"

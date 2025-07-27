@@ -44,6 +44,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { VideoUpload } from "../linear-flow/videoo-upload";
+import Link from "next/link";
+import Heading from "@/components/Heading";
 
 type Answer = {
   id: string;
@@ -60,6 +63,7 @@ type Video = {
   id: string;
   name: string;
   file: File | null;
+  title: string;
   url: string;
   question: Question | null;
   isExpanded: boolean;
@@ -79,11 +83,12 @@ export default function SelectionSessionForm() {
   const [videos, setVideos] = useState<Video[]>([
     {
       id: uuidv4(),
-      name: "Video 1",
+      name: "Video Name",
       file: null,
       url: "",
       question: null,
       isExpanded: true,
+      title: "Video Name",
     },
   ]);
   const [combinations, setCombinations] = useState<AnswerCombination[]>([]);
@@ -225,6 +230,7 @@ export default function SelectionSessionForm() {
         url: "",
         question: null,
         isExpanded: true,
+        title: "",
       },
     ]);
   };
@@ -598,11 +604,20 @@ export default function SelectionSessionForm() {
     const category = solutionCategories.find(
       (c) => c.id === solution.category_id
     );
-    return `${category?.name || "Solution"} ${solution.id.slice(0, 4)}`;
+    return `${category?.name || "Solution"}`;
   };
 
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto">
+      <div>
+        <Link href="/sessions">
+          <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md cursor-pointer hover:underline">
+            Back to Session Maker
+          </p>
+        </Link>
+        
+        <Heading>Add New Session</Heading>
+      </div>
       <form onSubmit={handleSubmit}>
         <Card className="border-none shadow-none px-3">
           <CardHeader className="px-0">
@@ -632,7 +647,18 @@ export default function SelectionSessionForm() {
                   required
                 />
               </div>
-             
+              <div className="space-y-1">
+                <Label htmlFor="userId" className="text-sm font-medium text-[#242B42]">
+                  Session Type
+                </Label>
+                <Input
+                  id="userId"
+                  value={"Selection Based"}
+                  disabled
+                  className="h-10 bg-[#EEEEEE] text-[#242B42] font-medium"
+                  required
+                />
+              </div>
             </div>
 
             <div className="mt-8">
@@ -642,7 +668,7 @@ export default function SelectionSessionForm() {
 
               <div className="space-y-4">
                 {videos.map((video) => (
-                  <Card
+                  <div
                     key={video.id}
                     className="border rounded-lg overflow-hidden"
                   >
@@ -652,7 +678,9 @@ export default function SelectionSessionForm() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             const newName = prompt(
                               "Enter new video name",
                               video.name
@@ -668,6 +696,7 @@ export default function SelectionSessionForm() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          type="button"
                           onClick={() => toggleExpandVideo(video.id)}
                           className="h-8 w-8 p-0 text-gray-500 hover:text-gray-900"
                         >
@@ -679,6 +708,7 @@ export default function SelectionSessionForm() {
                         </Button>
                         <Button
                           variant="ghost"
+                          type="button"
                           size="sm"
                           onClick={() => removeVideo(video.id)}
                           className="h-8 w-8 p-0 text-gray-500 hover:text-gray-900"
@@ -690,65 +720,20 @@ export default function SelectionSessionForm() {
                     </div>
 
                     {video.isExpanded && (
-                      <CardContent className="p-4 space-y-4">
-                        <div className="border border-dashed rounded-lg p-4">
-                          {video.file ? (
-                            <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                              <div className="flex-1 truncate pr-2">
-                                <p className="text-sm truncate">
-                                  {video.file.name}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {(video.file.size / (1024 * 1024)).toFixed(2)}{" "}
-                                  MB
-                                </p>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleFileChange(video.id, null)}
-                                className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="text-center py-4">
-                              <div className="space-y-2">
-                                <p className="text-sm font-medium">
-                                  Browse your file to upload!
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  Supported Format: MP4 (50mb max)
-                                </p>
-                                <div className="pt-2">
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    className="relative py-5 px-6"
-                                  >
-                                    <Upload className="h-4 w-4 mr-2" />
-                                    Browse File
-                                    <input
-                                      type="file"
-                                      accept="video/mp4,video/quicktime"
-                                      onChange={(e) =>
-                                        handleFileChange(
-                                          video.id,
-                                          e.target.files?.[0] || null
-                                        )
-                                      }
-                                      className="absolute inset-0 opacity-0 cursor-pointer"
-                                    />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                      <div className="p-4 space-y-4 bg-white">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                          <VideoUpload
+                            video={video}
+                            moduleId={video.id}
+                            onDelete={() => removeVideo(video.id)}
+                            handleFileChange={(file) =>
+                              handleFileChange(video.id, file)
+                            }
+                          />
                         </div>
 
                         {video.question ? (
-                          <div className="space-y-4">
+                          <div className="space-y-4 mt-4">
                             <div className="space-y-2">
                               <Label>Question</Label>
                               <Textarea
@@ -828,15 +813,15 @@ export default function SelectionSessionForm() {
                             type="button"
                             variant="outline"
                             onClick={() => addQuestion(video.id)}
-                            className="w-full"
+                            className="w-full mt-4"
                           >
                             <PlusCircle className="h-4 w-4 mr-2" />
                             Add Question
                           </Button>
                         )}
-                      </CardContent>
+                      </div>
                     )}
-                  </Card>
+                  </div>
                 ))}
 
                 <Button
@@ -868,7 +853,7 @@ export default function SelectionSessionForm() {
                 </div>
 
                 {combinations.length > 0 ? (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div className="grid grid-cols-12 gap-4 items-center font-medium text-sm text-gray-600">
                       <div className="col-span-8">Combination</div>
                       <div className="col-span-4">Solution</div>
@@ -877,33 +862,31 @@ export default function SelectionSessionForm() {
                     {combinations.map((combination) => (
                       <div
                         key={combination.id}
-                        className="grid grid-cols-12 gap-4 items-center"
+                        className="grid grid-cols-12 gap-4 items-center bg-gray-50 p-3 rounded-lg"
                       >
-                        <div className="col-span-8 flex items-center gap-2">
-                          {combination.answers.map((answerId, idx) => (
-                            <div key={idx} className="flex items-center gap-1">
-                              {idx > 0 && (
-                                <span className="text-gray-400">→</span>
-                              )}
-                              <span className="px-2 py-1 bg-gray-100 rounded text-sm">
+                        <div className="col-span-8">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {combination.answers.map((answerId) => (
+                              <span 
+                                key={answerId}
+                                className="px-4 py-2 bg-white border border-gray-200 rounded-md text-sm font-medium shadow-sm hover:bg-gray-50"
+                              >
                                 {getAnswerText(answerId)}
                               </span>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
                         <div className="col-span-3">
                           {combination.solution_id ? (
                             <div className="flex items-center gap-2">
-                              <span className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded text-sm">
+                              <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-md text-sm font-medium border border-blue-200 shadow-sm">
                                 {getSolutionTitle(combination.solution_id)}
                               </span>
                               <Button
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                onClick={() =>
-                                  openSolutionModal(combination.id)
-                                }
+                                onClick={() => openSolutionModal(combination.id)}
                                 className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
                               >
                                 <Edit className="h-4 w-4" />
@@ -915,7 +898,7 @@ export default function SelectionSessionForm() {
                               variant="outline"
                               size="sm"
                               onClick={() => openSolutionModal(combination.id)}
-                              className="h-8"
+                              className="h-9 px-4 shadow-sm"
                             >
                               Add Solution
                             </Button>
@@ -1019,9 +1002,8 @@ export default function SelectionSessionForm() {
 
             {modalSolution.category_id && (
               <SolutionCard
-                solution={modalSolution as any} //TODO:check again
+                solution={modalSolution as any}
                 onUpdate={updateModalSolution}
-                
               />
             )}
 

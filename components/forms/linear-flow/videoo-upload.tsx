@@ -135,7 +135,7 @@ export function VideoUpload({
             Supported Format: Mp4, JPG, PNG (50mb each)
           </p>
           <div className="pt-2">
-            <Button size="sm" className="relative py-5 px-6">
+            <Button size="sm" className="relative py-5 px-6 cursor-pointer">
               Browse File <Upload className="ml-2" />
               <input
                 type="file"

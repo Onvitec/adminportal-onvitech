@@ -191,7 +191,7 @@ const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
             {value === "linear"
               ? "Linear Flow"
               : value === "interactive"
-              ? "Interactive Flow"
+              ? "Interactive Video"
               : value}
           </span>
         );

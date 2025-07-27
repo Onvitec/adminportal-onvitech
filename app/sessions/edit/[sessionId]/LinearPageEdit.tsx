@@ -85,7 +85,7 @@ export default function LinearSessionForm() {
     {
       id: uuidv4(),
       title: "Module 1",
-      videos: [{ id: uuidv4(), title: "Video 1", file: null, url: "" }],
+      videos: [{ id: uuidv4(), title: "Video Name", file: null, url: "" }],
     },
   ]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -196,7 +196,7 @@ export default function LinearSessionForm() {
       {
         id: uuidv4(),
         title: `Module ${modules.length + 1}`,
-        videos: [{ id: uuidv4(), title: "Video 1", file: null, url: "" }],
+        videos: [{ id: uuidv4(), title: "Video Name", file: null, url: "" }],
       },
     ]);
   };
@@ -236,7 +236,7 @@ export default function LinearSessionForm() {
               ...m,
               videos: [
                 ...m.videos,
-                { id: uuidv4(), title: "Video 1", file: null, url: "" },
+                { id: uuidv4(), title: "Video Name", file: null, url: "" },
               ],
             }
           : m

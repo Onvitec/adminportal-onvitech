@@ -241,7 +241,7 @@ export function SolutionCard({
                     Supported Format: Mp4 (50mb max)
                   </p>
                   <div className="pt-2">
-                    <Button size="sm" className="relative py-5 px-6">
+                    <Button size="sm" className="relative py-5 px-6 cursor-pointer">
                       Browse File <Upload className="ml-2" />
                       <input
                         type="file"

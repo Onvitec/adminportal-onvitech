@@ -128,21 +128,21 @@ export default function CleanBarChart() {
           />
           <Bar
             dataKey="linear"
-            name="Linear Session"
+            name="Linear Flow"
             fill="#00BA47"
             barSize={15}
             radius={[2, 2, 0, 0]}
           />
           <Bar
             dataKey="selection"
-            name="Selection Flow"
+            name="Selection Based"
             fill="#6D59F3"
             barSize={15}
             radius={[2, 2, 0, 0]}
           />
           <Bar
             dataKey="interactive"
-            name="Interactive"
+            name="Interactive Video"
             fill="#217FD7"
             barSize={15}
             radius={[2, 2, 0, 0]}
@@ -151,9 +151,9 @@ export default function CleanBarChart() {
       </ResponsiveContainer>
 
       <div className="flex flex-wrap justify-center items-center gap-3 mt-2 px-2">
-        <LegendItem color="#00BA47" label="Linear" />
-        <LegendItem color="#6D59F3" label="Selection" />
-        <LegendItem color="#217FD7" label="Interactive" />
+        <LegendItem color="#00BA47" label="Linear Flow" />
+        <LegendItem color="#6D59F3" label="Selection Based" />
+        <LegendItem color="#217FD7" label="Interactive Video" />
       </div>
     </div>
   );
