@@ -337,7 +337,7 @@ if (loading) return <Loader size="lg" className="h-screen" />;
             </div>
           </div>
 
-          {/* <div className="w-full overflow-x-auto">
+          <div className="w-full overflow-x-auto">
             <Table<SessionType>
               data={sessions}
               columns={columns}
@@ -350,7 +350,7 @@ if (loading) return <Loader size="lg" className="h-screen" />;
               actions={sessionActions}
               isLoading={loading}
             />
-          </div> */}
+          </div>
         </div>
 
         {/* Right side - 30% width */}
