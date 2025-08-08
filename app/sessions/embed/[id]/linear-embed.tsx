@@ -40,6 +40,8 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [videoHistory, setVideoHistory] = useState<Video[]>([]);
+  const [isBackNavigation, setIsBackNavigation] = useState(false);
   const videoRef = React.useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -97,6 +99,8 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
         modulesWithVideos[0].videos.length > 0
       ) {
         setCurrentVideo(modulesWithVideos[0].videos[0]);
+        setVideoHistory([]);
+        setIsBackNavigation(false);
       }
     } catch (error) {
       console.error("Error fetching session data:", error);
@@ -138,6 +142,16 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
     }
 
     if (nextVideo) {
+      if (isBackNavigation) {
+        // If we're in back navigation mode, clear history to start fresh
+        setVideoHistory([]);
+        setIsBackNavigation(false);
+      } else {
+        // Add current video to history before advancing
+        if (currentVideo) {
+          setVideoHistory((prev) => [...prev, currentVideo]);
+        }
+      }
       setCurrentVideo(nextVideo);
     }
   };
@@ -187,39 +201,16 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
   };
 
   const goToPreviousVideo = () => {
-    if (!currentVideo) return;
-
-    let prevVideo: Video | null = null;
-    let foundCurrent = false;
-
-    // Loop through modules in reverse to find the previous video
-    for (let i = modules.length - 1; i >= 0; i--) {
-      const module = modules[i];
-      for (let j = module.videos.length - 1; j >= 0; j--) {
-        const video = module.videos[j];
-        if (video.id === currentVideo.id) {
-          foundCurrent = true;
-          if (prevVideo) {
-            setCurrentVideo(prevVideo);
-            setIsPlaying(true);
-            return;
-          }
-        } else if (foundCurrent) {
-          // This is the video before our current one
-          setCurrentVideo(video);
-          setIsPlaying(true);
-          return;
-        } else {
-          prevVideo = video;
-        }
-      }
-    }
+    if (videoHistory.length === 0) return;
+    const previousVideo = videoHistory[videoHistory.length - 1];
+    setVideoHistory((prev) => prev.slice(0, -1));
+    setCurrentVideo(previousVideo);
+    setIsPlaying(true);
+    setIsBackNavigation(true);
   };
 
-
   const isFirstVideo = () => {
-    if (!modules.length || !currentVideo) return true;
-    return modules[0].videos[0].id === currentVideo.id;
+    return videoHistory.length === 0;
   };
 
   if (isLoading) {
@@ -276,7 +267,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
             onClick={togglePlayPause}
           >
             <video
-              
+            controls
               ref={videoRef}
               key={currentVideo.id}
               src={currentVideo.url}
@@ -305,7 +296,56 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
         </div>
       )}
 
-      {/* Commented out Videos List - kept for future reference */}
+     
+
+      {/* Solutions Section - Only shown when all videos are completed */}
+      {allVideosCompleted && (
+        <div className="border rounded-lg overflow-hidden mt-6">
+          <div className="flex items-center justify-between py-4 px-4 bg-white">
+            <h2 className="text-xl font-bold">Solution Type</h2>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsSolutionCollapsed(!isSolutionCollapsed)}
+            >
+              {isSolutionCollapsed ? (
+                <ChevronUp className="h-5 w-5" />
+              ) : (
+                <ChevronDown className="h-5 w-5" />
+              )}
+            </Button>
+          </div>
+
+          {isSolutionCollapsed && (
+            <div className="bg-gray-50 py-4 border-t">
+              {solutions.length > 0 ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {solutions.map((solution) => (
+                    <SolutionCard
+                      key={solution.id}
+                      solution={solution}
+                      readOnly={true}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-4">
+                  No solutions added
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default LinearSessionEmbed;
+
+
+   {/* Commented out Videos List - kept for future reference */}
       {/*
       <div className="px-4">
         <ul className="space-y-2">
@@ -375,53 +415,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
         </ul>
       </div>
       */}
-
-      {/* Solutions Section - Only shown when all videos are completed */}
-      {allVideosCompleted && (
-        <div className="border rounded-lg overflow-hidden mt-6">
-          <div className="flex items-center justify-between py-4 px-4 bg-white">
-            <h2 className="text-xl font-bold">Solution Type</h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSolutionCollapsed(!isSolutionCollapsed)}
-            >
-              {isSolutionCollapsed ? (
-                <ChevronUp className="h-5 w-5" />
-              ) : (
-                <ChevronDown className="h-5 w-5" />
-              )}
-            </Button>
-          </div>
-
-          {isSolutionCollapsed && (
-            <div className="bg-gray-50 py-4 border-t">
-              {solutions.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4">
-                  {solutions.map((solution) => (
-                    <SolutionCard
-                      key={solution.id}
-                      solution={solution}
-                      readOnly={true}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  No solutions added
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default LinearSessionEmbed;
-
+      
 // ----------- OLD FUNCTIONALITY
 // "use client";
 // import { SolutionCard } from "@/components/SolutionCard";

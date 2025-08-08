@@ -238,7 +238,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           ref={videoRef}
           src={currentVideo.url}
           className="w-full h-full object-contain rounded-xl cursor-pointer"
-          controls={false}
+          controls
           onClick={togglePlayPause}
           onEnded={handleVideoEnd}
           onPlay={() => setIsPlaying(true)}

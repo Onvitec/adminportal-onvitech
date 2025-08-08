@@ -291,10 +291,11 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
     <div className="flex flex-col h-full rounded-xl overflow-hidden">
       <div className="relative flex-1 bg-black rounded-xl">
         <video
+
           ref={videoRef}
           src={currentVideo.url}
           className="w-full h-full object-contain rounded-xl"
-          controls={false}
+          controls
           onEnded={handleVideoEnd}
           onPlay={() => {
             setIsPlaying(true);

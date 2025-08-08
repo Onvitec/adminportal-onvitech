@@ -110,7 +110,7 @@ export function SolutionCard({
         );
       case 3: // Link
         return (
-          <div className="space-y-2   py-4">
+          <div className="space-y-2  px-4 py-4">
             <div className="flex justify-between items-center mb-4">
               <h4 className="font-medium">Link Solution</h4>
               {!readOnly && onDelete && (
