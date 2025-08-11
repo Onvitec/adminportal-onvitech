@@ -443,6 +443,7 @@ export default function InteractiveSessionForm() {
       setSolution({ ...solution, ...updates });
     }
   };
+  const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
 
   return (
     <div className="container mx-auto">
@@ -790,7 +791,7 @@ export default function InteractiveSessionForm() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || !solution || !hasAtLeastOneVideo}
                   className="h-10 px-6"
                 >
                   {isLoading ? "Saving..." : "Save"}

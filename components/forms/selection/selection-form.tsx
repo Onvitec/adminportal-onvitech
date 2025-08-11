@@ -606,7 +606,7 @@ export default function SelectionSessionForm() {
     );
     return `${category?.name || "Solution"}`;
   };
-
+const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
   return (
     <div className="container mx-auto">
       <div>
@@ -950,7 +950,7 @@ export default function SelectionSessionForm() {
                 <Button
                   type="submit"
                   disabled={
-                    isLoading ||
+                    isLoading || !hasAtLeastOneVideo || solutions.length === 0 ||
                     (combinations.length > 0 &&
                       combinations.some((c) => !c.solution_id))
                   }

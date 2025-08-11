@@ -90,7 +90,9 @@ export function SolutionCard({
                 <Label>Recipient Email</Label>
                 <Input
                   value={solution.email_content || ""}
-                  onChange={(e) => handleChange({ email_content: e.target.value })}
+                  onChange={(e) =>
+                    handleChange({ email_content: e.target.value })
+                  }
                   className="w-full mt-1"
                   placeholder="Email address to send to"
                 />
@@ -99,31 +101,31 @@ export function SolutionCard({
                 <Label>Email Subject</Label>
                 <Input
                   value={solution.emailContent || ""}
-                  onChange={(e) => handleChange({ emailContent: e.target.value })}
+                  onChange={(e) =>
+                    handleChange({ emailContent: e.target.value })
+                  }
                   className="w-full mt-1"
                   placeholder="Email subject"
                 />
               </div>
-             
             </div>
           </div>
         );
       case 3: // Link
         return (
-          <div className="space-y-2  px-4 py-4">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="font-medium">Link Solution</h4>
-              {!readOnly && onDelete && (
-                <button
-                  onClick={onDelete}
-                  className="text-red-600 hover:text-red-800 cursor-pointer"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+          <div className={`space-y-2 py-4`}>
             <div>
-              <Label>Link URL</Label>
+              <div className="flex justify-between items-center mb-2">
+                <Label>Link URL</Label>
+                {!readOnly && onDelete && (
+                  <button
+                    onClick={onDelete}
+                    className="text-red-600 hover:text-red-800 cursor-pointer"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
               <Input
                 placeholder="https://example.com"
                 value={solution.link_url || ""}
@@ -175,7 +177,7 @@ export function SolutionCard({
                 </button>
               )}
             </div>
-            
+
             {/* If we have a URL but no file (existing video from DB) */}
             {solution.video_url && !solution.videoFile && (
               <div className="bg-black rounded-lg overflow-hidden relative group">
@@ -241,7 +243,10 @@ export function SolutionCard({
                     Supported Format: Mp4 (50mb max)
                   </p>
                   <div className="pt-2">
-                    <Button size="sm" className="relative py-5 px-6 cursor-pointer">
+                    <Button
+                      size="sm"
+                      className="relative py-5 px-6 cursor-pointer"
+                    >
                       Browse File <Upload className="ml-2" />
                       <input
                         type="file"
@@ -265,5 +270,7 @@ export function SolutionCard({
     }
   };
 
-  return <div className="rounded-lg cursor-pointer">{renderSolutionInput()}</div>;
+  return (
+    <div className="rounded-lg cursor-pointer">{renderSolutionInput()}</div>
+  );
 }

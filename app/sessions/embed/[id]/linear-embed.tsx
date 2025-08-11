@@ -1,14 +1,12 @@
-
 "use client";
 import { Loader } from "@/components/Loader";
 import { SolutionCard } from "@/components/SolutionCard";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { Solution, SolutionCategory } from "@/lib/types";
-import { ChevronDown, ChevronUp, Loader2, ArrowLeft, Maximize2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
-type Props = {};
 type Module = {
   id: string;
   title: string;
@@ -28,7 +26,6 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
   const [modules, setModules] = useState<Module[]>([]);
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
   const [watchedVideos, setWatchedVideos] = useState<Set<string>>(new Set());
-  const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(true);
   const [videoProgress, setVideoProgress] = useState<{ [key: string]: number }>(
     {}
   );
@@ -37,6 +34,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
     SolutionCategory[]
   >([]);
   const [allVideosCompleted, setAllVideosCompleted] = useState(false);
+  const [sessionName, setSessionName] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -52,6 +50,15 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
     setIsLoading(true);
     setError(null);
     try {
+      // Get session name
+      const { data: sessionData } = await supabase
+        .from("sessions")
+        .select("title")
+        .eq("id", sessionId)
+        .single();
+      if (sessionData) setSessionName(sessionData.title);
+
+      // Fetch modules
       const { data: modulesData, error: modulesError } = await supabase
         .from("modules")
         .select("*")
@@ -77,17 +84,16 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
         })
       );
 
+      // Fetch solutions
       const { data: solutionsData, error: solutionsError } = await supabase
         .from("solutions")
         .select("*")
         .eq("session_id", sessionId);
-
       if (solutionsError) throw solutionsError;
 
       const { data: categoriesData, error: categoriesError } = await supabase
         .from("solution_categories")
         .select("*");
-
       if (categoriesError) throw categoriesError;
 
       setModules(modulesWithVideos);
@@ -120,8 +126,10 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
       (count, module) => count + module.videos.length,
       0
     );
+
     if (newWatched.size === totalVideos) {
       setAllVideosCompleted(true);
+      setCurrentVideo(null);
       return;
     }
 
@@ -143,11 +151,9 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
 
     if (nextVideo) {
       if (isBackNavigation) {
-        // If we're in back navigation mode, clear history to start fresh
         setVideoHistory([]);
         setIsBackNavigation(false);
       } else {
-        // Add current video to history before advancing
         if (currentVideo) {
           setVideoHistory((prev) => [...prev, currentVideo]);
         }
@@ -161,32 +167,6 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
       ...prev,
       [videoId]: progress,
     }));
-  };
-
-  const isVideoUnlocked = (video: Video) => {
-    if (
-      modules.length > 0 &&
-      modules[0].videos.length > 0 &&
-      modules[0].videos[0].id === video.id
-    ) {
-      return true;
-    }
-
-    let foundCurrent = false;
-    for (const module of modules) {
-      for (const v of module.videos) {
-        if (v.id === video.id) {
-          foundCurrent = true;
-          break;
-        }
-        if (!watchedVideos.has(v.id)) {
-          return false;
-        }
-      }
-      if (foundCurrent) break;
-    }
-
-    return true;
   };
 
   const togglePlayPause = () => {
@@ -209,15 +189,15 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
     setIsBackNavigation(true);
   };
 
-  const isFirstVideo = () => {
-    return videoHistory.length === 0;
-  };
+  const isFirstVideo = () => videoHistory.length === 0;
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-12 gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-     <div><Loader size="md"/></div>;
+        <div>
+          <Loader size="md" />
+        </div>
       </div>
     );
   }
@@ -241,13 +221,10 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
     );
   }
 
-  // Flatten all videos from all modules into a single array
-  // const allVideos = modules.flatMap((module) => module.videos);
-
   return (
     <div className="overflow-y-scroll max-h-screen">
-      {/* Minimal Video Player with Back Button */}
-      {currentVideo && (
+      {/* Video Player */}
+      {!allVideosCompleted && currentVideo && (
         <div className="mb-4 relative">
           {!isFirstVideo() && (
             <div className="absolute top-4 left-4 z-10">
@@ -267,7 +244,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
             onClick={togglePlayPause}
           >
             <video
-            controls
+              controls
               ref={videoRef}
               key={currentVideo.id}
               src={currentVideo.url}
@@ -291,51 +268,33 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
                 </div>
               </div>
             )}
-
           </div>
         </div>
       )}
 
-     
-
-      {/* Solutions Section - Only shown when all videos are completed */}
       {allVideosCompleted && (
-        <div className="border rounded-lg overflow-hidden mt-6">
-          <div className="flex items-center justify-between py-4 px-4 bg-white">
-            <h2 className="text-xl font-bold">Solution Type</h2>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSolutionCollapsed(!isSolutionCollapsed)}
-            >
-              {isSolutionCollapsed ? (
-                <ChevronUp className="h-5 w-5" />
-              ) : (
-                <ChevronDown className="h-5 w-5" />
-              )}
-            </Button>
+        <div className="flex flex-col items-center justify-center text-center py-20">
+          <h2 className="text-2xl font-bold mb-4">
+            🎉 You have finished the session "{sessionName}"
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Great job! Here are the solutions for this session:
+          </p>
+          <div className="bg-gray-50 p-4 rounded-lg w-full max-w-2xl">
+            {solutions.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4">
+                {solutions.map((solution) => (
+                  <SolutionCard
+                    key={solution.id}
+                    solution={solution}
+                    readOnly={true}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No solutions added yet.</p>
+            )}
           </div>
-
-          {isSolutionCollapsed && (
-            <div className="bg-gray-50 py-4 border-t">
-              {solutions.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4">
-                  {solutions.map((solution) => (
-                    <SolutionCard
-                      key={solution.id}
-                      solution={solution}
-                      readOnly={true}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  No solutions added
-                </p>
-              )}
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -344,9 +303,11 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
 
 export default LinearSessionEmbed;
 
-
-   {/* Commented out Videos List - kept for future reference */}
-      {/*
+{
+  /* Commented out Videos List - kept for future reference */
+}
+{
+  /*
       <div className="px-4">
         <ul className="space-y-2">
           {allVideos.map((video) => {
@@ -414,8 +375,9 @@ export default LinearSessionEmbed;
           })}
         </ul>
       </div>
-      */}
-      
+      */
+}
+
 // ----------- OLD FUNCTIONALITY
 // "use client";
 // import { SolutionCard } from "@/components/SolutionCard";

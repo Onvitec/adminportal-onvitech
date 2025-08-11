@@ -306,8 +306,6 @@ export default function LinearSessionForm() {
     }
   };
 
-
-
   // Add solution handler
   const addSolution = () => {
     if (!selectedCategory) return;
@@ -329,17 +327,19 @@ export default function LinearSessionForm() {
     }
   };
 
+  console.log(modules)
+  const hasAtLeastOneVideo = modules.some((module) => module.videos.length > 0) && modules.some((module) => module.videos.some((video) => video.file || video.url));
   return (
     <div className="container mx-auto">
-       <div>
-                <Link href="/sessions">
-                  <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md cursor-pointer hover:underline">
-                    Back to Session Maker
-                  </p>
-                </Link>
-                
-                <Heading>Add New Session</Heading>
-              </div>
+      <div>
+        <Link href="/sessions">
+          <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md cursor-pointer hover:underline">
+            Back to Session Maker
+          </p>
+        </Link>
+
+        <Heading>Add New Session</Heading>
+      </div>
       <form onSubmit={handleSubmit} className="mt-4">
         <Card className="border-none shadow-none px-3">
           <CardHeader className="px-0">
@@ -354,7 +354,10 @@ export default function LinearSessionForm() {
           <CardContent className="space-y-6 px-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-1">
-                <Label htmlFor="sessionName" className="text-sm font-medium text-[#242B42]">
+                <Label
+                  htmlFor="sessionName"
+                  className="text-sm font-medium text-[#242B42]"
+                >
                   Session Name
                 </Label>
                 <Input
@@ -367,7 +370,10 @@ export default function LinearSessionForm() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="userId" className="text-sm font-medium text-[#242B42]">
+                <Label
+                  htmlFor="userId"
+                  className="text-sm font-medium text-[#242B42]"
+                >
                   Session Type
                 </Label>
                 <Input
@@ -532,7 +538,12 @@ export default function LinearSessionForm() {
                 <Button
                   onClick={handleSubmit}
                   type="submit"
-                  disabled={isLoading}
+                  disabled={
+                    isLoading ||
+                    modules.length === 0 ||
+                    !solution ||
+                    !hasAtLeastOneVideo
+                  }
                   className="h-10 px-6"
                 >
                   {isLoading ? "Saving..." : "Save"}
