@@ -112,7 +112,7 @@ export function SidebarNavigation({ onClose }: SidebarNavigationProps) {
       items: [
         {
           title: "Company Management",
-          href: "/user-management",
+          href: "/company-management",
           icon: <UsersIcon className="h-5 w-5" />,
         },
         {
