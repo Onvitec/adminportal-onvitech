@@ -804,7 +804,7 @@ export default function LinearSessionForm() {
                 </DragOverlay>
               </DndContext>
             </div>
-            <div className="p-4 pt-0 space-y-4">
+            <div className="py-4  pt-0 space-y-4">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
                   <Label className="block text-sm font-medium mb-1">
@@ -872,7 +872,7 @@ export default function LinearSessionForm() {
                 </div>
 
                 {solutionsExpanded && (
-                  <div className="bg-gray-50 py-4 border-t">
+                  <div className="bg-gray-50 py-4 px-4 border-t">
                     <SolutionCard
                       solution={solution as Solution}
                       onDelete={removeSolution}
@@ -892,7 +892,7 @@ export default function LinearSessionForm() {
                 <PlusCircle className="h-4 w-4 mr-2" />
                 Add Module
               </Button>
-              <div>
+              <div className="space-x-2">
                 <Button
                   type="button"
                   variant="outline"

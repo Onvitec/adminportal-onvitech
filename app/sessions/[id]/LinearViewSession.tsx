@@ -105,7 +105,7 @@ export function LinearSessionView({ sessionId }: { sessionId: string }) {
         </div>
 
         {solutionsExpanded && (
-          <div className="bg-gray-50 py-4 border-t">
+          <div className="bg-gray-50 py-4 px-4 border-t">
             {solutions.length > 0 ? (
               <div className="grid grid-cols-1 gap-4">
                 {solutions.map((solution) => (

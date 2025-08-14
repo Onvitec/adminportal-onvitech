@@ -158,8 +158,8 @@ export function ModuleCard({
 
       {isExpanded && (
         <div className="px-4 pb-4  bg-gray-50">
-          <div className="bg-gray-50 p-4  rounded-lg">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 ">
+          <div className="bg-gray-50  rounded-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 mt-4">
               {module.videos.map((video) => (
                 <VideoUpload
                   key={video.id}
@@ -179,7 +179,7 @@ export function ModuleCard({
             variant="outline"
             size="sm"
             onClick={handleAddVideo}
-            className=" bg-gray-100 py-5"
+            className=" bg-gray-100 py-5 mt-4"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Video
