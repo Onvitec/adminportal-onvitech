@@ -464,6 +464,7 @@ export default function LinearSessionForm() {
                         Solution Category
                       </Label>
                       <Select
+
                         value={
                           solutionCategories
                             .find((c) => c.id === selectedCategory)
@@ -603,6 +604,7 @@ function SortableModule({
         removeVideo={removeVideo}
         handleFileChange={handleFileChange}
         isDragging={isDragging}
+        editPage={false}
         dragHandleProps={listeners}
       />
     </div>

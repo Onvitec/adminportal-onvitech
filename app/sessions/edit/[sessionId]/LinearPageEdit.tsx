@@ -799,7 +799,8 @@ export default function LinearSessionForm() {
                       removeVideo={() => {}}
                       handleFileChange={() => {}}
                       isDragging={true}
-                    />
+                      editPage={true}
+/>
                   ) : null}
                 </DragOverlay>
               </DndContext>
@@ -811,6 +812,7 @@ export default function LinearSessionForm() {
                     Solution Category
                   </Label>
                   <Select
+                  disabled={solution !== null}
                     value={
                       solutionCategories
                         .find((c) => c.id === solutionCategory)
@@ -965,6 +967,7 @@ function SortableModule({
         handleFileChange={handleFileChange}
         isDragging={isDragging}
         dragHandleProps={listeners}
+        editPage={true}
       />
     </div>
   );

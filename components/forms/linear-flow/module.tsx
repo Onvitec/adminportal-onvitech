@@ -25,6 +25,7 @@ export function ModuleCard({
   handleFileChange,
   isDragging = false,
   dragHandleProps,
+  editPage = false,
 }: {
   module: Module;
   onUpdate: (updatedModule: Module) => void;
@@ -38,6 +39,7 @@ export function ModuleCard({
   ) => void;
   isDragging?: boolean;
   dragHandleProps?: any;
+  editPage?: boolean;
 }) {
   const [isEditingModule, setIsEditingModule] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -121,7 +123,6 @@ export function ModuleCard({
         </div>
 
         <div className="flex items-center gap-2">
-          
           <Button
             variant={"ghost"}
             size="sm"
@@ -179,7 +180,9 @@ export function ModuleCard({
             variant="outline"
             size="sm"
             onClick={handleAddVideo}
-            className=" bg-gray-100 py-5 mt-4"
+            className={`bg-gray-100 py-5 mt-4 ${
+              editPage ? "" : "mx-4"
+            }`}
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Video
