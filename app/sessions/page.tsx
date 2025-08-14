@@ -4,7 +4,7 @@ import Heading from "@/components/Heading";
 import Table from "@/components/Table/Table";
 import { DeleteIcon, EditIcon, Plus } from "@/components/icons";
 import { EyeIcon } from "@/components/icons";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { SessionType } from "@/lib/types";
@@ -29,9 +29,7 @@ export default function SessionsTable() {
   const [loading, setLoading] = useState(true);
   const [selectedSessions, setSelectedSessions] = useState<SessionType[]>([]);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
-  const [sessionToShare, setSessionToShare] = useState<SessionType | null>(
-    null
-  );
+  const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
   const [isConfirmModalOpen, setIsconfirmModalOpen] = useState(false);
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -39,21 +37,35 @@ export default function SessionsTable() {
   const [deleting, setDeleting] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
-
   const router = useRouter();
 
+  // Load sessions on mount
   useEffect(() => {
     loadSessions();
   }, []);
 
+  // Filter sessions when activeFilter or sessions change
   useEffect(() => {
     if (activeFilter === "all") {
       setFiltered(sessions);
     } else {
       setFiltered(sessions.filter((s) => s.session_type === activeFilter));
     }
+    // Clear selection when filter changes
     setSelectedSessions([]);
   }, [activeFilter, sessions]);
+
+  // Clean up selected sessions that no longer exist in filtered data
+  useEffect(() => {
+    if (selectedSessions.length > 0 && filtered.length > 0) {
+      const existingIds = new Set(filtered.map(s => s.id));
+      const hasInvalidSelections = selectedSessions.some(s => !existingIds.has(s.id));
+      
+      if (hasInvalidSelections) {
+        setSelectedSessions(prev => prev.filter(s => existingIds.has(s.id)));
+      }
+    }
+  }, [filtered]); // Only depend on filtered data
 
   const loadSessions = async () => {
     setLoading(true);
@@ -67,40 +79,59 @@ export default function SessionsTable() {
     }
   };
 
- const handleDeleteSession = async (sessionId: string) => {
-  setDeleting(true);
-  try {
-    const { error } = await supabase
-      .from("sessions")
-      .delete()
-      .eq("id", sessionId);
-    if (error) throw error;
-    setSessions((prev) => prev.filter((x) => x.id !== sessionId));
-    showToast("success", "Session deleted");
-  } catch {
-    showToast("error", "Failed to delete");
-  } finally {
-    setDeleting(false);
-    setIsconfirmModalOpen(false);
-  }
-};
+  const handleDeleteSession = async (sessionId: string) => {
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("sessions")
+        .delete()
+        .eq("id", sessionId);
+      if (error) throw error;
+      
+      // Update both sessions and selectedSessions
+      setSessions(prev => prev.filter(x => x.id !== sessionId));
+      setSelectedSessions(prev => prev.filter(x => x.id !== sessionId));
+      
+      showToast("success", "Session deleted");
+    } catch {
+      showToast("error", "Failed to delete");
+    } finally {
+      setDeleting(false);
+      setIsconfirmModalOpen(false);
+    }
+  };
 
   const handleBulkDelete = async () => {
-  setBulkDeleting(true);
-  const ids = selectedSessions.map((s) => s.id);
-  try {
-    await supabase.from("sessions").delete().in("id", ids);
-    setSessions((prev) => prev.filter((s) => !ids.includes(s.id)));
-    setIsBulkDeleteModalOpen(false);
-    showToast("success", `${ids.length} sessions deleted`);
-  } catch {
-    showToast("error", "Bulk delete failed");
-  } finally {
-    setBulkDeleting(false);
-  }
-};
+    setBulkDeleting(true);
+    const ids = selectedSessions.map(s => s.id);
+    try {
+      await supabase.from("sessions").delete().in("id", ids);
+      
+      // Update both sessions and selectedSessions
+      setSessions(prev => prev.filter(s => !ids.includes(s.id)));
+      setSelectedSessions([]);
+      
+      setIsBulkDeleteModalOpen(false);
+      showToast("success", `${ids.length} session(s) deleted`);
+    } catch {
+      showToast("error", "Bulk delete failed");
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
-  const sessionActions = [
+  const handleSelectionChange = useCallback((selected: SessionType[]) => {
+    const existingIds = new Set(filtered.map(s => s.id));
+    const validSelections = selected.filter(s => existingIds.has(s.id));
+    
+    // Only update if the selection actually changed
+    if (validSelections.length !== selectedSessions.length || 
+        !validSelections.every((s, i) => s.id === selectedSessions[i]?.id)) {
+      setSelectedSessions(validSelections);
+    }
+  }, [filtered, selectedSessions]);
+
+  const sessionActions = useMemo(() => [
     {
       label: "View Session",
       icon: <EyeIcon className="h-4 w-4" />,
@@ -129,9 +160,9 @@ export default function SessionsTable() {
       },
       variant: "outline" as const,
     },
-  ];
+  ], [router]);
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       accessorKey: "title" as keyof SessionType,
       header: "Session Name",
@@ -185,7 +216,7 @@ export default function SessionsTable() {
         return <span>{formatted}</span>;
       },
     },
-  ];
+  ], []);
 
   return (
     <>
@@ -217,7 +248,6 @@ export default function SessionsTable() {
         </div>
       </div>
 
-      {/* Connected Toggle Filter Buttons */}
       <div className="flex justify-start mb-6">
         <div className="inline-flex bg-white rounded-md border border-gray-200 px-1 py-0.5 gap-[10px]">
           {FILTERS.map((f) => (
@@ -225,14 +255,11 @@ export default function SessionsTable() {
               key={f.key}
               onClick={() => setActiveFilter(f.key)}
               className={`cursor-pointer py-2 text-[14px] text-[#5F6D7E] font-medium rounded-md focus:outline-none transition-colors duration-150
-          whitespace-nowrap
-          w-40
-          ${
-            activeFilter === f.key
-              ? "bg-[#2C3444] text-white"
-              : "bg-white text-[#5F6D7E] hover:bg-gray-100"
-          }
-        `}
+                whitespace-nowrap w-40 ${
+                  activeFilter === f.key
+                    ? "bg-[#2C3444] text-white"
+                    : "bg-white text-[#5F6D7E] hover:bg-gray-100"
+                }`}
             >
               {f.label}
             </button>
@@ -243,16 +270,16 @@ export default function SessionsTable() {
       <Table<SessionType>
         data={filtered}
         columns={columns}
-        onSelectionChange={setSelectedSessions}
+        onSelectionChange={handleSelectionChange}
         pageSize={10}
         showCheckbox
         showActions
         isSelectable
         actions={sessionActions}
         isLoading={loading}
+        key={`table-${filtered.length}`}
       />
 
-      {/* Modals */}
       <IframeModal
         sessionId={sessionToShare?.id || ""}
         open={isShareModalOpen}
@@ -268,21 +295,21 @@ export default function SessionsTable() {
         onConfirm={async () => {
           if (sessionToDelete) {
             await handleDeleteSession(sessionToDelete);
-            setIsconfirmModalOpen(false);
           }
         }}
         onCancel={() => setIsconfirmModalOpen(false)}
+        isLoading={deleting}
       />
       <ConfirmModal
-  open={isBulkDeleteModalOpen}
-  title="Delete selected sessions?"
-  description={`You are about to delete ${selectedSessions.length} session(s). This action cannot be undone.`}
-  confirmText="Delete"
-  cancelText="Cancel"
-  onConfirm={handleBulkDelete}
-  onCancel={() => setIsBulkDeleteModalOpen(false)}
-  isLoading={bulkDeleting}
-/>
+        open={isBulkDeleteModalOpen}
+        title="Delete selected sessions?"
+        description={`You are about to delete ${selectedSessions.length} session(s). This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleBulkDelete}
+        onCancel={() => setIsBulkDeleteModalOpen(false)}
+        isLoading={bulkDeleting}
+      />
       <CreateSessionModal open={openModal} setOpen={setOpenModal} />
     </>
   );
