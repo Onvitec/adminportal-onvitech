@@ -36,6 +36,9 @@ export default function SessionsTable() {
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [openModal, setOpenModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
 
   const router = useRouter();
 
@@ -64,31 +67,38 @@ export default function SessionsTable() {
     }
   };
 
-  const handleDeleteSession = async (sessionId: string) => {
-    try {
-      const { error } = await supabase
-        .from("sessions")
-        .delete()
-        .eq("id", sessionId);
-      if (error) throw error;
-      setSessions((prev) => prev.filter((x) => x.id !== sessionId));
-      showToast("success", "Session deleted");
-    } catch {
-      showToast("error", "Failed to delete");
-    }
-  };
+ const handleDeleteSession = async (sessionId: string) => {
+  setDeleting(true);
+  try {
+    const { error } = await supabase
+      .from("sessions")
+      .delete()
+      .eq("id", sessionId);
+    if (error) throw error;
+    setSessions((prev) => prev.filter((x) => x.id !== sessionId));
+    showToast("success", "Session deleted");
+  } catch {
+    showToast("error", "Failed to delete");
+  } finally {
+    setDeleting(false);
+    setIsconfirmModalOpen(false);
+  }
+};
 
   const handleBulkDelete = async () => {
-    const ids = selectedSessions.map((s) => s.id);
-    try {
-      await supabase.from("sessions").delete().in("id", ids);
-      setSessions((prev) => prev.filter((s) => !ids.includes(s.id)));
-      setIsBulkDeleteModalOpen(false);
-      showToast("success", `${ids.length} sessions deleted`);
-    } catch {
-      showToast("error", "Bulk delete failed");
-    }
-  };
+  setBulkDeleting(true);
+  const ids = selectedSessions.map((s) => s.id);
+  try {
+    await supabase.from("sessions").delete().in("id", ids);
+    setSessions((prev) => prev.filter((s) => !ids.includes(s.id)));
+    setIsBulkDeleteModalOpen(false);
+    showToast("success", `${ids.length} sessions deleted`);
+  } catch {
+    showToast("error", "Bulk delete failed");
+  } finally {
+    setBulkDeleting(false);
+  }
+};
 
   const sessionActions = [
     {
@@ -264,14 +274,15 @@ export default function SessionsTable() {
         onCancel={() => setIsconfirmModalOpen(false)}
       />
       <ConfirmModal
-        open={isBulkDeleteModalOpen}
-        title="Delete selected sessions?"
-        description={`You are about to delete ${selectedSessions.length} session(s). This action cannot be undone.`}
-        confirmText="Delete"
-        cancelText="Cancel"
-        onConfirm={handleBulkDelete}
-        onCancel={() => setIsBulkDeleteModalOpen(false)}
-      />
+  open={isBulkDeleteModalOpen}
+  title="Delete selected sessions?"
+  description={`You are about to delete ${selectedSessions.length} session(s). This action cannot be undone.`}
+  confirmText="Delete"
+  cancelText="Cancel"
+  onConfirm={handleBulkDelete}
+  onCancel={() => setIsBulkDeleteModalOpen(false)}
+  isLoading={bulkDeleting}
+/>
       <CreateSessionModal open={openModal} setOpen={setOpenModal} />
     </>
   );

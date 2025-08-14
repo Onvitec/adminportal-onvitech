@@ -1,6 +1,7 @@
 import React from "react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Loader } from "../Loader";
 
 interface ConfirmModalProps {
   open: boolean;
@@ -10,6 +11,8 @@ interface ConfirmModalProps {
   cancelText?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  isLoading?: boolean;
+
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -20,6 +23,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   cancelText = "Cancel",
   onConfirm,
   onCancel,
+  isLoading = false,
 }) => {
   return (
     <Dialog open={open} onOpenChange={onCancel}>
@@ -29,10 +33,12 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" onClick={onCancel} disabled={isLoading}>
             {cancelText}
           </Button>
-          <Button onClick={onConfirm}>{confirmText}</Button>
+          <Button onClick={onConfirm} disabled={isLoading}>
+            {isLoading ? <Loader size="sm" /> : confirmText}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
