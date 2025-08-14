@@ -3,7 +3,7 @@
 import Heading from "@/components/Heading";
 import Table from "@/components/Table/Table";
 import { EyeIcon, EditIcon, Plus } from "lucide-react";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import UserManModal from "@/components/Modal/UserManModal";
 import { UserType } from "@/lib/types";
@@ -12,6 +12,7 @@ import { ColumnDef } from "@/components/Table/types";
 import { toast } from "sonner";
 import { showToast } from "@/components/toast";
 import { DeleteIcon } from "@/components/icons";
+import { ConfirmModal } from "@/components/Modal/confirmDelete";
 
 const UsersTable = () => {
   const [openModal, setOpenModal] = useState(false);
@@ -19,8 +20,9 @@ const UsersTable = () => {
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(false);
-  const [tableKey, setTableKey] = useState(0);
   const [selectedRows, setSelectedRows] = useState<UserType[]>([]);
+  const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -49,7 +51,6 @@ const UsersTable = () => {
 
   const handleUserCreated = (newUser: UserType) => {
     setUsers((prevUsers) => [newUser, ...prevUsers]);
-    setTableKey(prev => prev + 1);
     showToast("success", "User created successfully!");
   };
 
@@ -59,10 +60,8 @@ const UsersTable = () => {
         user.id === updatedUser.id ? { ...user, ...updatedUser } : user
       )
     );
-    setTableKey(prev => prev + 1); 
     showToast("success", "User updated successfully!");
     handleCloseModal();
-    window.location.reload(); 
   };
 
   const handleDeleteUser = async (user: UserType) => {
@@ -75,7 +74,7 @@ const UsersTable = () => {
       if (error) throw error;
       
       setUsers(prevUsers => prevUsers.filter((u) => u.id !== user.id));
-      setTableKey(prev => prev + 1);
+      setSelectedRows(prev => prev.filter(u => u.id !== user.id));
       showToast("success", "User deleted successfully!");
     } catch (error) {
       showToast("error", "Error deleting user");
@@ -83,12 +82,16 @@ const UsersTable = () => {
     }
   };
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
     if (selectedRows.length === 0) {
       showToast("warning", "Please select at least one user to delete");
       return;
     }
+    setIsBulkDeleteModalOpen(true);
+  };
 
+  const handleConfirmBulkDelete = async () => {
+    setBulkDeleting(true);
     try {
       const { error } = await supabase
         .from("users")
@@ -97,15 +100,16 @@ const UsersTable = () => {
       
       if (error) throw error;
       
-      setUsers(prevUsers => 
-        prevUsers.filter(user => !selectedRows.some(selected => selected.id === user.id))
-      );
+      const deletedIds = new Set(selectedRows.map(user => user.id));
+      setUsers(prevUsers => prevUsers.filter(user => !deletedIds.has(user.id)));
       setSelectedRows([]);
-      setTableKey(prev => prev + 1);
+      setIsBulkDeleteModalOpen(false);
       showToast("success", `${selectedRows.length} user(s) deleted successfully!`);
     } catch (error) {
       showToast("error", "Error deleting selected users");
       console.error("Error deleting users:", error);
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -119,8 +123,14 @@ const UsersTable = () => {
     setEditingUser(null);
   };
 
-  const handleRowSelect = (selectedRows: UserType[]) => {
-    setSelectedRows(selectedRows);
+  const handleRowSelect = useCallback((selected: UserType[]) => {
+    const existingIds = new Set(users.map(user => user.id));
+    const validSelections = selected.filter(user => existingIds.has(user.id));
+    setSelectedRows(validSelections);
+  }, [users]);
+
+  const handleRowClick = (row: UserType) => {
+    console.log("Row clicked:", row);
   };
 
   const userActions = useMemo(() => [
@@ -150,10 +160,6 @@ const UsersTable = () => {
     },
   ], []);
 
-  const handleRowClick = (row: UserType) => {
-    console.log("Row clicked:", row);
-  };
-
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
@@ -168,8 +174,7 @@ const UsersTable = () => {
           {selectedRows.length > 0 && (
             <button
               onClick={handleDeleteSelected}
-              type="button"
-              className="inline-flex items-center gap-2 cursor-pointer bg-red-600 text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-red-700 transition"
+              className="inline-flex items-center gap-2 cursor-pointer bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] hover:bg-gray-900"
             >
               <DeleteIcon className="h-4 w-4" />
               Delete Selected ({selectedRows.length})
@@ -177,8 +182,7 @@ const UsersTable = () => {
           )}
           <button
             onClick={() => handleOpenModal()}
-            type="button"
-            className="inline-flex items-center gap-2 cursor-pointer bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] font-medium hover:bg-gray-900 transition"
+            className="inline-flex items-center cursor-pointer gap-2 bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] hover:bg-gray-900"
           >
             <Plus className="h-4 w-4" />
             Add New Company
@@ -187,10 +191,9 @@ const UsersTable = () => {
       </div>
 
       <Table<UserType>
-        key={`users-table-${tableKey}`}
         data={users}
         columns={columns}
-        onRowSelect={handleRowSelect}
+        onSelectionChange={handleRowSelect}
         onRowClick={handleRowClick}
         pageSize={10}
         showCheckbox={true}
@@ -207,6 +210,17 @@ const UsersTable = () => {
         user={editingUser}
         onUserCreated={handleUserCreated}
         onUserUpdated={handleUserUpdated}
+      />
+
+      <ConfirmModal
+        open={isBulkDeleteModalOpen}
+        title="Delete selected companies?"
+        description={`You are about to delete ${selectedRows.length} company(s). This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleConfirmBulkDelete}
+        onCancel={() => setIsBulkDeleteModalOpen(false)}
+        isLoading={bulkDeleting}
       />
     </>
   );

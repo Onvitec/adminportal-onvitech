@@ -232,7 +232,7 @@ export default function SessionsTable() {
           {selectedSessions.length > 0 && (
             <button
               onClick={() => setIsBulkDeleteModalOpen(true)}
-              className="inline-flex items-center gap-2 bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] hover:bg-gray-900"
+              className="inline-flex items-center gap-2 cursor-pointer bg-[#2C3444] text-white px-3 py-[10px] rounded-md text-[14px] hover:bg-gray-900"
             >
               <DeleteIcon className="h-4 w-4" />
               Delete Selected ({selectedSessions.length})
