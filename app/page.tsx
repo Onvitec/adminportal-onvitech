@@ -9,7 +9,6 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      // Ensure we don't redirect if already on login page
       if (window.location.pathname !== '/login') {
         router.replace('/login');
       }

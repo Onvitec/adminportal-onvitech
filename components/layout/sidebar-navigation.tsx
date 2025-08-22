@@ -78,6 +78,7 @@ export function SidebarNavigation({ onClose }: SidebarNavigationProps) {
       
       showToast("success", "Signed out successfully!");
       window.location.href = "/login";
+      
     } catch (error) {
       showToast("error", "Error signing out");
       console.error("Error signing out:", error);

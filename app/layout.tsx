@@ -38,7 +38,12 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${plusJakarta.variable} font-sans antialiased`}>
         <SessionProvider>
-          <Toaster position="top-center" theme="light" duration={3000} />
+<Toaster
+  position="top-center"
+  theme="light"
+  duration={3000}
+/>
+
           {isAuthPage ? children : <DashboardLayout>{children}</DashboardLayout>}
         </SessionProvider>
       </body>

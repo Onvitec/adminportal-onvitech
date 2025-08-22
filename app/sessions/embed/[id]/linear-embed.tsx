@@ -1,10 +1,9 @@
 "use client";
-import { Loader } from "@/components/Loader";
+import { PlayButton } from "@/components/icons";
 import { SolutionCard } from "@/components/SolutionCard";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { Solution, SolutionCategory } from "@/lib/types";
-import { Loader2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
 type Module = {
@@ -191,17 +190,9 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
 
   const isFirstVideo = () => videoHistory.length === 0;
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <div>
-          <Loader size="md" />
-        </div>
-      </div>
-    );
-  }
-
+if (isLoading) {
+  return null;
+}
   if (error) {
     return (
       <div className="text-center py-12">
@@ -234,7 +225,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
                 className="rounded-full bg-black/30 text-white hover:bg-black/50"
                 onClick={goToPreviousVideo}
               >
-                <img src={"/icons/back.png"} />
+                <img src={"/icons/back.png"} alt="Go back" />
               </Button>
             </div>
           )}
@@ -244,7 +235,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
             onClick={togglePlayPause}
           >
             <video
-              controls
+              controls={false}
               ref={videoRef}
               key={currentVideo.id}
               src={currentVideo.url}
@@ -263,7 +254,8 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="relative w-16 h-16 flex items-center justify-center">
                   <div className="relative z-10 w-16 h-16 bg-white/70 rounded-full flex items-center justify-center border border-white">
-                    <img src="/icons/play.png" className="w-6 h-6" />
+                    {/* <img src={"/iconsName="w-6 h-6" alt="Play" /> */}
+                    <PlayButton/>
                   </div>
                 </div>
               </div>
@@ -275,7 +267,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
       {allVideosCompleted && (
         <div className="flex flex-col items-center justify-center text-center py-20">
           <h2 className="text-2xl font-bold mb-4">
-            🎉 You have finished the session "{sessionName}"
+             You have finished the session "{sessionName}"
           </h2>
           <p className="text-gray-600 mb-6">
             Great job! Here are the solutions for this session:

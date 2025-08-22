@@ -130,3 +130,17 @@ html, body {
   overflow-y: hidden;
 }
 
+/* Force sonner toasts to be horizontally centered */
+.sonner-toaster[data-position="top-center"],
+.sonner-toaster[data-position="bottom-center"] {
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  right: auto !important;
+  display: flex !important;
+  justify-content: center !important;
+  width: 100% !important;
+  pointer-events: none; /* Optional: taake clicks background pe jaa saken */
+}
+.sonner-toaster[data-position="top-center"] > * {
+  pointer-events: auto; /* Toasts khud clickable rahein */
+}

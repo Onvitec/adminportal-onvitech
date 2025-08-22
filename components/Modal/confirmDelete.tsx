@@ -1,5 +1,4 @@
 import React from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader } from "../Loader";
 
@@ -12,7 +11,6 @@ interface ConfirmModalProps {
   onConfirm: () => void;
   onCancel: () => void;
   isLoading?: boolean;
-
 }
 
 export const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -25,22 +23,36 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onCancel,
   isLoading = false,
 }) => {
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onCancel}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Overlay */}
+      <div
+        className="fixed inset-0 bg-black/50"
+        onClick={onCancel}
+      ></div>
+
+      {/* Modal */}
+      <div className="relative bg-white dark:bg-neutral-900 rounded-2xl shadow-lg w-full max-w-md p-6 z-50">
+        {/* Header */}
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            {description}
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 mt-6">
           <Button variant="outline" onClick={onCancel} disabled={isLoading}>
             {cancelText}
           </Button>
           <Button onClick={onConfirm} disabled={isLoading}>
             {isLoading ? <Loader size="sm" /> : confirmText}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </div>
   );
 };

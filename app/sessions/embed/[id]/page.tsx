@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import LinearEmbed from "./linear-embed";
-import {InteractiveSessionEmbed} from "./interactive-embed";
+import { InteractiveSessionEmbed } from "./interactive-embed";
 import { SelectionSessionEmbed } from "./selection-based-embed";
 import { Loader } from "@/components/Loader";
 
@@ -52,9 +52,8 @@ export default function EmbedSessionPage() {
 
   const renderSessionContent = () => {
     if (!session) return null;
-    console.log("SESSION" , session);
+    
     switch (session.session_type) {
-      // render accoridgly
       case "interactive":
         return <InteractiveSessionEmbed sessionId={session.id} />;
       case "linear":
@@ -69,10 +68,7 @@ export default function EmbedSessionPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[300px]">
-        <div className="animate-pulse text-muted-foreground">
-               <div><Loader size="md"/></div>;
-          
-        </div>
+        <Loader size="md" />
       </div>
     );
   }

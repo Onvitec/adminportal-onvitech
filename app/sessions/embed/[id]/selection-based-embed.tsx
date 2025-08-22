@@ -207,12 +207,8 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
+  return null;
+}
 
   if (error) {
     return (
@@ -295,7 +291,7 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
           ref={videoRef}
           src={currentVideo.url}
           className="w-full h-full object-contain rounded-xl"
-          controls
+          controls={false}
           onEnded={handleVideoEnd}
           onPlay={() => {
             setIsPlaying(true);
