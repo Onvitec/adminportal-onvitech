@@ -4,14 +4,21 @@ import { SolutionCard } from "@/components/SolutionCard";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { Solution, SolutionCategory } from "@/lib/types";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { ExternalLink, Play, ChevronLeft } from "lucide-react";
 
-type Module = {
+// Enhanced VideoLink type to match InteractiveSessionEmbed
+type VideoLink = {
   id: string;
-  title: string;
-  order_index: number;
-  videos: Video[];
+  timestamp_seconds: number;
+  label: string;
+  url?: string;
+  destination_video_id?: string;
+  link_type: 'url' | 'video';
+  destination_video?: Video; // Populated when link_type is 'video'
+  video_id?: string;
 };
+
 type Video = {
   id: string;
   title: string;
@@ -19,6 +26,14 @@ type Video = {
   module_id: string;
   order_index: number;
   duration?: number;
+  links: VideoLink[];
+};
+
+type Module = {
+  id: string;
+  title: string;
+  order_index: number;
+  videos: Video[];
 };
 
 function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
@@ -39,10 +54,25 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [videoHistory, setVideoHistory] = useState<Video[]>([]);
   const [isBackNavigation, setIsBackNavigation] = useState(false);
-  const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  
+  // Enhanced video link state management from InteractiveSessionEmbed
+  const [videoLinks, setVideoLinks] = useState<Record<string, VideoLink[]>>({});
+  const [activeLinks, setActiveLinks] = useState<VideoLink[]>([]);
+  const [showControls, setShowControls] = useState(true);
+  const [mouseActive, setMouseActive] = useState(false);
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const mouseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchSessionData();
+
+    return () => {
+      if (mouseTimeoutRef.current) {
+        clearTimeout(mouseTimeoutRef.current);
+      }
+    };
   }, [sessionId]);
 
   const fetchSessionData = async () => {
@@ -83,6 +113,45 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
         })
       );
 
+      // Enhanced video links fetching logic from InteractiveSessionEmbed
+      const allVideos = modulesWithVideos.flatMap(m => m.videos);
+      const { data: linksData, error: linksError } = await supabase
+        .from("video_links")
+        .select("*")
+        .in("video_id", allVideos.map((v) => v.id));
+
+      if (linksError) throw linksError;
+
+      // Process links and fetch destination videos for video-type links
+      const linksWithDestinations = await Promise.all(
+        (linksData || []).map(async (link): Promise<VideoLink> => {
+          if (link.link_type === "video" && link.destination_video_id) {
+            // Find the destination video from our already loaded videos
+            const destinationVideo = allVideos.find(
+              (v) => v.id === link.destination_video_id
+            );
+
+            return {
+              ...link,
+              destination_video: destinationVideo,
+            };
+          }
+
+          return link;
+        })
+      );
+
+      console.log("Fetched video links:", linksWithDestinations);
+      
+      // Group links by video_id
+      const groupedLinks: Record<string, VideoLink[]> = {};
+      linksWithDestinations.forEach((link) => {
+        if (!groupedLinks[link.video_id!]) groupedLinks[link.video_id!] = [];
+        groupedLinks[link.video_id!].push(link);
+      });
+
+      setVideoLinks(groupedLinks);
+
       // Fetch solutions
       const { data: solutionsData, error: solutionsError } = await supabase
         .from("solutions")
@@ -115,11 +184,88 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
     }
   };
 
+  // Enhanced video link tracking from InteractiveSessionEmbed
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+
+    const handleTimeUpdate = () => {
+      if (!currentVideo) return;
+      const links = videoLinks[currentVideo.id] || [];
+      const currentTime = Math.floor(videoEl.currentTime);
+      setCurrentTime(currentTime);
+
+      // Show link if currentTime matches within window (3 seconds)
+      const visible = links.filter(
+        (l) =>
+          currentTime >= l.timestamp_seconds &&
+          currentTime <= l.timestamp_seconds + 3
+      );
+      setActiveLinks(visible);
+    };
+
+    videoEl.addEventListener("timeupdate", handleTimeUpdate);
+    return () => {
+      videoEl.removeEventListener("timeupdate", handleTimeUpdate);
+    };
+  }, [currentVideo, videoLinks]);
+
+  // Find video by ID across all modules
+  const findVideoById = (videoId: string): Video | null => {
+    for (const module of modules) {
+      const video = module.videos.find(v => v.id === videoId);
+      if (video) return video;
+    }
+    return null;
+  };
+
+  // Enhanced video link click handler from InteractiveSessionEmbed
+  const handleVideoLinkClick = (link: VideoLink) => {
+    if (link.link_type === "url" && link.url) {
+      // Open external URL in new tab
+      window.open(link.url, "_blank", "noopener,noreferrer");
+    } else if (link.link_type === "video" && link.destination_video) {
+      // Navigate to destination video
+      if (currentVideo) {
+        setVideoHistory(prev => [...prev, currentVideo]);
+      }
+      setCurrentVideo(link.destination_video);
+      setIsBackNavigation(false);
+
+      // Reset video state
+      if (videoRef.current) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+        setShowControls(true);
+      }
+    }
+  };
+
+  // Mouse interaction handlers from InteractiveSessionEmbed
+  const handleMouseMove = () => {
+    setMouseActive(true);
+    setShowControls(true);
+    resetMouseTimeout();
+  };
+
+  const resetMouseTimeout = () => {
+    if (mouseTimeoutRef.current) {
+      clearTimeout(mouseTimeoutRef.current);
+    }
+    mouseTimeoutRef.current = setTimeout(() => {
+      setMouseActive(false);
+      if (isPlaying) {
+        setShowControls(false);
+      }
+    }, 2000);
+  };
+
   const handleVideoEnd = (videoId: string) => {
     const newWatched = new Set(watchedVideos);
     newWatched.add(videoId);
     setWatchedVideos(newWatched);
     setIsPlaying(false);
+    setShowControls(true);
 
     const totalVideos = modules.reduce(
       (count, module) => count + module.videos.length,
@@ -172,10 +318,14 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
     if (videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause();
+        setIsPlaying(false);
+        setShowControls(true);
       } else {
         videoRef.current.play();
+        setIsPlaying(true);
+        setMouseActive(true);
+        resetMouseTimeout();
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
@@ -184,15 +334,36 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
     const previousVideo = videoHistory[videoHistory.length - 1];
     setVideoHistory((prev) => prev.slice(0, -1));
     setCurrentVideo(previousVideo);
-    setIsPlaying(true);
     setIsBackNavigation(true);
+    
+    // Reset video state
+    if (videoRef.current) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+      setShowControls(true);
+    }
+  };
+
+  // Navigate to first video function from InteractiveSessionEmbed
+  const goToFirstVideo = () => {
+    if (modules.length > 0 && modules[0].videos.length > 0) {
+      setCurrentVideo(modules[0].videos[0]);
+      setVideoHistory([]);
+      setIsBackNavigation(false);
+      if (videoRef.current) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+        setShowControls(true);
+      }
+    }
   };
 
   const isFirstVideo = () => videoHistory.length === 0;
 
-if (isLoading) {
-  return null;
-}
+  if (isLoading) {
+    return null;
+  }
+  
   if (error) {
     return (
       <div className="text-center py-12">
@@ -212,55 +383,143 @@ if (isLoading) {
     );
   }
 
+  const currentVideoIndex = modules.flatMap(m => m.videos).findIndex(v => v.id === currentVideo?.id);
+  const isNotFirstVideoInSession = currentVideoIndex > 0;
+
   return (
     <div className="overflow-y-scroll max-h-screen">
-      {/* Video Player */}
+      {/* Enhanced Video Player with Interactive Controls */}
       {!allVideosCompleted && currentVideo && (
-        <div className="mb-4 relative">
-          {!isFirstVideo() && (
-            <div className="absolute top-4 left-4 z-10">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full bg-black/30 text-white hover:bg-black/50"
+        <div className="mb-4">
+          <div 
+            className="relative bg-black rounded-xl overflow-hidden"
+            onMouseMove={handleMouseMove}
+            onMouseEnter={() => {
+              setMouseActive(true);
+              setShowControls(true);
+            }}
+            onMouseLeave={() => {
+              setMouseActive(false);
+              if (isPlaying) {
+                setShowControls(false);
+              }
+            }}
+          >
+            {/* Back to Previous Video Button */}
+            {!isFirstVideo() && (
+              <div
+                className={`absolute left-4 top-4 z-20 bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 ${
+                  showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+                }`}
                 onClick={goToPreviousVideo}
               >
-                <img src={"/icons/back.png"} alt="Go back" />
-              </Button>
-            </div>
-          )}
+                <ChevronLeft className="w-6 h-6 text-white font-bold" />
+              </div>
+            )}
 
-          <div
-            className="aspect-w-16 aspect-h-9 bg-black relative"
-            onClick={togglePlayPause}
-          >
+            {/* Back to First Video Button (appears when not on first video) */}
+            {/* {isNotFirstVideoInSession && (
+              <div
+                className={`absolute left-4 ${!isFirstVideo() ? 'top-16' : 'top-4'} z-20 bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 ${
+                  showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+                }`}
+                onClick={goToFirstVideo}
+                title="Go to first video"
+              >
+                <div className="w-6 h-6 text-white font-bold flex items-center justify-center">
+                  <span className="text-xs">⏮</span>
+                </div>
+              </div>
+            )} */}
+
             <video
-              controls={false}
               ref={videoRef}
               key={currentVideo.id}
               src={currentVideo.url}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain rounded-xl cursor-pointer"
+              controls={false}
+              onClick={togglePlayPause}
               onEnded={() => handleVideoEnd(currentVideo.id)}
               onTimeUpdate={(e) => {
                 const video = e.target as HTMLVideoElement;
-                const progress = (video.currentTime / video.duration) * 100;
+                const progress = (video.duration > 0) ? (video.currentTime / video.duration) * 100 : 0;
+                setCurrentTime(video.currentTime);
                 handleVideoProgress(currentVideo.id, progress);
               }}
               onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
+              onPause={() => {
+                setIsPlaying(false);
+                setShowControls(true);
+              }}
             />
 
-            {!isPlaying && (
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="relative w-16 h-16 flex items-center justify-center">
-                  <div className="relative z-10 w-16 h-16 bg-white/70 rounded-full flex items-center justify-center border border-white">
-                    {/* <img src={"/iconsName="w-6 h-6" alt="Play" /> */}
-                    <PlayButton/>
-                  </div>
+            {/* Enhanced Play/Pause Button Overlay */}
+            {(showControls || !isPlaying) && (
+              <div
+                className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${
+                  mouseActive || !isPlaying ? "opacity-100" : "opacity-0"
+                }`}
+                onClick={togglePlayPause}
+              >
+                <div
+                  className={`bg-white/30 backdrop-blur-sm rounded-full p-4 shadow-lg border border-white/60 flex items-center justify-center transform transition-all duration-300 hover:scale-110`}
+                >
+                  {isPlaying ? (
+                    <div className="w-10 h-10 flex items-center justify-center">
+                      <div className="w-2 h-8 bg-white mx-1"></div>
+                      <div className="w-2 h-8 bg-white mx-1"></div>
+                    </div>
+                  ) : (
+                    <svg
+                      className="w-10 h-10 text-white"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  )}
                 </div>
               </div>
             )}
+
+            {/* Enhanced Video Link Buttons - Support both URL and Video navigation */}
+            {activeLinks.length > 0 && (
+              <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
+                {activeLinks.map((link) => (
+                  <button
+                    key={link.id}
+                    onClick={() => handleVideoLinkClick(link)}
+                    className={`px-3 py-2 rounded-lg shadow-lg text-sm font-medium transition-colors ${
+                      link.link_type === "url"
+                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                        : "bg-green-600 text-white hover:bg-green-700"
+                    }`}
+                    title={
+                      link.link_type === "url"
+                        ? `Open link: ${link.url}`
+                        : `Go to video: ${
+                            link.destination_video?.title || "Unknown"
+                          }`
+                    }
+                  >
+                    {link.label}
+                    {link.link_type === "video" && (
+                      <span className="ml-1 text-xs opacity-75">▶</span>
+                    )}
+                    {link.link_type === "url" && (
+                      <ExternalLink className="ml-1 w-3 h-3 opacity-75" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+
+       
         </div>
       )}
 

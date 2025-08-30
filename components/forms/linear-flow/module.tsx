@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Module, VideoType } from "@/lib/types";
+// import { Module, VideoType } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
   Check,
@@ -14,20 +14,50 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { VideoUpload } from "./videoo-upload";
+import { VideoUploadWithLinks } from "./videoo-upload";
+
+// Updated VideoLink type to support both URL and destination video
+type VideoLink = {
+  id: string;
+  timestamp_seconds: number;
+  label: string;
+  url?: string; // Optional URL
+  destination_video_id?: string; // Optional destination video ID
+  link_type: 'url' | 'video'; // Type discriminator
+};
+
+// Updated Video type to include links
+type Video = {
+  id: string;
+  title: string;
+  file: File | null;
+  url: string;
+  duration: number;
+  links: VideoLink[];
+};
+
+// Updated Module type
+type Module = {
+  id: string;
+  title: string;
+  videos: Video[];
+};
 
 export function ModuleCard({
   module,
+  availableVideos,
   onUpdate,
   onDelete,
   addVideo,
   removeVideo,
   handleFileChange,
+  handleLinksChange,
   isDragging = false,
   dragHandleProps,
   editPage = false,
 }: {
   module: Module;
+  availableVideos?: Array<{id: string; title: string; module: string}>;
   onUpdate: (updatedModule: Module) => void;
   onDelete: () => void;
   addVideo: () => void;
@@ -35,7 +65,13 @@ export function ModuleCard({
   handleFileChange: (
     moduleId: string,
     videoId: string,
-    file: File | null
+    file: File | null,
+    duration?: number
+  ) => void;
+  handleLinksChange?: (
+    moduleId: string, 
+    videoId: string, 
+    links: VideoLink[]
   ) => void;
   isDragging?: boolean;
   dragHandleProps?: any;
@@ -158,17 +194,21 @@ export function ModuleCard({
       </div>
 
       {isExpanded && (
-        <div className="px-4 pb-4  bg-gray-50">
-          <div className="bg-gray-50  rounded-lg">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 mt-4">
+        <div className="px-4 pb-4 bg-gray-50">
+          <div className="bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
               {module.videos.map((video) => (
-                <VideoUpload
+                <VideoUploadWithLinks
                   key={video.id}
                   video={video}
-                  moduleId={module.id}
+                  // moduleId={module.id}
+                  availableVideos={availableVideos || []}
                   onDelete={() => removeVideo(module.id, video.id)}
-                  handleFileChange={(file) =>
-                    handleFileChange(module.id, video.id, file)
+                  onFileChange={(file, duration) =>
+                    handleFileChange(module.id, video.id, file, duration)
+                  }
+                  onLinksChange={(links) =>
+                    handleLinksChange?.(module.id, video.id, links)
                   }
                 />
               ))}
@@ -180,9 +220,7 @@ export function ModuleCard({
             variant="outline"
             size="sm"
             onClick={handleAddVideo}
-            className={`bg-gray-100 py-5 mt-4 ${
-              editPage ? "" : "mx-4"
-            }`}
+            className={`bg-gray-100 py-5 mt-4 ${editPage ? "" : "mx-4"}`}
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Video

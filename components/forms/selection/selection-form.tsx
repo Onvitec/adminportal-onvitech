@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { cn, solutionCategories } from "@/lib/utils";
-import { Solution, SolutionCategory } from "@/lib/types";
+import { Solution, SolutionCategory, VideoLink } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
 import {
   Dialog,
@@ -44,9 +44,9 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { VideoUpload } from "../linear-flow/videoo-upload";
 import Link from "next/link";
 import Heading from "@/components/Heading";
+import { VideoUploadWithLinks } from "../linear-flow/videoo-upload";
 
 type Answer = {
   id: string;
@@ -67,6 +67,8 @@ type Video = {
   url: string;
   question: Question | null;
   isExpanded: boolean;
+  duration: number; // Add duration in seconds
+  links: VideoLink[]; // Add links array
 };
 
 type AnswerCombination = {
@@ -89,6 +91,8 @@ export default function SelectionSessionForm() {
       question: null,
       isExpanded: true,
       title: "Video Name",
+      duration: 0,
+      links: [],
     },
   ]);
   const [combinations, setCombinations] = useState<AnswerCombination[]>([]);
@@ -106,6 +110,12 @@ export default function SelectionSessionForm() {
     id: uuidv4(),
     category_id: null,
   });
+
+  // Generate available videos list for video link destinations
+  const availableVideos = videos.map(video => ({
+    id: video.id,
+    title: video.title || video.name
+  }));
 
   // Open modal for a specific combination
   const openSolutionModal = (combinationId: string) => {
@@ -230,7 +240,9 @@ export default function SelectionSessionForm() {
         url: "",
         question: null,
         isExpanded: true,
-        title: "",
+        title: `Video ${videos.length + 1}`,
+        duration: 0,
+        links: [],
       },
     ]);
   };
@@ -242,7 +254,7 @@ export default function SelectionSessionForm() {
 
   // Update video name
   const updateVideoName = (videoId: string, name: string) => {
-    setVideos(videos.map((v) => (v.id === videoId ? { ...v, name } : v)));
+    setVideos(videos.map((v) => (v.id === videoId ? { ...v, name, title: name } : v)));
   };
 
   // Toggle video expansion
@@ -254,16 +266,33 @@ export default function SelectionSessionForm() {
     );
   };
 
-  // Handle file change for a video
-  const handleFileChange = (videoId: string, file: File | null) => {
-    setVideos(
-      videos.map((v) =>
-        v.id === videoId
-          ? { ...v, file, name: file?.name.split(".")[0] || v.name }
-          : v
-      )
-    );
-  };
+  // Handle file change for a video - Updated to include duration
+  const handleFileChange = useCallback(
+    (videoId: string, file: File | null, duration: number) => {
+      setVideos(
+        videos.map((v) =>
+          v.id === videoId
+            ? {
+                ...v,
+                file,
+                duration,
+                name: file?.name.split(".")[0] || v.name,
+                title: file?.name.split(".")[0] || v.title,
+              }
+            : v
+        )
+      );
+    },
+    [videos]
+  );
+
+  // Handle links change for a video - New function
+  const handleLinksChange = useCallback(
+    (videoId: string, links: VideoLink[]) => {
+      setVideos(videos.map((v) => (v.id === videoId ? { ...v, links } : v)));
+    },
+    [videos]
+  );
 
   // Add a question to a video
   const addQuestion = (videoId: string) => {
@@ -455,6 +484,40 @@ export default function SelectionSessionForm() {
         // Store mapping of temporary ID to actual DB ID
         uploadedVideos[video.id] = videoData.id;
 
+        // Insert links if available - Updated to handle both URL and video links
+        if (video.links && video.links.length > 0) {
+          const linkInserts = video.links.map((l) => ({
+            video_id: videoData.id,
+            timestamp_seconds: l.timestamp_seconds,
+            label: l.label,
+            url: l.link_type === 'url' ? l.url : null,
+            destination_video_id: l.link_type === 'video' ? null : null, // Will be updated later for video links
+            link_type: l.link_type,
+          }));
+
+          const { data: insertedLinks, error: linksError } = await supabase
+            .from("video_links")
+            .insert(linkInserts)
+            .select();
+
+          if (linksError) throw linksError;
+
+          // Store link mapping for later destination video ID updates
+          if (insertedLinks) {
+            video.links.forEach((originalLink, linkIndex) => {
+              if (originalLink.link_type === 'video' && originalLink.destination_video_id) {
+                // Store the mapping for later processing
+                const insertedLink = insertedLinks[linkIndex];
+                if (insertedLink) {
+                  // We'll update this after all videos are uploaded
+                  insertedLink._temp_destination_video_id = originalLink.destination_video_id;
+                  insertedLink._temp_link_id = originalLink.id;
+                }
+              }
+            });
+          }
+        }
+
         // Create question if exists
         if (video.question) {
           const { data: questionData, error: questionError } = await supabase
@@ -485,6 +548,38 @@ export default function SelectionSessionForm() {
 
             // Store mapping of temporary answer ID to DB ID
             uploadedAnswers[answer.id] = answerData.id;
+          }
+        }
+      }
+
+      // Update video link destination_video_id for video-type links after all videos are uploaded
+      for (const video of videos) {
+        if (!video.links || video.links.length === 0) continue;
+        
+        const videoDbId = uploadedVideos[video.id];
+        if (!videoDbId) continue;
+
+        // Get all video links for this video
+        const { data: videoLinks } = await supabase
+          .from("video_links")
+          .select("id, link_type")
+          .eq("video_id", videoDbId);
+
+        if (!videoLinks) continue;
+
+        // Update destination_video_id for video-type links
+        for (let i = 0; i < video.links.length; i++) {
+          const originalLink = video.links[i];
+          const dbLink = videoLinks[i];
+          
+          if (originalLink.link_type === 'video' && originalLink.destination_video_id && dbLink) {
+            const destinationDbId = uploadedVideos[originalLink.destination_video_id];
+            if (destinationDbId) {
+              await supabase
+                .from("video_links")
+                .update({ destination_video_id: destinationDbId })
+                .eq("id", dbLink.id);
+            }
           }
         }
       }
@@ -606,7 +701,9 @@ export default function SelectionSessionForm() {
     );
     return `${category?.name || "Solution"}`;
   };
-const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
+  
+  const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
+  
   return (
     <div className="container mx-auto">
       <div>
@@ -615,7 +712,7 @@ const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
             Back to Session Maker
           </p>
         </Link>
-        
+
         <Heading>Add New Session</Heading>
       </div>
       <form onSubmit={handleSubmit}>
@@ -648,7 +745,10 @@ const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="userId" className="text-sm font-medium text-[#242B42]">
+                <Label
+                  htmlFor="userId"
+                  className="text-sm font-medium text-[#242B42]"
+                >
                   Session Type
                 </Label>
                 <Input
@@ -722,13 +822,17 @@ const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
                     {video.isExpanded && (
                       <div className="p-4 space-y-4 bg-white">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                          <VideoUpload
+                          <VideoUploadWithLinks
+                            key={video.id}
                             video={video}
-                            moduleId={video.id}
-                            onDelete={() => removeVideo(video.id)}
-                            handleFileChange={(file) =>
-                              handleFileChange(video.id, file)
+                            availableVideos={availableVideos}
+                            onFileChange={(file, duration) =>
+                              handleFileChange(video.id, file, duration)
                             }
+                            onLinksChange={(links) =>
+                              handleLinksChange(video.id, links)
+                            }
+                            onDelete={() => removeVideo(video.id)}
                           />
                         </div>
 
@@ -867,7 +971,7 @@ const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
                         <div className="col-span-8">
                           <div className="flex flex-wrap items-center gap-2">
                             {combination.answers.map((answerId) => (
-                              <span 
+                              <span
                                 key={answerId}
                                 className="px-4 py-2 bg-white border border-gray-200 rounded-md text-sm font-medium shadow-sm hover:bg-gray-50"
                               >
@@ -886,7 +990,9 @@ const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => openSolutionModal(combination.id)}
+                                onClick={() =>
+                                  openSolutionModal(combination.id)
+                                }
                                 className="h-8 w-8 p-0 text-gray-500 hover:text-gray-700"
                               >
                                 <Edit className="h-4 w-4" />
@@ -950,7 +1056,9 @@ const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
                 <Button
                   type="submit"
                   disabled={
-                    isLoading || !hasAtLeastOneVideo || solutions.length === 0 ||
+                    isLoading ||
+                    !hasAtLeastOneVideo ||
+                    solutions.length === 0 ||
                     (combinations.length > 0 &&
                       combinations.some((c) => !c.solution_id))
                   }

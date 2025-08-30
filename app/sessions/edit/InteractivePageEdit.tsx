@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,14 +35,14 @@ import {
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { cn, solutionCategories } from "@/lib/utils";
-import { Solution, SolutionCategory } from "@/lib/types";
+import { Solution, SolutionCategory, VideoLink } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
-import { VideoUpload } from "@/components/forms/linear-flow/videoo-upload";
 import { toast } from "sonner";
 import { showToast } from "@/components/toast";
 import Link from "next/link";
 import Heading from "@/components/Heading";
 import { Loader } from "@/components/Loader";
+import { VideoUploadWithLinks } from "@/components/forms/linear-flow/videoo-upload";
 
 type Answer = {
   id: string;
@@ -66,6 +66,8 @@ type Video = {
   question: Question | null;
   isExpanded: boolean;
   db_id?: string; // Added to track database ID
+  duration: number; // Add duration in seconds
+  links: VideoLink[]; // Add links array
 };
 
 export default function EditInteractiveSession({
@@ -112,6 +114,15 @@ export default function EditInteractiveSession({
         // Get questions and answers for each video
         const videosWithQuestions: Video[] = await Promise.all(
           videosData.map(async (video) => {
+            // Get links for this video
+            const { data: linksData, error: linksError } = await supabase
+              .from("video_links")
+              .select("*")
+              .eq("video_id", video.id)
+              .order("timestamp_seconds", { ascending: true });
+
+            if (linksError) throw linksError;
+
             const videoObj: Video = {
               id: uuidv4(), // New ID for UI
               db_id: video.id, // Store original DB ID
@@ -120,6 +131,8 @@ export default function EditInteractiveSession({
               url: video.url,
               question: null,
               isExpanded: true,
+              duration: video.duration || 0,
+              links: linksData || [],
             };
 
             // Get question for this video
@@ -228,6 +241,8 @@ export default function EditInteractiveSession({
         url: "",
         question: null,
         isExpanded: true,
+        duration: 0,
+        links: [],
       },
     ]);
   };
@@ -248,15 +263,31 @@ export default function EditInteractiveSession({
     );
   };
 
-  const handleFileChange = (videoId: string, file: File | null) => {
-    setVideos(
-      videos.map((v) =>
-        v.id === videoId
-          ? { ...v, file, title: file?.name.split(".")[0] || v.title }
-          : v
-      )
-    );
-  };
+  // In your parent component
+  const handleFileChange = useCallback(
+    (videoId: string, file: File | null, duration: number) => {
+      setVideos(
+        videos.map((v) =>
+          v.id === videoId
+            ? {
+                ...v,
+                file,
+                duration,
+                title: file?.name.split(".")[0] || v.title,
+              }
+            : v
+        )
+      );
+    },
+    [videos]
+  );
+
+  const handleLinksChange = useCallback(
+    (videoId: string, links: VideoLink[]) => {
+      setVideos(videos.map((v) => (v.id === videoId ? { ...v, links } : v)));
+    },
+    [videos]
+  );
 
   const addQuestion = (videoId: string) => {
     setVideos(
@@ -474,6 +505,7 @@ export default function EditInteractiveSession({
               title: video.title || video.file?.name || video.title,
               url: videoUrl,
               order_index: index,
+              duration: video.duration,
             })
             .eq("id", videoDbId);
 
@@ -488,6 +520,7 @@ export default function EditInteractiveSession({
               session_id: sessionId,
               is_interactive: true,
               order_index: index,
+              duration: video.duration,
             })
             .select()
             .single();
@@ -500,66 +533,89 @@ export default function EditInteractiveSession({
         // Store mapping of temporary ID to actual DB ID
         uploadedVideos[video.id] = videoDbId!;
 
+        // ✅ Handle video links
+        if (video.links && video.links.length > 0) {
+          // First delete all existing links for this video
+          await supabase.from("video_links").delete().eq("video_id", videoDbId);
+
+          // Then insert the new links
+          const linkInserts = video.links.map((l) => ({
+            video_id: videoDbId,
+            timestamp_seconds: l.timestamp_seconds,
+            label: l.label,
+            url: l.url,
+          }));
+
+          const { error: linksError } = await supabase
+            .from("video_links")
+            .insert(linkInserts);
+
+          if (linksError) throw linksError;
+        } else {
+          // If no links, delete any existing ones
+          await supabase.from("video_links").delete().eq("video_id", videoDbId);
+        }
+
         // Handle questions and answers
         if (video.question) {
           if (video.question.db_id) {
-  // Update existing question
-  const { error: questionError } = await supabase
-    .from("questions")
-    .update({
-      question_text: video.question.question_text,
-      video_id: videoDbId,
-    })
-    .eq("id", video.question.db_id);
+            // Update existing question
+            const { error: questionError } = await supabase
+              .from("questions")
+              .update({
+                question_text: video.question.question_text,
+                video_id: videoDbId,
+              })
+              .eq("id", video.question.db_id);
 
-  // Process answers
-  const existingAnswerIds = video.question.answers
-    .filter((a) => a.db_id)
-    .map((a) => a.db_id) as string[];
+            // Process answers
+            const existingAnswerIds = video.question.answers
+              .filter((a) => a.db_id)
+              .map((a) => a.db_id) as string[];
 
-  // Delete answers that were removed
-  const { data: existingAnswers } = await supabase
-    .from("answers")
-    .select("id")
-    .eq("question_id", video.question.db_id);
+            // Delete answers that were removed
+            const { data: existingAnswers } = await supabase
+              .from("answers")
+              .select("id")
+              .eq("question_id", video.question.db_id);
 
-  if (existingAnswers) {
-    const answersToDelete = existingAnswers
-      .filter((a) => !existingAnswerIds.includes(a.id))
-      .map((a) => a.id);
+            if (existingAnswers) {
+              const answersToDelete = existingAnswers
+                .filter((a) => !existingAnswerIds.includes(a.id))
+                .map((a) => a.id);
 
-    for (const answerId of answersToDelete) {
-      await supabase.from("answers").delete().eq("id", answerId);
-    }
-  }
+              for (const answerId of answersToDelete) {
+                await supabase.from("answers").delete().eq("id", answerId);
+              }
+            }
 
-  // Update or create answers
-  for (const answer of video.question.answers) {
-    const destinationVideoDbId = answer.destination_video_id
-      ? uploadedVideos[answer.destination_video_id]
-      : null;
+            // Update or create answers
+            for (const answer of video.question.answers) {
+              const destinationVideoDbId = answer.destination_video_id
+                ? uploadedVideos[answer.destination_video_id]
+                : null;
 
-    if (answer.db_id) {
-      // Update existing answer
-      const { error: answerError } = await supabase
-        .from("answers")
-        .update({
-          answer_text: answer.answer_text,
-          destination_video_id: destinationVideoDbId,
-        })
-        .eq("id", answer.db_id);
-    } else {
-      // Create new answer
-      const { error: answerError } = await supabase
-        .from("answers")
-        .insert({
-          answer_text: answer.answer_text,
-          question_id: video.question.db_id,
-          destination_video_id: destinationVideoDbId,
-        });
-    }
-  }
-}else {
+              if (answer.db_id) {
+                // Update existing answer
+                const { error: answerError } = await supabase
+                  .from("answers")
+                  .update({
+                    answer_text: answer.answer_text,
+                    destination_video_id: destinationVideoDbId,
+                  })
+                  .eq("id", answer.db_id);
+              } else {
+                // Create new answer
+                const { error: answerError } = await supabase
+                  .from("answers")
+                  .insert({
+                    answer_text: answer.answer_text,
+                    question_id: video.question.db_id,
+                    destination_video_id: destinationVideoDbId,
+                  });
+              }
+            }
+          } else {
             // Create new question
             const { data: questionData, error: questionError } = await supabase
               .from("questions")
@@ -711,23 +767,26 @@ export default function EditInteractiveSession({
     return (
       <div className="container mx-auto py-8 max-w-4xl">
         <div className="flex justify-center items-center h-64">
-     <div><Loader size="md"/></div>;
+          <div>
+            <Loader size="md" />
+          </div>
+          ;
         </div>
       </div>
     );
   }
 
   return (
-     <div className="container mx-auto">
-           <div>
-                    <Link href="/sessions">
-                      <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md cursor-pointer hover:underline">
-                        Back to Session Maker
-                      </p>
-                    </Link>
-                    
-                    <Heading>Edit Session</Heading>
-                  </div>
+    <div className="container mx-auto">
+      <div>
+        <Link href="/sessions">
+          <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md cursor-pointer hover:underline">
+            Back to Session Maker
+          </p>
+        </Link>
+
+        <Heading>Edit Session</Heading>
+      </div>
       <form onSubmit={handleSubmit} className="mt-4">
         <Card className="border-none shadow-none px-3">
           <CardHeader className="px-0">
@@ -830,14 +889,17 @@ export default function EditInteractiveSession({
                     {video.isExpanded && (
                       <div className="p-4 space-y-4 bg-white">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                          <VideoUpload
+                          {/* <VideoUploadWithLinks
                             video={video}
-                            moduleId={video.id}
-                            onDelete={() => removeVideo(video.id)}
-                            handleFileChange={(file) =>
-                              handleFileChange(video.id, file)
+                            // moduleId={video.id}
+                            onFileChange={(file, duration) =>
+                              handleFileChange(video.id, file, duration)
                             }
-                          />
+                            onLinksChange={(links) =>
+                              handleLinksChange(video.id, links)
+                            }
+                            onDelete={() => removeVideo(video.id)}
+                          /> */}
                         </div>
 
                         {video.question ? (

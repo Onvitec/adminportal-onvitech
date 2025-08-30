@@ -37,8 +37,8 @@ import { v4 as uuidv4 } from "uuid";
 import { cn, solutionCategories } from "@/lib/utils";
 import { Solution, SolutionCategory } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
-import { VideoUpload } from "@/components/forms/linear-flow/videoo-upload";
 import { Loader } from "@/components/Loader";
+import { VideoUploadWithLinks } from "@/components/forms/linear-flow/videoo-upload";
 
 type Answer = {
   id: string;
@@ -787,14 +787,14 @@ export default function EditSelectionSession({
                     {video.isExpanded && (
                       <div className="p-4 space-y-4 bg-white">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                          <VideoUpload
+                          {/* <VideoUploadWithLinks
                             video={video}
                             moduleId={video.id}
                             onDelete={() => removeVideo(video.id)}
                             handleFileChange={(file) =>
                               handleFileChange(video.id, file)
                             }
-                          />
+                          /> */}
                         </div>
 
                         {video.question ? (

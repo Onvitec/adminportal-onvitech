@@ -4,6 +4,17 @@ export type VideoType = {
   file: File | null;
   url: string;
   is_main?: boolean;
+  duration: number; // Add duration in seconds
+  links?: VideoLink[]; // Add links array
+};
+export type VideoLink = {
+  id: string;
+  timestamp_seconds: number;
+  label: string;
+  url?: string;
+  video_id?: string;
+  destination_video_id?: string; // Optional destination video ID
+  link_type: "url" | "video"; // Type discriminator
 };
 
 export type Question = {

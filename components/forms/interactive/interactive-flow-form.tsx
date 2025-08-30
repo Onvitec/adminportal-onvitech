@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,13 +35,14 @@ import {
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { cn, solutionCategories } from "@/lib/utils";
-import { VideoUpload } from "../linear-flow/videoo-upload";
-import { Solution, SolutionCategory } from "@/lib/types";
+import { VideoUploadWithLinks } from "../linear-flow/videoo-upload";
+import { Solution, SolutionCategory, VideoLink } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
 import { toast } from "sonner";
 import { showToast } from "@/components/toast";
 import Link from "next/link";
 import Heading from "@/components/Heading";
+
 type Answer = {
   id: string;
   answer_text: string;
@@ -61,6 +62,8 @@ type Video = {
   url: string;
   question: Question | null;
   isExpanded: boolean;
+  duration: number; // Add duration in seconds
+  links: VideoLink[]; // Updated links array with new type
 };
 
 export default function InteractiveSessionForm() {
@@ -79,8 +82,16 @@ export default function InteractiveSessionForm() {
       url: "",
       question: null,
       isExpanded: true,
+      links: [],
+      duration: 0,
     },
   ]);
+
+  // Generate available videos list for video link destinations
+  const availableVideos = videos.map(video => ({
+    id: video.id,
+    title: video.title
+  }));
 
   const addVideo = () => {
     setVideos([
@@ -92,6 +103,8 @@ export default function InteractiveSessionForm() {
         url: "",
         question: null,
         isExpanded: true,
+        links: [],
+        duration: 0,
       },
     ]);
   };
@@ -112,15 +125,31 @@ export default function InteractiveSessionForm() {
     );
   };
 
-  const handleFileChange = (videoId: string, file: File | null) => {
-    setVideos(
-      videos.map((v) =>
-        v.id === videoId
-          ? { ...v, file} // to add a video title change this to { ...v, file, title: file?.name.split(".")[0] || v.title }
-          : v
-      )
-    );
-  };
+  // In your parent component
+  const handleFileChange = useCallback(
+    (videoId: string, file: File | null, duration: number) => {
+      setVideos(
+        videos.map((v) =>
+          v.id === videoId
+            ? {
+                ...v,
+                file,
+                duration,
+                title: file?.name.split(".")[0] || v.title,
+              }
+            : v
+        )
+      );
+    },
+    [videos]
+  );
+
+  const handleLinksChange = useCallback(
+    (videoId: string, links: VideoLink[]) => {
+      setVideos(videos.map((v) => (v.id === videoId ? { ...v, links } : v)));
+    },
+    [videos]
+  );
 
   const addQuestion = (videoId: string) => {
     setVideos(
@@ -314,6 +343,40 @@ export default function InteractiveSessionForm() {
         // Store mapping of temporary ID to actual DB ID
         uploadedVideos[video.id] = videoData.id;
 
+        // Insert links if available - Updated to handle both URL and video links
+        if (video.links && video.links.length > 0) {
+          const linkInserts = video.links.map((l) => ({
+            video_id: videoData.id,
+            timestamp_seconds: l.timestamp_seconds,
+            label: l.label,
+            url: l.link_type === 'url' ? l.url : null,
+            destination_video_id: l.link_type === 'video' ? null : null, // Will be updated later for video links
+            link_type: l.link_type,
+          }));
+
+          const { data: insertedLinks, error: linksError } = await supabase
+            .from("video_links")
+            .insert(linkInserts)
+            .select();
+
+          if (linksError) throw linksError;
+
+          // Store link mapping for later destination video ID updates
+          if (insertedLinks) {
+            video.links.forEach((originalLink, linkIndex) => {
+              if (originalLink.link_type === 'video' && originalLink.destination_video_id) {
+                // Store the mapping for later processing
+                const insertedLink = insertedLinks[linkIndex];
+                if (insertedLink) {
+                  // We'll update this after all videos are uploaded
+                  insertedLink._temp_destination_video_id = originalLink.destination_video_id;
+                  insertedLink._temp_link_id = originalLink.id;
+                }
+              }
+            });
+          }
+        }
+
         // Create question if exists
         if (video.question) {
           const { data: questionData, error: questionError } = await supabase
@@ -373,6 +436,39 @@ export default function InteractiveSessionForm() {
             .eq("id", answers[index].id);
         }
       }
+
+      // Update video link destination_video_id for video-type links after all videos are uploaded
+      for (const video of videos) {
+        if (!video.links || video.links.length === 0) continue;
+        
+        const videoDbId = uploadedVideos[video.id];
+        if (!videoDbId) continue;
+
+        // Get all video links for this video
+        const { data: videoLinks } = await supabase
+          .from("video_links")
+          .select("id, link_type")
+          .eq("video_id", videoDbId);
+
+        if (!videoLinks) continue;
+
+        // Update destination_video_id for video-type links
+        for (let i = 0; i < video.links.length; i++) {
+          const originalLink = video.links[i];
+          const dbLink = videoLinks[i];
+          
+          if (originalLink.link_type === 'video' && originalLink.destination_video_id && dbLink) {
+            const destinationDbId = uploadedVideos[originalLink.destination_video_id];
+            if (destinationDbId) {
+              await supabase
+                .from("video_links")
+                .update({ destination_video_id: destinationDbId })
+                .eq("id", dbLink.id);
+            }
+          }
+        }
+      }
+
       // Solutions Logic
       if (solution) {
         let solutionData: any = {
@@ -418,7 +514,7 @@ export default function InteractiveSessionForm() {
       showToast("success", "Interactive Session created successfully!");
     } catch (error) {
       console.error("Error creating session:", error);
-      showToast("error", "Error creating Interactive Session"); 
+      showToast("error", "Error creating Interactive Session");
     } finally {
       setIsLoading(false);
     }
@@ -444,19 +540,18 @@ export default function InteractiveSessionForm() {
     }
   };
   const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
-
   return (
     <div className="container mx-auto">
-          <div>
-          <Link href="/sessions">
-            <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md cursor-pointer hover:underline">
-              Back to Session Maker
-            </p>
-          </Link>
-          
-          <Heading>Add New Session</Heading>
-        </div>
-          <form onSubmit={handleSubmit} className="mt-4">
+      <div>
+        <Link href="/sessions">
+          <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md cursor-pointer hover:underline">
+            Back to Session Maker
+          </p>
+        </Link>
+
+        <Heading>Add New Session</Heading>
+      </div>
+      <form onSubmit={handleSubmit} className="mt-4">
         <Card className="border-none shadow-none px-3">
           <CardHeader className="px-0">
             <CardTitle className="text-2xl font-semibold">
@@ -485,22 +580,6 @@ export default function InteractiveSessionForm() {
                   required
                 />
               </div>
-              {/* <div className="space-y-1">
-                <Label
-                  htmlFor="userId"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  User ID
-                </Label>
-                <Input
-                  id="userId"
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  placeholder="e.g., AI2045864"
-                  className="h-10"
-                  required
-                />
-              </div> */}
             </div>
 
             <div className="mt-8">
@@ -561,14 +640,18 @@ export default function InteractiveSessionForm() {
 
                     {video.isExpanded && (
                       <div className="p-4 space-y-4 bg-white">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                          <VideoUpload
+                        <div className="grid grid-cols-1 gap-4">
+                          <VideoUploadWithLinks
+                            key={video.id}
                             video={video}
-                            moduleId={video.id}
-                            onDelete={() => removeVideo(video.id)}
-                            handleFileChange={(file) =>
-                              handleFileChange(video.id, file)
+                            availableVideos={availableVideos}
+                            onFileChange={(file, duration) =>
+                              handleFileChange(video.id, file, duration)
                             }
+                            onLinksChange={(links) =>
+                              handleLinksChange(video.id, links)
+                            }
+                            onDelete={() => removeVideo(video.id)}
                           />
                         </div>
 

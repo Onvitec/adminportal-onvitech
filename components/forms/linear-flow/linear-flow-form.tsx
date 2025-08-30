@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,10 +57,14 @@ import { showToast } from "@/components/toast";
 import Link from "next/link";
 import Heading from "@/components/Heading";
 
-type Module = {
+// Updated VideoLink type to support both URL and destination video
+type VideoLink = {
   id: string;
-  title: string;
-  videos: Video[];
+  timestamp_seconds: number;
+  label: string;
+  url?: string; // Optional URL
+  destination_video_id?: string; // Optional destination video ID
+  link_type: 'url' | 'video'; // Type discriminator
 };
 
 type Video = {
@@ -68,6 +72,14 @@ type Video = {
   title: string;
   file: File | null;
   url: string;
+  duration: number; // Add duration in seconds
+  links: VideoLink[]; // Updated links array with new type
+};
+
+type Module = {
+  id: string;
+  title: string;
+  videos: Video[];
 };
 
 export default function LinearSessionForm() {
@@ -79,7 +91,14 @@ export default function LinearSessionForm() {
     {
       id: uuidv4(),
       title: "Module 1",
-      videos: [{ id: uuidv4(), title: "Video Name", file: null, url: "" }],
+      videos: [{ 
+        id: uuidv4(), 
+        title: "Video Name", 
+        file: null, 
+        url: "",
+        duration: 0,
+        links: []
+      }],
     },
   ]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -87,6 +106,15 @@ export default function LinearSessionForm() {
   const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const activeModule = modules.find((module) => module.id === activeId);
+
+  // Generate available videos list for video link destinations
+  const availableVideos = modules.flatMap(module => 
+    module.videos.map(video => ({
+      id: video.id,
+      title: video.title,
+      module: module.title
+    }))
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -98,7 +126,7 @@ export default function LinearSessionForm() {
   );
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as any); //Fix if needed
+    setActiveId(event.active.id as any);
   };
 
   const handleDragEnd = (event: any) => {
@@ -126,7 +154,14 @@ export default function LinearSessionForm() {
       {
         id: uuidv4(),
         title: `Module ${modules.length + 1}`,
-        videos: [{ id: uuidv4(), title: "Video Name", file: null, url: "" }],
+        videos: [{ 
+          id: uuidv4(), 
+          title: "Video Name", 
+          file: null, 
+          url: "",
+          duration: 0,
+          links: []
+        }],
       },
     ]);
   };
@@ -147,7 +182,14 @@ export default function LinearSessionForm() {
               ...m,
               videos: [
                 ...m.videos,
-                { id: uuidv4(), title: "Video Name", file: null, url: "" },
+                { 
+                  id: uuidv4(), 
+                  title: "Video Name", 
+                  file: null, 
+                  url: "",
+                  duration: 0,
+                  links: []
+                },
               ],
             }
           : m
@@ -165,45 +207,74 @@ export default function LinearSessionForm() {
     );
   };
 
-  const handleFileChange = (
-    moduleId: string,
-    videoId: string,
-    file: File | null
-  ) => {
-    setModules(
-      modules.map((m) =>
-        m.id === moduleId
+  const handleFileChange = useCallback(
+    (moduleId: string, videoId: string, file: File | null, duration: number = 0) => {
+      setModules(
+        modules.map((m) =>
+          m.id === moduleId
+            ? {
+                ...m,
+                videos: m.videos.map((v) =>
+                  v.id === videoId
+                    ? { 
+                        ...v, 
+                        file, 
+                        duration,
+                        title: file?.name.split(".")[0] || v.title 
+                      }
+                    : v
+                ),
+              }
+            : m
+        )
+      );
+    },
+    [modules]
+  );
+
+  const handleLinksChange = useCallback(
+    (moduleId: string, videoId: string, links: VideoLink[]) => {
+      setModules(modules.map((m) => 
+        m.id === moduleId 
           ? {
               ...m,
-              videos: m.videos.map((v) =>
-                v.id === videoId
-                  ? { ...v, file, title: file?.name || v.title }
-                  : v
-              ),
-            }
+              videos: m.videos.map((v) => 
+                v.id === videoId ? { ...v, links } : v
+              )
+            } 
           : m
-      )
-    );
-  };
+      ));
+    },
+    [modules]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
+      // Get current user
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       // Create session
       const { data: sessionData, error: sessionError } = await supabase
         .from("sessions")
         .insert({
           title: sessionName,
           session_type: "linear",
-          created_by: "826e31ef-0431-4762-af43-c501e3898cc3",
+          created_by: user.id,
         })
         .select()
         .single();
 
       if (sessionError || !sessionData)
         throw sessionError || new Error("Failed to create session");
+
+      // Store mapping of temporary IDs to actual DB IDs
+      const uploadedVideos: Record<string, string> = {};
 
       // Create modules and upload videos
       for (const [moduleIndex, module] of modules.entries()) {
@@ -227,9 +298,7 @@ export default function LinearSessionForm() {
 
           // Upload file to storage
           const fileExt = video.file.name.split(".").pop();
-          const filePath = `${"826e31ef-0431-4762-af43-c501e3898cc3"}/${
-            sessionData.id
-          }/${moduleData.id}/${uuidv4()}.${fileExt}`;
+          const filePath = `${user.id}/${sessionData.id}/${moduleData.id}/${uuidv4()}.${fileExt}`;
 
           const { data: uploadData, error: uploadError } =
             await supabase.storage.from("videos").upload(filePath, video.file);
@@ -242,16 +311,72 @@ export default function LinearSessionForm() {
             .getPublicUrl(filePath);
 
           // Create video record
-          const { error: videoError } = await supabase.from("videos").insert({
+          const { data: videoData, error: videoError } = await supabase.from("videos").insert({
             title: video.title || video.file.name,
             url: urlData.publicUrl,
             module_id: moduleData.id,
             session_id: sessionData.id,
             order_index: videoIndex,
             is_interactive: false,
-          });
+          }).select().single();
 
-          if (videoError) throw videoError;
+          if (videoError || !videoData) throw videoError || new Error("Failed to create video");
+
+          // Store mapping of temporary ID to actual DB ID
+          uploadedVideos[video.id] = videoData.id;
+
+          // Insert links if available
+          if (video.links && video.links.length > 0) {
+            const linkInserts = video.links.map((l) => ({
+              video_id: videoData.id,
+              timestamp_seconds: l.timestamp_seconds,
+              label: l.label,
+              url: l.link_type === 'url' ? l.url : null,
+              destination_video_id: l.link_type === 'video' ? null : null, // Will be updated later for video links
+              link_type: l.link_type,
+            }));
+
+            const { data: insertedLinks, error: linksError } = await supabase
+              .from("video_links")
+              .insert(linkInserts)
+              .select();
+
+            if (linksError) throw linksError;
+          }
+        }
+      }
+
+      // Update video link destination_video_id for video-type links after all videos are uploaded
+      for (const module of modules) {
+        for (const video of module.videos) {
+          if (!video.links || video.links.length === 0) continue;
+          
+          const videoDbId = uploadedVideos[video.id];
+          if (!videoDbId) continue;
+
+          // Get all video links for this video
+          const { data: videoLinks } = await supabase
+            .from("video_links")
+            .select("id, link_type")
+            .eq("video_id", videoDbId);
+
+          if (!videoLinks) continue;
+
+          // Update destination_video_id for video-type links
+          for (let i = 0; i < video.links.length; i++) {
+            const originalLink = video.links[i];
+            const dbLink = videoLinks[i];
+            
+            if (originalLink.link_type === 'video' && originalLink.destination_video_id && dbLink) {
+              const destinationDbId = uploadedVideos[originalLink.destination_video_id];
+              if (destinationDbId) {
+                await supabase
+                  .from("video_links")
+                  .update({ destination_video_id: destinationDbId })
+                  .eq("id", dbLink.id);
+              }
+            }
+          }
         }
       }
 
@@ -273,7 +398,7 @@ export default function LinearSessionForm() {
         } else if (solution.category_id === 4) {
           if (solution.videoFile) {
             const fileExt = solution.videoFile.name.split(".").pop();
-            const filePath = `${userId}/${
+            const filePath = `${user.id}/${
               sessionData.id
             }/solutions/${uuidv4()}.${fileExt}`;
 
@@ -327,8 +452,8 @@ export default function LinearSessionForm() {
     }
   };
 
-  console.log(modules)
   const hasAtLeastOneVideo = modules.some((module) => module.videos.length > 0) && modules.some((module) => module.videos.some((video) => video.file || video.url));
+  
   return (
     <div className="container mx-auto">
       <div>
@@ -384,19 +509,6 @@ export default function LinearSessionForm() {
                   required
                 />
               </div>
-              {/* <div className="space-y-1">
-                <Label htmlFor="userId" className="text-sm font-medium text-gray-700">
-                  User ID
-                </Label>
-                <Input
-                  id="userId"
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  placeholder="e.g., AI2045864"
-                  className="h-10"
-                  required
-                />
-              </div> */}
             </div>
 
             <div className="mt-8">
@@ -417,11 +529,13 @@ export default function LinearSessionForm() {
                     <SortableModule
                       key={module.id}
                       module={module}
+                      availableVideos={availableVideos}
                       onUpdate={updateModuleName}
                       onDelete={removeModule}
                       addVideo={addVideo}
                       removeVideo={removeVideo}
                       handleFileChange={handleFileChange}
+                      handleLinksChange={handleLinksChange}
                     />
                   ))}
                 </SortableContext>
@@ -429,12 +543,14 @@ export default function LinearSessionForm() {
                 <DragOverlay>
                   {activeId && activeModule ? (
                     <ModuleCard
-                      module={activeModule as any} // TODO:fix if needed
+                      module={activeModule as any}
+                      availableVideos={availableVideos}
                       onUpdate={() => {}}
                       onDelete={() => {}}
                       addVideo={() => {}}
                       removeVideo={() => {}}
                       handleFileChange={() => {}}
+                      handleLinksChange={() => {}}
                       isDragging={true}
                     />
                   ) : null}
@@ -464,7 +580,6 @@ export default function LinearSessionForm() {
                         Solution Category
                       </Label>
                       <Select
-
                         value={
                           solutionCategories
                             .find((c) => c.id === selectedCategory)
@@ -560,13 +675,16 @@ export default function LinearSessionForm() {
 
 function SortableModule({
   module,
+  availableVideos,
   onUpdate,
   onDelete,
   addVideo,
   removeVideo,
   handleFileChange,
+  handleLinksChange,
 }: {
   module: Module;
+  availableVideos: Array<{id: string; title: string; module: string}>;
   onUpdate: (moduleId: string, title: string) => void;
   onDelete: (moduleId: string) => void;
   addVideo: (moduleId: string) => void;
@@ -574,7 +692,13 @@ function SortableModule({
   handleFileChange: (
     moduleId: string,
     videoId: string,
-    file: File | null
+    file: File | null,
+    duration?: number
+  ) => void;
+  handleLinksChange: (
+    moduleId: string, 
+    videoId: string, 
+    links: VideoLink[]
   ) => void;
 }) {
   const {
@@ -595,7 +719,8 @@ function SortableModule({
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       <ModuleCard
-        module={module as any} // TODo:fix if needed
+        module={module as any}
+        availableVideos={availableVideos}
         onUpdate={(updatedModule) =>
           onUpdate(updatedModule.id, updatedModule.title)
         }
@@ -603,6 +728,7 @@ function SortableModule({
         addVideo={() => addVideo(module.id)}
         removeVideo={removeVideo}
         handleFileChange={handleFileChange}
+        handleLinksChange={handleLinksChange}
         isDragging={isDragging}
         editPage={false}
         dragHandleProps={listeners}
@@ -610,3 +736,5 @@ function SortableModule({
     </div>
   );
 }
+
+
