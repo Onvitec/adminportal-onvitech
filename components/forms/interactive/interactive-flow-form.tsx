@@ -88,9 +88,9 @@ export default function InteractiveSessionForm() {
   ]);
 
   // Generate available videos list for video link destinations
-  const availableVideos = videos.map(video => ({
+  const availableVideos = videos.map((video) => ({
     id: video.id,
-    title: video.title
+    title: video.title,
   }));
 
   const addVideo = () => {
@@ -349,9 +349,11 @@ export default function InteractiveSessionForm() {
             video_id: videoData.id,
             timestamp_seconds: l.timestamp_seconds,
             label: l.label,
-            url: l.link_type === 'url' ? l.url : null,
-            destination_video_id: l.link_type === 'video' ? null : null, // Will be updated later for video links
+            url: l.link_type === "url" ? l.url : null,
+            destination_video_id: l.link_type === "video" ? null : null,
             link_type: l.link_type,
+            position_x: l.position_x || 20, // Add position data with default
+            position_y: l.position_y || 20, // Add position data with default
           }));
 
           const { data: insertedLinks, error: linksError } = await supabase
@@ -364,12 +366,14 @@ export default function InteractiveSessionForm() {
           // Store link mapping for later destination video ID updates
           if (insertedLinks) {
             video.links.forEach((originalLink, linkIndex) => {
-              if (originalLink.link_type === 'video' && originalLink.destination_video_id) {
-                // Store the mapping for later processing
+              if (
+                originalLink.link_type === "video" &&
+                originalLink.destination_video_id
+              ) {
                 const insertedLink = insertedLinks[linkIndex];
                 if (insertedLink) {
-                  // We'll update this after all videos are uploaded
-                  insertedLink._temp_destination_video_id = originalLink.destination_video_id;
+                  insertedLink._temp_destination_video_id =
+                    originalLink.destination_video_id;
                   insertedLink._temp_link_id = originalLink.id;
                 }
               }
@@ -440,7 +444,7 @@ export default function InteractiveSessionForm() {
       // Update video link destination_video_id for video-type links after all videos are uploaded
       for (const video of videos) {
         if (!video.links || video.links.length === 0) continue;
-        
+
         const videoDbId = uploadedVideos[video.id];
         if (!videoDbId) continue;
 
@@ -456,9 +460,14 @@ export default function InteractiveSessionForm() {
         for (let i = 0; i < video.links.length; i++) {
           const originalLink = video.links[i];
           const dbLink = videoLinks[i];
-          
-          if (originalLink.link_type === 'video' && originalLink.destination_video_id && dbLink) {
-            const destinationDbId = uploadedVideos[originalLink.destination_video_id];
+
+          if (
+            originalLink.link_type === "video" &&
+            originalLink.destination_video_id &&
+            dbLink
+          ) {
+            const destinationDbId =
+              uploadedVideos[originalLink.destination_video_id];
             if (destinationDbId) {
               await supabase
                 .from("video_links")

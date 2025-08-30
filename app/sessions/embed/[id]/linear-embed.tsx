@@ -3,21 +3,9 @@ import { PlayButton } from "@/components/icons";
 import { SolutionCard } from "@/components/SolutionCard";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
-import { Solution, SolutionCategory } from "@/lib/types";
+import { Solution, SolutionCategory, VideoLink } from "@/lib/types";
 import React, { useEffect, useState, useRef } from "react";
 import { ExternalLink, Play, ChevronLeft } from "lucide-react";
-
-// Enhanced VideoLink type to match InteractiveSessionEmbed
-type VideoLink = {
-  id: string;
-  timestamp_seconds: number;
-  label: string;
-  url?: string;
-  destination_video_id?: string;
-  link_type: 'url' | 'video';
-  destination_video?: Video; // Populated when link_type is 'video'
-  video_id?: string;
-};
 
 type Video = {
   id: string;
@@ -55,13 +43,13 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
   const [videoHistory, setVideoHistory] = useState<Video[]>([]);
   const [isBackNavigation, setIsBackNavigation] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  
+
   // Enhanced video link state management from InteractiveSessionEmbed
   const [videoLinks, setVideoLinks] = useState<Record<string, VideoLink[]>>({});
   const [activeLinks, setActiveLinks] = useState<VideoLink[]>([]);
   const [showControls, setShowControls] = useState(true);
   const [mouseActive, setMouseActive] = useState(false);
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const mouseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -114,11 +102,14 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
       );
 
       // Enhanced video links fetching logic from InteractiveSessionEmbed
-      const allVideos = modulesWithVideos.flatMap(m => m.videos);
+      const allVideos = modulesWithVideos.flatMap((m) => m.videos);
       const { data: linksData, error: linksError } = await supabase
         .from("video_links")
         .select("*")
-        .in("video_id", allVideos.map((v) => v.id));
+        .in(
+          "video_id",
+          allVideos.map((v) => v.id)
+        );
 
       if (linksError) throw linksError;
 
@@ -142,7 +133,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
       );
 
       console.log("Fetched video links:", linksWithDestinations);
-      
+
       // Group links by video_id
       const groupedLinks: Record<string, VideoLink[]> = {};
       linksWithDestinations.forEach((link) => {
@@ -213,7 +204,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
   // Find video by ID across all modules
   const findVideoById = (videoId: string): Video | null => {
     for (const module of modules) {
-      const video = module.videos.find(v => v.id === videoId);
+      const video = module.videos.find((v) => v.id === videoId);
       if (video) return video;
     }
     return null;
@@ -227,9 +218,9 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
     } else if (link.link_type === "video" && link.destination_video) {
       // Navigate to destination video
       if (currentVideo) {
-        setVideoHistory(prev => [...prev, currentVideo]);
+        setVideoHistory((prev) => [...prev, currentVideo]);
       }
-      setCurrentVideo(link.destination_video);
+      setCurrentVideo(link.destination_video as any); // todo: might cause error
       setIsBackNavigation(false);
 
       // Reset video state
@@ -335,7 +326,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
     setVideoHistory((prev) => prev.slice(0, -1));
     setCurrentVideo(previousVideo);
     setIsBackNavigation(true);
-    
+
     // Reset video state
     if (videoRef.current) {
       videoRef.current.pause();
@@ -363,7 +354,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
   if (isLoading) {
     return null;
   }
-  
+
   if (error) {
     return (
       <div className="text-center py-12">
@@ -383,7 +374,9 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
     );
   }
 
-  const currentVideoIndex = modules.flatMap(m => m.videos).findIndex(v => v.id === currentVideo?.id);
+  const currentVideoIndex = modules
+    .flatMap((m) => m.videos)
+    .findIndex((v) => v.id === currentVideo?.id);
   const isNotFirstVideoInSession = currentVideoIndex > 0;
 
   return (
@@ -391,7 +384,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
       {/* Enhanced Video Player with Interactive Controls */}
       {!allVideosCompleted && currentVideo && (
         <div className="mb-4">
-          <div 
+          <div
             className="relative bg-black rounded-xl overflow-hidden"
             onMouseMove={handleMouseMove}
             onMouseEnter={() => {
@@ -442,7 +435,10 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
               onEnded={() => handleVideoEnd(currentVideo.id)}
               onTimeUpdate={(e) => {
                 const video = e.target as HTMLVideoElement;
-                const progress = (video.duration > 0) ? (video.currentTime / video.duration) * 100 : 0;
+                const progress =
+                  video.duration > 0
+                    ? (video.currentTime / video.duration) * 100
+                    : 0;
                 setCurrentTime(video.currentTime);
                 handleVideoProgress(currentVideo.id, progress);
               }}
@@ -488,16 +484,21 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
 
             {/* Enhanced Video Link Buttons - Support both URL and Video navigation */}
             {activeLinks.length > 0 && (
-              <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
+              <>
                 {activeLinks.map((link) => (
                   <button
                     key={link.id}
                     onClick={() => handleVideoLinkClick(link)}
-                    className={`px-3 py-2 rounded-lg shadow-lg text-sm font-medium transition-colors ${
+                    className={`absolute px-3 py-2 rounded-lg shadow-lg text-sm font-medium transition-colors ${
                       link.link_type === "url"
                         ? "bg-blue-600 text-white hover:bg-blue-700"
                         : "bg-green-600 text-white hover:bg-green-700"
                     }`}
+                    style={{
+                      left: `${link.position_x}%`,
+                      top: `${link.position_y}%`,
+                      transform: "translate(-50%, -50%)", // centers button
+                    }}
                     title={
                       link.link_type === "url"
                         ? `Open link: ${link.url}`
@@ -510,23 +511,18 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
                     {link.link_type === "video" && (
                       <span className="ml-1 text-xs opacity-75">▶</span>
                     )}
-                    {link.link_type === "url" && (
-                      <ExternalLink className="ml-1 w-3 h-3 opacity-75" />
-                    )}
                   </button>
                 ))}
-              </div>
+              </>
             )}
           </div>
-
-       
         </div>
       )}
 
       {allVideosCompleted && (
         <div className="flex flex-col items-center justify-center text-center py-20">
           <h2 className="text-2xl font-bold mb-4">
-             You have finished the session "{sessionName}"
+            You have finished the session "{sessionName}"
           </h2>
           <p className="text-gray-600 mb-6">
             Great job! Here are the solutions for this session:

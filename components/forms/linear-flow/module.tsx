@@ -15,16 +15,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { VideoUploadWithLinks } from "./videoo-upload";
-
-// Updated VideoLink type to support both URL and destination video
-type VideoLink = {
-  id: string;
-  timestamp_seconds: number;
-  label: string;
-  url?: string; // Optional URL
-  destination_video_id?: string; // Optional destination video ID
-  link_type: 'url' | 'video'; // Type discriminator
-};
+import { VideoLink } from "@/lib/types";
 
 // Updated Video type to include links
 type Video = {

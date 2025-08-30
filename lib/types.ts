@@ -14,7 +14,10 @@ export type VideoLink = {
   url?: string;
   video_id?: string;
   destination_video_id?: string; // Optional destination video ID
+  destination_video?: VideoType;
   link_type: "url" | "video"; // Type discriminator
+  position_x: number;
+  position_y: number;
 };
 
 export type Question = {

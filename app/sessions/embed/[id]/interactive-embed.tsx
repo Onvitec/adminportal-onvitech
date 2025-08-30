@@ -2,22 +2,10 @@
 
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { VideoType, Question, Answer } from "@/lib/types";
+import { VideoType, Question, Answer, VideoLink } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Loader2, ChevronLeft } from "lucide-react";
 import { Questions } from "@/components/icons";
-
-// Updated VideoLink type to match the new schema
-type VideoLink = {
-  id: string;
-  timestamp_seconds: number;
-  label: string;
-  url?: string;
-  destination_video_id?: string;
-  link_type: "url" | "video";
-  destination_video?: VideoType; // Populated when link_type is 'video'
-  video_id?: string;
-};
 
 export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [videos, setVideos] = useState<VideoType[]>([]);
@@ -388,16 +376,21 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
         {/* Enhanced Video Link Buttons - Support both URL and Video navigation */}
         {activeLinks.length > 0 && (
-          <div className="absolute top-4 right-4 flex flex-col gap-2">
+          <>
             {activeLinks.map((link) => (
               <button
                 key={link.id}
                 onClick={() => handleVideoLinkClick(link)}
-                className={`px-3 py-2 rounded-lg shadow-lg text-sm font-medium transition-colors ${
+                className={`absolute px-3 py-2 rounded-lg shadow-lg text-sm font-medium transition-colors ${
                   link.link_type === "url"
                     ? "bg-blue-600 text-white hover:bg-blue-700"
                     : "bg-green-600 text-white hover:bg-green-700"
                 }`}
+                style={{
+                  left: `${link.position_x}%`,
+                  top: `${link.position_y}%`,
+                  transform: "translate(-50%, -50%)", // centers button
+                }}
                 title={
                   link.link_type === "url"
                     ? `Open link: ${link.url}`
@@ -412,7 +405,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
                 )}
               </button>
             ))}
-          </div>
+          </>
         )}
 
         {showQuestions && currentQuestions.length > 0 && (
