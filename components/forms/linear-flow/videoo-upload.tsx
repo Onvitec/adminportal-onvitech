@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect, memo, useCallback, useMemo } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { VideoLink } from "@/lib/types";
+import { Button } from "@/components/ui/button";
 // import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 type VideoPlayerWithLinksProps = {
@@ -354,14 +354,16 @@ function VideoUploadWithLinksComponent({
     <Card className="mb-6">
       <CardContent className="relative">
         {!video.file && !video.url ? uploadSection : videoPlayerSection}
+        {(video.file || video.url) && (
         <div
           onClick={() => setIsModalOpen(true)}
           className="absolute top-4 right-8 flex space-x-2"
         >
-          <Button type="button" className="bg-white text-black">
+          <Button type="button" className="bg-white text-black hover:bg-[#475570] hover:text-white">
             Add button
           </Button>
         </div>
+      )}
       </CardContent>
 
       {/* Modal */}
@@ -463,7 +465,7 @@ function VideoUploadWithLinksComponent({
 
             {/* Add Button */}
             <div className="w-full flex justify-center items-center">
-              <Button onClick={handleAddForm}>
+              <Button variant="destructive" onClick={handleAddForm}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Button
               </Button>

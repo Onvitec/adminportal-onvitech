@@ -125,7 +125,7 @@ export function ModuleCard({
         isDragging ? "border-blue-300 bg-blue-50" : "border-gray-200"
       )}
     >
-      <div className="p-4 flex border-b items-center justify-between bg-white">
+      <div className="p-4 flex border-b items-center justify-between bg-white w-full">
         <div className="flex items-center gap-2">
           <button {...dragHandleProps}>
             <GripVertical className="h-5 w-5 text-gray-400 cursor-grab" />
