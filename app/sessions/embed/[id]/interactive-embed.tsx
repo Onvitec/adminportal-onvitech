@@ -108,7 +108,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
             "video_id",
             videosData.map((v) => v.id)
           );
-
+        console.log("Fetched video links data:", linksData);
         if (linksError) throw linksError;
 
         // Process links and fetch destination videos for video-type links
@@ -201,12 +201,24 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const handleVideoEnd = () => {
     setIsPlaying(false);
     setShowControls(true);
+
     if (currentQuestions.length > 0) {
       setShowQuestions(true);
     } else {
       const currentIndex = videos.findIndex((v) => v.id === currentVideo?.id);
       if (currentIndex < videos.length - 1) {
-        setCurrentVideo(videos[currentIndex + 1]);
+        const nextVideo = videos[currentIndex + 1];
+        setCurrentVideo(nextVideo);
+
+        // Auto-play the next video
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.play();
+            setIsPlaying(true);
+            setMouseActive(true);
+            resetMouseTimeout();
+          }
+        }, 100);
       }
     }
   };
@@ -214,15 +226,31 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const handleAnswerSelect = (
     answer: Answer & { destination_video?: VideoType }
   ) => {
+    let nextVideo: VideoType | null = null;
+
     if (answer.destination_video) {
-      setCurrentVideo(answer.destination_video);
+      nextVideo = answer.destination_video;
     } else {
       const currentIndex = videos.findIndex((v) => v.id === currentVideo?.id);
       if (currentIndex < videos.length - 1) {
-        setCurrentVideo(videos[currentIndex + 1]);
+        nextVideo = videos[currentIndex + 1];
       }
     }
-    setShowQuestions(false);
+
+    if (nextVideo) {
+      setCurrentVideo(nextVideo);
+      setShowQuestions(false);
+
+      // Auto-play the newly selected video
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.play();
+          setIsPlaying(true);
+          setMouseActive(true);
+          resetMouseTimeout();
+        }
+      }, 100);
+    }
   };
 
   // Handle video link clicks
@@ -235,11 +263,17 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       setCurrentVideo(link.destination_video);
       setShowQuestions(false);
 
-      // Reset video state
+      // Reset & autoplay video
       if (videoRef.current) {
-        videoRef.current.pause();
-        setIsPlaying(false);
+        videoRef.current.pause(); // ensure it resets
+        videoRef.current.currentTime = 0; // restart from beginning
+        setIsPlaying(true);
         setShowControls(true);
+
+        // Play after state updates
+        setTimeout(() => {
+          videoRef.current?.play();
+        }, 100);
       }
     }
   };
@@ -331,18 +365,19 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           }}
         />
 
-        {videos.findIndex((v) => v.id === currentVideo?.id) > 0 && (
-          <div
-            className={`absolute left-4 top-4 bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 ${
-              showControls ? "opacity-100" : "opacity-0 pointer-events-none"
-            }`}
-            onClick={goToFirstVideo}
-          >
-            <ChevronLeft className="w-6 h-6 text-white font-bold" />
-          </div>
-        )}
+        {videos.findIndex((v) => v.id === currentVideo?.id) > 0 &&
+          !isPlaying && (
+            <div
+              className={`absolute left-4 top-4 bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 ${
+                showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+              }`}
+              onClick={goToFirstVideo}
+            >
+              <ChevronLeft className="w-6 h-6 text-white font-bold" />
+            </div>
+          )}
 
-        {(showControls || !isPlaying) && (
+        {!isPlaying && (
           <div
             className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${
               mouseActive || !isPlaying ? "opacity-100" : "opacity-0"

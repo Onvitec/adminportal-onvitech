@@ -565,7 +565,7 @@ function VideoUploadWithLinksComponent({
         {!hasVideoContent ? uploadSection : videoPlayerSection}
 
         <div className="absolute top-4 right-4 flex space-x-2">
-          {hasVideoContent && video.links.length > 0 && (
+          {hasVideoContent && video?.links.length > 0 && (
             <Button
               type="button"
               variant="outline"
@@ -590,7 +590,6 @@ function VideoUploadWithLinksComponent({
             </Button>
           )}
         </div>
-
       </CardContent>
 
       {/* Enhanced Modal */}

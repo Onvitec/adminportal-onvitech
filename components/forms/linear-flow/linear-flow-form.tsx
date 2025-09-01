@@ -252,6 +252,10 @@ export default function LinearSessionForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    if (!solution || sessionName.length === 0) {
+      showToast("error", "session name or solution is missing");
+      return;
+    }
 
     try {
       // Get current user

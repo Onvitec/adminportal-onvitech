@@ -295,6 +295,16 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
         }
       }
       setCurrentVideo(nextVideo);
+
+      // Auto-play the next video after state updates
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.play();
+          setIsPlaying(true);
+          setMouseActive(true);
+          resetMouseTimeout();
+        }
+      }, 100); // small delay to let DOM update
     }
   };
 
@@ -399,7 +409,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
             }}
           >
             {/* Back to Previous Video Button */}
-            {!isFirstVideo() && (
+            {!isFirstVideo() && !isPlaying&& (
               <div
                 className={`absolute left-4 top-4 z-20 bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 ${
                   showControls ? "opacity-100" : "opacity-0 pointer-events-none"
@@ -409,21 +419,6 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
                 <ChevronLeft className="w-6 h-6 text-white font-bold" />
               </div>
             )}
-
-            {/* Back to First Video Button (appears when not on first video) */}
-            {/* {isNotFirstVideoInSession && (
-              <div
-                className={`absolute left-4 ${!isFirstVideo() ? 'top-16' : 'top-4'} z-20 bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 ${
-                  showControls ? "opacity-100" : "opacity-0 pointer-events-none"
-                }`}
-                onClick={goToFirstVideo}
-                title="Go to first video"
-              >
-                <div className="w-6 h-6 text-white font-bold flex items-center justify-center">
-                  <span className="text-xs">⏮</span>
-                </div>
-              </div>
-            )} */}
 
             <video
               ref={videoRef}
@@ -450,7 +445,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
             />
 
             {/* Enhanced Play/Pause Button Overlay */}
-            {(showControls || !isPlaying) && (
+            {(!isPlaying) && (
               <div
                 className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${
                   mouseActive || !isPlaying ? "opacity-100" : "opacity-0"
