@@ -753,13 +753,13 @@ export default function EditInteractiveSession({
         }
 
         if (solution.id) {
-          console.log("COMING TO UPDATE",solutionData)
+          console.log("COMING TO UPDATE", solutionData);
           // Update existing solution
-        let updated =   await supabase
+          let updated = await supabase
             .from("solutions")
             .update(solutionData)
             .eq("session_id", solutionData.session_id);
-            console.log("UPDATED",updated)
+          console.log("UPDATED", updated);
         } else {
           // Create new solution
           await supabase.from("solutions").insert(solutionData);
@@ -1093,6 +1093,7 @@ export default function EditInteractiveSession({
                         Solution Category
                       </Label>
                       <Select
+                        disabled={solution !== null}
                         value={
                           solutionCategories
                             .find((c) => c.id === selectedCategory)

@@ -603,6 +603,7 @@ export default function LinearSessionForm() {
                         Solution Category
                       </Label>
                       <Select
+                      disabled={solution !== null}
                         value={
                           solutionCategories
                             .find((c) => c.id === selectedCategory)

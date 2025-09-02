@@ -141,17 +141,17 @@ export default function LinearSessionEditForm() {
       if (modulesError) throw modulesError;
 
       // Fetch video links for all videos
-      const videoIds = modulesData.flatMap((module) => 
+      const videoIds = modulesData.flatMap((module) =>
         module.videos.map((video: any) => video.id)
       );
-      
+
       let videoLinks: VideoLink[] = [];
       if (videoIds.length > 0) {
         const { data: linksData, error: linksError } = await supabase
           .from("video_links")
           .select("*")
           .in("video_id", videoIds);
-        
+
         if (!linksError && linksData) {
           videoLinks = linksData;
         }
@@ -167,7 +167,7 @@ export default function LinearSessionEditForm() {
               const videoLinksForThisVideo = videoLinks.filter(
                 (link) => link.video_id === video.id
               );
-              
+
               return {
                 id: uuidv4(),
                 db_id: video.id,
@@ -176,7 +176,7 @@ export default function LinearSessionEditForm() {
                 url: video.url,
                 path: video.path,
                 duration: video.duration || 0,
-                links: videoLinksForThisVideo.map(link => ({
+                links: videoLinksForThisVideo.map((link) => ({
                   id: link.id,
                   timestamp_seconds: link.timestamp_seconds,
                   label: link.label,
@@ -184,8 +184,8 @@ export default function LinearSessionEditForm() {
                   destination_video_id: link.destination_video_id || "",
                   link_type: link.link_type as "url" | "video",
                   position_x: link.position_x || 20,
-                  position_y: link.position_y || 20
-                }))
+                  position_y: link.position_y || 20,
+                })),
               };
             })
           ),
@@ -204,7 +204,7 @@ export default function LinearSessionEditForm() {
           ...solutionData,
           id: solutionData.id,
           category_id: solutionData.category_id,
-          session_id: solutionData.session_id
+          session_id: solutionData.session_id,
         });
         setSolutionCategory(solutionData.category_id);
       }
@@ -394,7 +394,7 @@ export default function LinearSessionEditForm() {
 
     try {
       await updateSession(sessionId as string);
-      
+
       // Handle solution updates
       if (solution) {
         let solutionData: any = {
@@ -443,10 +443,7 @@ export default function LinearSessionEditForm() {
         }
       } else {
         // Delete solution if it was removed
-        await supabase
-          .from("solutions")
-          .delete()
-          .eq("session_id", sessionId);
+        await supabase.from("solutions").delete().eq("session_id", sessionId);
       }
 
       router.push("/sessions");
@@ -541,7 +538,9 @@ export default function LinearSessionEditForm() {
 
             // Upload new file
             const fileExt = video.file.name.split(".").pop();
-            const filePath = `${userId}/${sessionId}/${module.db_id}/${uuidv4()}.${fileExt}`;
+            const filePath = `${userId}/${sessionId}/${
+              module.db_id
+            }/${uuidv4()}.${fileExt}`;
 
             const { error: uploadError } = await supabase.storage
               .from("videos")
@@ -595,7 +594,9 @@ export default function LinearSessionEditForm() {
 
           // Upload file to storage
           const fileExt = video.file.name.split(".").pop();
-          const filePath = `${userId}/${sessionId}/${module.db_id}/${uuidv4()}.${fileExt}`;
+          const filePath = `${userId}/${sessionId}/${
+            module.db_id
+          }/${uuidv4()}.${fileExt}`;
 
           const { error: uploadError } = await supabase.storage
             .from("videos")
@@ -686,9 +687,10 @@ export default function LinearSessionEditForm() {
 
     // Prepare links for insertion
     const linkInserts = links.map((link) => {
-      const destinationVideoId = link.link_type === "video" && link.destination_video_id 
-        ? videoIdMap[link.destination_video_id] || null 
-        : null;
+      const destinationVideoId =
+        link.link_type === "video" && link.destination_video_id
+          ? videoIdMap[link.destination_video_id] || null
+          : null;
 
       return {
         video_id: videoDbId,
@@ -860,6 +862,7 @@ export default function LinearSessionEditForm() {
                         Solution Category
                       </Label>
                       <Select
+                        disabled={solution !== null}
                         value={
                           solutionCategories
                             .find((c) => c.id === solutionCategory)

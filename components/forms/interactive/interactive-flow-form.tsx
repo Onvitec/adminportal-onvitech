@@ -276,7 +276,7 @@ export default function InteractiveSessionForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-     if (!solution || sessionName.length === 0) {
+    if (!solution || sessionName.length === 0) {
       showToast("error", "session name or solution is missing");
       return;
     }
@@ -816,6 +816,7 @@ export default function InteractiveSessionForm() {
                         Solution Category
                       </Label>
                       <Select
+                        disabled={solution !== null}
                         value={
                           solutionCategories
                             .find((c) => c.id === selectedCategory)
