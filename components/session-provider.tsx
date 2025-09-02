@@ -37,7 +37,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     const getSession = async () => {
       try {
         setIsLoading(true);
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
 
         if (!mounted) return;
 
@@ -55,13 +58,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         const userData = {
           id: session.user.id,
           email: session.user.email ?? "",
-          username: session.user.user_metadata?.username ||
-                   session.user.email?.split("@")[0] ||
-                   "User",
+          username:
+            session.user.user_metadata?.username ||
+            session.user.email?.split("@")[0] ||
+            "User",
           first_name: session.user.user_metadata?.first_name,
           last_name: session.user.user_metadata?.last_name,
         };
-        
+
         if (mounted) {
           setUser(userData);
           setIsLoading(false);
@@ -76,26 +80,27 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
     getSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
 
-        if (event === "SIGNED_OUT") {
-          setUser(null);
-        } else if (session) {
-          const userData = {
-            id: session.user.id,
-            email: session.user.email ?? "",
-            username: session.user.user_metadata?.username ||
-                     session.user.email?.split("@")[0] ||
-                     "User",
-            first_name: session.user.user_metadata?.first_name,
-            last_name: session.user.user_metadata?.last_name,
-          };
-          setUser(userData);
-        }
+      if (event === "SIGNED_OUT") {
+        setUser(null);
+      } else if (session) {
+        const userData = {
+          id: session.user.id,
+          email: session.user.email ?? "",
+          username:
+            session.user.user_metadata?.username ||
+            session.user.email?.split("@")[0] ||
+            "User",
+          first_name: session.user.user_metadata?.first_name,
+          last_name: session.user.user_metadata?.last_name,
+        };
+        setUser(userData);
       }
-    );
+    });
 
     return () => {
       mounted = false;
@@ -103,11 +108,35 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    // Prevent Enter key inside inputs from submitting
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
+        if (e.target.type !== "textarea") {
+          e.preventDefault();
+        }
+      }
+    };
+
+    // Prevent all forms from submitting
+    const submitHandler = (e: Event) => {
+      e.preventDefault();
+    };
+
+    document.addEventListener("keydown", keyHandler);
+    document.addEventListener("submit", submitHandler, true); // capture phase
+
+    return () => {
+      document.removeEventListener("keydown", keyHandler);
+      document.removeEventListener("submit", submitHandler, true);
+    };
+  }, []);
+
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      
+
       showToast("success", "Signed out successfully!");
       router.push("/login");
     } catch (error) {

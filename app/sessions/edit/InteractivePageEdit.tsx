@@ -158,10 +158,13 @@ export default function EditInteractiveSession({
               label: link.label,
               url: link.url || undefined,
               video_id: link.video_id,
-              destination_video_id: link.destination_video_id 
-                ? videoIdMap[link.destination_video_id] || link.destination_video_id
+              destination_video_id: link.destination_video_id
+                ? videoIdMap[link.destination_video_id] ||
+                  link.destination_video_id
                 : undefined,
-              link_type: (link.link_type as "url" | "video") || (link.url ? "url" : "video"),
+              link_type:
+                (link.link_type as "url" | "video") ||
+                (link.url ? "url" : "video"),
               position_x: link.position_x || 20,
               position_y: link.position_y || 20,
             }));
@@ -191,7 +194,7 @@ export default function EditInteractiveSession({
                   id: uuidv4(),
                   db_id: answer.id,
                   answer_text: answer.answer_text,
-                  destination_video_id: answer.destination_video_id 
+                  destination_video_id: answer.destination_video_id
                     ? videoIdMap[answer.destination_video_id] || ""
                     : "",
                 })),
@@ -539,7 +542,7 @@ export default function EditInteractiveSession({
       // Second pass: Handle video links with proper destination mapping
       for (const video of videos) {
         const videoDbId = uploadedVideos[video.id];
-        
+
         // Delete all existing links for this video first
         await supabase.from("video_links").delete().eq("video_id", videoDbId);
 
@@ -560,13 +563,14 @@ export default function EditInteractiveSession({
             } else if (l.link_type === "video" && l.destination_video_id) {
               linkData.url = null;
               // Map the temporary video ID to the actual database ID
-              linkData.destination_video_id = uploadedVideos[l.destination_video_id];
-              
+              linkData.destination_video_id =
+                uploadedVideos[l.destination_video_id];
+
               // Debug log
               console.log("Mapping video link:", {
                 tempId: l.destination_video_id,
                 dbId: uploadedVideos[l.destination_video_id],
-                allMappings: uploadedVideos
+                allMappings: uploadedVideos,
               });
             }
 
@@ -702,7 +706,7 @@ export default function EditInteractiveSession({
           }
         }
       }
-
+      console.log("SOLution", solution);
       // Handle solution
       if (solution) {
         let solutionData: any = {
@@ -735,7 +739,7 @@ export default function EditInteractiveSession({
             const { error: uploadError } = await supabase.storage
               .from("solutions")
               .upload(filePath, solution.videoFile);
-
+            console.log("Upload error:", uploadError);
             if (uploadError) throw uploadError;
 
             const { data: urlData } = supabase.storage
@@ -749,11 +753,13 @@ export default function EditInteractiveSession({
         }
 
         if (solution.id) {
+          console.log("COMING TO UPDATE",solutionData)
           // Update existing solution
-          await supabase
+        let updated =   await supabase
             .from("solutions")
             .update(solutionData)
-            .eq("id", solution.id);
+            .eq("session_id", solutionData.session_id);
+            console.log("UPDATED",updated)
         } else {
           // Create new solution
           await supabase.from("solutions").insert(solutionData);
@@ -776,7 +782,7 @@ export default function EditInteractiveSession({
         }
       }
 
-      router.push("/sessions");
+      // router.push("/sessions");
       showToast("success", "Interactive Session updated successfully!");
     } catch (error) {
       console.error("Error updating session:", error);
