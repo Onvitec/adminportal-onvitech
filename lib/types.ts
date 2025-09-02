@@ -6,6 +6,9 @@ export type VideoType = {
   is_main?: boolean;
   duration: number; // Add duration in seconds
   links?: VideoLink[]; // Add links array
+
+  db_id?:string
+  path?:string
 };
 export type VideoLink = {
   id: string;

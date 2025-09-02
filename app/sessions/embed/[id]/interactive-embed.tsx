@@ -22,7 +22,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const mouseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [videoLinks, setVideoLinks] = useState<Record<string, VideoLink[]>>({});
   const [activeLinks, setActiveLinks] = useState<VideoLink[]>([]);
-
+  const [videoHistory, setVideoHistory] = useState<VideoType[]>([]);
+  const [isNavigatingBack, setIsNavigatingBack] = useState(false);
+  const [currentSolution, setCurrentSolution] = useState<any | null>(null);
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -108,7 +110,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
             "video_id",
             videosData.map((v) => v.id)
           );
-        console.log("Fetched video links data:", linksData);
+
         if (linksError) throw linksError;
 
         // Process links and fetch destination videos for video-type links
@@ -129,10 +131,18 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
             return link;
           })
         );
-        console.log("Fetched video links:", linksWithDestinations);
+        const { data: solutionData, error: solutionError } = await supabase
+          .from("solutions")
+          .select("*")
+          .eq("session_id", sessionId)
+          .single();
 
+        if (solutionError) {
+          console.error("Error fetching solution:", solutionError);
+        } else {
+          setCurrentSolution(solutionData);
+        }
         // Group links by video_id
-        // WARNING: this can cause error
         const groupedLinks: Record<string, VideoLink[]> = {};
         linksWithDestinations.forEach((link) => {
           if (!groupedLinks[link.video_id!]) groupedLinks[link.video_id!] = [];
@@ -197,7 +207,18 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       videoEl.removeEventListener("timeupdate", handleTimeUpdate);
     };
   }, [currentVideo, videoLinks]);
-
+  const showSolution = () => {
+    if (currentSolution) {
+      // stop video
+      if (videoRef.current) {
+        videoRef.current.pause();
+      }
+      setIsPlaying(false);
+      setShowControls(true);
+      setShowQuestions(false);
+      setCurrentVideo(null); // clear video so UI switches
+    }
+  };
   const handleVideoEnd = () => {
     setIsPlaying(false);
     setShowControls(true);
@@ -207,18 +228,15 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     } else {
       const currentIndex = videos.findIndex((v) => v.id === currentVideo?.id);
       if (currentIndex < videos.length - 1) {
+        // has next video → play it
         const nextVideo = videos[currentIndex + 1];
+        if (currentVideo && !isNavigatingBack) {
+          setVideoHistory((prev) => [...prev, currentVideo]);
+        }
         setCurrentVideo(nextVideo);
-
-        // Auto-play the next video
-        setTimeout(() => {
-          if (videoRef.current) {
-            videoRef.current.play();
-            setIsPlaying(true);
-            setMouseActive(true);
-            resetMouseTimeout();
-          }
-        }, 100);
+      } else {
+        // ❌ no next video → show solution
+        showSolution();
       }
     }
   };
@@ -226,30 +244,16 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const handleAnswerSelect = (
     answer: Answer & { destination_video?: VideoType }
   ) => {
-    let nextVideo: VideoType | null = null;
-
     if (answer.destination_video) {
-      nextVideo = answer.destination_video;
-    } else {
-      const currentIndex = videos.findIndex((v) => v.id === currentVideo?.id);
-      if (currentIndex < videos.length - 1) {
-        nextVideo = videos[currentIndex + 1];
+      // go to destination video
+      if (currentVideo && !isNavigatingBack) {
+        setVideoHistory((prev) => [...prev, currentVideo]);
       }
-    }
-
-    if (nextVideo) {
-      setCurrentVideo(nextVideo);
+      setCurrentVideo(answer.destination_video);
       setShowQuestions(false);
-
-      // Auto-play the newly selected video
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.play();
-          setIsPlaying(true);
-          setMouseActive(true);
-          resetMouseTimeout();
-        }
-      }, 100);
+    } else {
+      // ❌ no destination video → show solution
+      showSolution();
     }
   };
 
@@ -259,22 +263,25 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       // Open external URL in new tab
       window.open(link.url, "_blank", "noopener,noreferrer");
     } else if (link.link_type === "video" && link.destination_video) {
-      // Navigate to destination video
+      // Save current video to history
+      if (currentVideo && !isNavigatingBack) {
+        setVideoHistory((prev) => [...prev, currentVideo]);
+      }
+
+      // Switch to destination video
       setCurrentVideo(link.destination_video);
       setShowQuestions(false);
 
-      // Reset & autoplay video
-      if (videoRef.current) {
-        videoRef.current.pause(); // ensure it resets
-        videoRef.current.currentTime = 0; // restart from beginning
-        setIsPlaying(true);
-        setShowControls(true);
-
-        // Play after state updates
-        setTimeout(() => {
-          videoRef.current?.play();
-        }, 100);
-      }
+      // Reset & autoplay
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.currentTime = 0;
+          videoRef.current.play();
+          setIsPlaying(true);
+          setMouseActive(true);
+          resetMouseTimeout();
+        }
+      }, 100);
     }
   };
 
@@ -311,16 +318,31 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     }, 2000);
   };
 
-  const goToFirstVideo = () => {
-    if (videos.length > 0) {
-      setCurrentVideo(videos[0]);
-      setShowQuestions(false);
-      if (videoRef.current) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-        setShowControls(true);
-      }
+  const goToPreviousVideo = () => {
+    console.log(videoHistory);
+    if (videoHistory.length === 0) return;
+    console.log("COMINGGG");
+    setIsNavigatingBack(true);
+
+    const lastVideo = videoHistory[videoHistory.length - 1];
+
+    // Set previous video as current
+    setCurrentVideo(lastVideo);
+
+    // Remove last from history
+    setVideoHistory((prev) => prev.slice(0, -1));
+
+    // Reset UI state
+    setShowQuestions(false);
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.pause();
+      setIsPlaying(false);
+      setShowControls(true);
     }
+
+    // Reset navigation flag after a short delay
+    setTimeout(() => setIsNavigatingBack(false), 100);
   };
 
   if (loading) {
@@ -329,6 +351,64 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
   if (error) {
     return <div className="text-center p-4 text-red-500">{error}</div>;
+  }
+
+  if (currentSolution && !currentVideo) {
+    return (
+      <div className="relative flex-1 bg-black rounded-xl flex items-center justify-center">
+        {/* Glass container for solution */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 max-w-3xl w-full mx-4 shadow-xl border border-white/30">
+          <h2 className="text-2xl font-bold text-white mb-4">Solution</h2>
+
+          {/* Form Solution */}
+          {currentSolution.category_id === 1 && currentSolution.form_data && (
+            <div className="text-white">
+              <h3 className="text-xl font-semibold mb-2">Form Solution</h3>
+              <pre className="bg-black/30 p-3 rounded-lg overflow-x-auto">
+                {JSON.stringify(currentSolution.form_data, null, 2)}
+              </pre>
+            </div>
+          )}
+
+          {/* Email Solution */}
+          {currentSolution.category_id === 2 &&
+            currentSolution.emailContent && (
+              <div className="text-white">
+                <h3 className="text-xl font-semibold mb-2">Email Solution</h3>
+                <p className="whitespace-pre-line">
+                  {currentSolution.emailContent}
+                </p>
+              </div>
+            )}
+
+          {/* Link Solution */}
+          {currentSolution.category_id === 3 && currentSolution.link_url && (
+            <div className="text-white">
+              <h3 className="text-xl font-semibold mb-2">Link Solution</h3>
+              <a
+                href={currentSolution.link_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-300 hover:text-blue-200 underline"
+              >
+                {currentSolution.link_url}
+              </a>
+            </div>
+          )}
+
+          {/* Video Solution */}
+          {currentSolution.category_id === 4 && currentSolution.video_url && (
+            <div className="mt-4">
+              <video
+                src={currentSolution.video_url}
+                controls
+                className="w-full rounded-lg border border-white/40"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   if (!currentVideo) {
@@ -358,25 +438,26 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           controls={false}
           onClick={togglePlayPause}
           onEnded={handleVideoEnd}
-          onPlay={() => setIsPlaying(true)}
+          onPlay={() => {
+            setIsPlaying(true);
+            setShowQuestions(false);
+          }}
           onPause={() => {
             setIsPlaying(false);
             setShowControls(true);
           }}
         />
 
-        {videos.findIndex((v) => v.id === currentVideo?.id) > 0 &&
-          !isPlaying && (
-            <div
-              className={`absolute left-4 top-4 bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 ${
-                showControls ? "opacity-100" : "opacity-0 pointer-events-none"
-              }`}
-              onClick={goToFirstVideo}
-            >
-              <ChevronLeft className="w-6 h-6 text-white font-bold" />
-            </div>
-          )}
-
+        {videoHistory.length > 0 && !isPlaying && (
+          <div
+            className={`absolute left-4 top-4 z-[999] bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:scale-110 ${
+              showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
+            onClick={goToPreviousVideo}
+          >
+            <ChevronLeft className="w-6 h-6 text-white font-bold" />
+          </div>
+        )}
         {!isPlaying && (
           <div
             className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${
@@ -424,7 +505,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
                 style={{
                   left: `${link.position_x}%`,
                   top: `${link.position_y}%`,
-                  transform: "translate(-50%, -50%)", // centers button
+                  transform: "translate(-50%, -50%)",
                 }}
                 title={
                   link.link_type === "url"

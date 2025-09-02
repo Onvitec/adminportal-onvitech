@@ -244,7 +244,11 @@ function VideoPlayerWithDraggableButtons({
                 }`}
               />
               <button
-                onClick={() => seekToTime(link.timestamp_seconds)}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  seekToTime(link.timestamp_seconds);
+                }}
                 className={`text-xs ${
                   link.link_type === "url"
                     ? "text-blue-600 hover:text-blue-800"
