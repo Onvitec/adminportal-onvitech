@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { VideoType, Question, Answer, VideoLink } from "@/lib/types";
+import { VideoType, Question, Answer, VideoLink, Solution } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp, Loader2, ChevronLeft } from "lucide-react";
 import { Questions } from "@/components/icons";
+import { CommonVideoPlayer } from "../CommonVideoPlaye";
+import { SolutionDisplay } from "../SolutionDisplay";
 
 export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [videos, setVideos] = useState<VideoType[]>([]);
@@ -15,16 +17,11 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showQuestions, setShowQuestions] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [showControls, setShowControls] = useState(true);
-  const [mouseActive, setMouseActive] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const mouseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [videoLinks, setVideoLinks] = useState<Record<string, VideoLink[]>>({});
-  const [activeLinks, setActiveLinks] = useState<VideoLink[]>([]);
   const [videoHistory, setVideoHistory] = useState<VideoType[]>([]);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
-  const [currentSolution, setCurrentSolution] = useState<any | null>(null);
+  const [currentSolution, setCurrentSolution] = useState<Solution | null>(null);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -81,10 +78,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
                   .single();
 
                 if (videoError) {
-                  console.error(
-                    "Error fetching destination video:",
-                    videoError
-                  );
+                  console.error("Error fetching destination video:", videoError);
                   return { ...answer };
                 }
 
@@ -131,6 +125,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
             return link;
           })
         );
+
         const { data: solutionData, error: solutionError } = await supabase
           .from("solutions")
           .select("*")
@@ -142,6 +137,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         } else {
           setCurrentSolution(solutionData);
         }
+
         // Group links by video_id
         const groupedLinks: Record<string, VideoLink[]> = {};
         linksWithDestinations.forEach((link) => {
@@ -159,12 +155,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     };
 
     fetchData();
-
-    return () => {
-      if (mouseTimeoutRef.current) {
-        clearTimeout(mouseTimeoutRef.current);
-      }
-    };
   }, [sessionId]);
 
   useEffect(() => {
@@ -174,55 +164,17 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       );
       setCurrentQuestions(videoQuestions);
       setShowQuestions(false);
-
-      if (videoRef.current) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-        setShowControls(true);
-      }
     }
   }, [currentVideo, questions]);
 
-  // Track timestamps for video links
-  useEffect(() => {
-    const videoEl = videoRef.current;
-    if (!videoEl) return;
-
-    const handleTimeUpdate = () => {
-      if (!currentVideo) return;
-      const links = videoLinks[currentVideo.id] || [];
-      const currentTime = Math.floor(videoEl.currentTime);
-
-      // Show link if currentTime matches within window (3 seconds)
-      const visible = links.filter(
-        (l) =>
-          currentTime >= l.timestamp_seconds &&
-          currentTime <= l.timestamp_seconds + 3
-      );
-      setActiveLinks(visible);
-    };
-
-    videoEl.addEventListener("timeupdate", handleTimeUpdate);
-    return () => {
-      videoEl.removeEventListener("timeupdate", handleTimeUpdate);
-    };
-  }, [currentVideo, videoLinks]);
   const showSolution = () => {
     if (currentSolution) {
-      // stop video
-      if (videoRef.current) {
-        videoRef.current.pause();
-      }
-      setIsPlaying(false);
-      setShowControls(true);
       setShowQuestions(false);
-      setCurrentVideo(null); // clear video so UI switches
+      setCurrentVideo(null);
     }
   };
-  const handleVideoEnd = () => {
-    setIsPlaying(false);
-    setShowControls(true);
 
+  const handleVideoEnd = () => {
     if (currentQuestions.length > 0) {
       setShowQuestions(true);
     } else {
@@ -269,61 +221,15 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       }
 
       // Switch to destination video
-      setCurrentVideo(link.destination_video);
+      setCurrentVideo(link.destination_video as VideoType);
       setShowQuestions(false);
-
-      // Reset & autoplay
-      setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.currentTime = 0;
-          videoRef.current.play();
-          setIsPlaying(true);
-          setMouseActive(true);
-          resetMouseTimeout();
-        }
-      }, 100);
     }
-  };
-
-  const togglePlayPause = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-        setShowControls(true);
-      } else {
-        videoRef.current.play();
-        setIsPlaying(true);
-        setMouseActive(true);
-        resetMouseTimeout();
-      }
-    }
-  };
-
-  const handleMouseMove = () => {
-    setMouseActive(true);
-    setShowControls(true);
-    resetMouseTimeout();
-  };
-
-  const resetMouseTimeout = () => {
-    if (mouseTimeoutRef.current) {
-      clearTimeout(mouseTimeoutRef.current);
-    }
-    mouseTimeoutRef.current = setTimeout(() => {
-      setMouseActive(false);
-      if (isPlaying) {
-        setShowControls(false);
-      }
-    }, 2000);
   };
 
   const goToPreviousVideo = () => {
-    console.log(videoHistory);
     if (videoHistory.length === 0) return;
-    console.log("COMINGGG");
+    
     setIsNavigatingBack(true);
-
     const lastVideo = videoHistory[videoHistory.length - 1];
 
     // Set previous video as current
@@ -334,12 +240,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
     // Reset UI state
     setShowQuestions(false);
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      videoRef.current.pause();
-      setIsPlaying(false);
-      setShowControls(true);
-    }
 
     // Reset navigation flag after a short delay
     setTimeout(() => setIsNavigatingBack(false), 100);
@@ -354,61 +254,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   }
 
   if (currentSolution && !currentVideo) {
-    return (
-      <div className="relative flex-1 bg-black rounded-xl flex items-center justify-center">
-        {/* Glass container for solution */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-xl p-8 max-w-3xl w-full mx-4 shadow-xl border border-white/30">
-          <h2 className="text-2xl font-bold text-white mb-4">Solution</h2>
-
-          {/* Form Solution */}
-          {currentSolution.category_id === 1 && currentSolution.form_data && (
-            <div className="text-white">
-              <h3 className="text-xl font-semibold mb-2">Form Solution</h3>
-              <pre className="bg-black/30 p-3 rounded-lg overflow-x-auto">
-                {JSON.stringify(currentSolution.form_data, null, 2)}
-              </pre>
-            </div>
-          )}
-
-          {/* Email Solution */}
-          {currentSolution.category_id === 2 &&
-            currentSolution.emailContent && (
-              <div className="text-white">
-                <h3 className="text-xl font-semibold mb-2">Email Solution</h3>
-                <p className="whitespace-pre-line">
-                  {currentSolution.emailContent}
-                </p>
-              </div>
-            )}
-
-          {/* Link Solution */}
-          {currentSolution.category_id === 3 && currentSolution.link_url && (
-            <div className="text-white">
-              <h3 className="text-xl font-semibold mb-2">Link Solution</h3>
-              <a
-                href={currentSolution.link_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-300 hover:text-blue-200 underline"
-              >
-                {currentSolution.link_url}
-              </a>
-            </div>
-          )}
-
-          {/* Video Solution */}
-          {currentSolution.category_id === 4 && currentSolution.video_url && (
-            <div className="mt-4">
-              <video
-                src={currentSolution.video_url}
-                controls
-                className="w-full rounded-lg border border-white/40"
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    );
+    return <SolutionDisplay solution={currentSolution} />;
   }
 
   if (!currentVideo) {
@@ -417,113 +263,14 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
   return (
     <div className="flex flex-col h-full rounded-xl overflow-hidden">
-      <div
-        className="relative flex-1 bg-black rounded-xl"
-        onMouseMove={handleMouseMove}
-        onMouseEnter={() => {
-          setMouseActive(true);
-          setShowControls(true);
-        }}
-        onMouseLeave={() => {
-          setMouseActive(false);
-          if (isPlaying) {
-            setShowControls(false);
-          }
-        }}
+      <CommonVideoPlayer
+        currentVideo={currentVideo}
+        videoLinks={videoLinks}
+        onVideoEnd={handleVideoEnd}
+        onVideoLinkClick={handleVideoLinkClick}
+        onBackNavigation={goToPreviousVideo}
+        showBackButton={videoHistory.length > 0}
       >
-        <video
-          ref={videoRef}
-          src={currentVideo.url}
-          className="w-full h-full object-contain rounded-xl cursor-pointer"
-          controls={false}
-          onClick={togglePlayPause}
-          onEnded={handleVideoEnd}
-          onPlay={() => {
-            setIsPlaying(true);
-            setShowQuestions(false);
-          }}
-          onPause={() => {
-            setIsPlaying(false);
-            setShowControls(true);
-          }}
-        />
-
-        {videoHistory.length > 0 && !isPlaying && (
-          <div
-            className={`absolute left-4 top-4 z-[999] bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:scale-110 ${
-              showControls ? "opacity-100" : "opacity-0 pointer-events-none"
-            }`}
-            onClick={goToPreviousVideo}
-          >
-            <ChevronLeft className="w-6 h-6 text-white font-bold" />
-          </div>
-        )}
-        {!isPlaying && (
-          <div
-            className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${
-              mouseActive || !isPlaying ? "opacity-100" : "opacity-0"
-            }`}
-            onClick={togglePlayPause}
-          >
-            <div
-              className={`bg-white/30 backdrop-blur-sm rounded-full p-4 shadow-lg border border-white/60 flex items-center justify-center transform transition-all duration-300 hover:scale-110`}
-            >
-              {isPlaying ? (
-                <div className="w-10 h-10 flex items-center justify-center">
-                  <div className="w-2 h-8 bg-white mx-1"></div>
-                  <div className="w-2 h-8 bg-white mx-1"></div>
-                </div>
-              ) : (
-                <svg
-                  className="w-10 h-10 text-white"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Enhanced Video Link Buttons - Support both URL and Video navigation */}
-        {activeLinks.length > 0 && (
-          <>
-            {activeLinks.map((link) => (
-              <button
-                key={link.id}
-                onClick={() => handleVideoLinkClick(link)}
-                className={`absolute px-3 py-2 rounded-lg shadow-lg text-sm font-medium transition-colors ${
-                  link.link_type === "url"
-                    ? "bg-blue-600 text-white hover:bg-blue-700"
-                    : "bg-green-600 text-white hover:bg-green-700"
-                }`}
-                style={{
-                  left: `${link.position_x}%`,
-                  top: `${link.position_y}%`,
-                  transform: "translate(-50%, -50%)",
-                }}
-                title={
-                  link.link_type === "url"
-                    ? `Open link: ${link.url}`
-                    : `Go to video: ${
-                        link.destination_video?.title || "Unknown"
-                      }`
-                }
-              >
-                {link.label}
-                {link.link_type === "video" && (
-                  <span className="ml-1 text-xs opacity-75">▶</span>
-                )}
-              </button>
-            ))}
-          </>
-        )}
-
         {showQuestions && currentQuestions.length > 0 && (
           <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 space-y-4">
             {currentQuestions.map((question) => (
@@ -560,7 +307,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
             ))}
           </div>
         )}
-      </div>
+      </CommonVideoPlayer>
     </div>
   );
 }

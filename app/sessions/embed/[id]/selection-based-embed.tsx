@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { VideoType, Question, Answer, Solution } from "@/lib/types";
+import { VideoType, Question, Answer, Solution, VideoLink } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Loader2, ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { Questions, Answers } from "@/components/icons";
+import { SolutionDisplay } from "../SolutionDisplay";
+import { CommonVideoPlayer } from "../CommonVideoPlaye";
 
 type AnswerCombination = {
   id: string;
@@ -24,10 +26,9 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showQuestions, setShowQuestions] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [showControls, setShowControls] = useState(true);
   const [currentSolution, setCurrentSolution] = useState<Solution | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoLinks, setVideoLinks] = useState<Record<string, VideoLink[]>>({});
+  const [videoHistory, setVideoHistory] = useState<VideoType[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -86,6 +87,42 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
 
         setCombinations(processedCombinations);
 
+        // Fetch video links
+        const { data: linksData, error: linksError } = await supabase
+          .from("video_links")
+          .select("*")
+          .in("video_id", videosData.map(v => v.id));
+
+        if (linksError) throw linksError;
+
+        // Process links and fetch destination videos for video-type links
+        const linksWithDestinations = await Promise.all(
+          (linksData || []).map(async (link): Promise<VideoLink> => {
+            if (link.link_type === "video" && link.destination_video_id) {
+              // Find the destination video from our already loaded videos
+              const destinationVideo = videosData.find(
+                (v) => v.id === link.destination_video_id
+              );
+
+              return {
+                ...link,
+                destination_video: destinationVideo,
+              };
+            }
+
+            return link;
+          })
+        );
+
+        // Group links by video_id
+        const groupedLinks: Record<string, VideoLink[]> = {};
+        linksWithDestinations.forEach((link) => {
+          if (!groupedLinks[link.video_id!]) groupedLinks[link.video_id!] = [];
+          groupedLinks[link.video_id!].push(link);
+        });
+
+        setVideoLinks(groupedLinks);
+
       } catch (error) {
         console.error("Error fetching selection session data:", error);
         setError(error instanceof Error ? error.message : "An error occurred");
@@ -102,25 +139,34 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
       const videoQuestion = questions.find(q => q.video_id === currentVideo.id);
       setCurrentQuestion(videoQuestion || null);
       setShowQuestions(false);
-      
-      if (videoRef.current) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-        setShowControls(true);
-      }
     }
   }, [currentVideo, questions]);
 
   const handleVideoEnd = () => {
-    setIsPlaying(false);
-    setShowControls(true);
     if (currentQuestion) {
       setShowQuestions(true);
     } else {
       const currentIndex = videos.findIndex(v => v.id === currentVideo?.id);
       if (currentIndex < videos.length - 1) {
+        if (currentVideo) {
+          setVideoHistory((prev) => [...prev, currentVideo]);
+        }
         setCurrentVideo(videos[currentIndex + 1]);
       }
+    }
+  };
+
+  const handleVideoLinkClick = (link: VideoLink) => {
+    if (link.link_type === "url" && link.url) {
+      // Open external URL in new tab
+      window.open(link.url, "_blank", "noopener,noreferrer");
+    } else if (link.link_type === "video" && link.destination_video) {
+      // Navigate to destination video
+      if (currentVideo) {
+        setVideoHistory((prev) => [...prev, currentVideo]);
+      }
+      setCurrentVideo(link.destination_video as VideoType);
+      setShowQuestions(false);
     }
   };
 
@@ -160,6 +206,9 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
     );
     
     if (nextVideo) {
+      if (currentVideo) {
+        setVideoHistory((prev) => [...prev, currentVideo]);
+      }
       setCurrentVideo(nextVideo);
     } else {
       // No more videos with questions - show solution if we have one
@@ -177,19 +226,12 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
     setShowQuestions(false);
   };
 
-  const togglePlayPause = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-        setShowControls(true);
-      } else {
-        videoRef.current.play();
-        setIsPlaying(true);
-        setShowControls(false);
-        setTimeout(() => setShowControls(false), 300);
-      }
-    }
+  const goToPreviousVideo = () => {
+    if (videoHistory.length === 0) return;
+    const previousVideo = videoHistory[videoHistory.length - 1];
+    setVideoHistory((prev) => prev.slice(0, -1));
+    setCurrentVideo(previousVideo);
+    setShowQuestions(false);
   };
 
   const goToFirstVideo = () => {
@@ -198,22 +240,44 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
       setCurrentSolution(null);
       setSelectedAnswers({});
       setShowQuestions(false);
-      if (videoRef.current) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-        setShowControls(true);
-      }
+      setVideoHistory([]);
     }
   };
 
+  const isFirstVideo = () => videoHistory.length === 0;
+
   if (loading) {
-  return null;
-}
+    return null;
+  }
 
   if (error) {
     return (
       <div className="text-center p-4 text-red-500">
         {error}
+      </div>
+    );
+  }
+
+  if (currentSolution) {
+    return (
+      <div className="flex flex-col items-center justify-center text-center py-20">
+        <h2 className="text-2xl font-bold mb-4">
+          Session Complete
+        </h2>
+        <p className="text-gray-600 mb-6">
+          Based on your selections, here is your solution:
+        </p>
+        <div className="w-full max-w-3xl">
+          <SolutionDisplay solution={currentSolution} />
+        </div>
+        <div className="mt-6">
+          <Button
+            onClick={goToFirstVideo}
+            className="bg-white/90 hover:bg-white text-gray-900"
+          >
+            Start Over
+          </Button>
+        </div>
       </div>
     );
   }
@@ -226,120 +290,16 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
     );
   }
 
-  if (currentSolution) {
-    return (
-      <div className="relative flex-1 bg-black rounded-xl flex items-center justify-center">
-        <div className="bg-white/30 backdrop-blur-sm rounded-lg p-8 max-w-2xl w-full mx-4 shadow-lg border border-white/60">
-          <h2 className="text-2xl font-bold text-white mb-4">Solution</h2>
-          
-          {currentSolution.category_id === 1 && currentSolution.form_data && (
-            <div className="text-white">
-              <h3 className="text-xl font-semibold mb-2">Form Solution</h3>
-              <p>{JSON.stringify(currentSolution.form_data)}</p>
-            </div>
-          )}
-          
-          {currentSolution.category_id === 2 && currentSolution.emailContent && (
-            <div className="text-white">
-              <h3 className="text-xl font-semibold mb-2">Email Solution</h3>
-              <p>{currentSolution.emailContent}</p>
-            </div>
-          )}
-          
-          {currentSolution.category_id === 3 && currentSolution.link_url && (
-            <div className="text-white">
-              <h3 className="text-xl font-semibold mb-2">Link Solution</h3>
-              <a 
-                href={currentSolution.link_url} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-blue-300 hover:text-blue-200 underline"
-              >
-                {currentSolution.link_url}
-              </a>
-            </div>
-          )}
-          
-          {currentSolution.category_id === 4 && currentSolution.video_url && (
-            <div className="mt-4">
-              <video
-                src={currentSolution.video_url}
-                controls
-                className="w-full rounded-lg"
-              />
-            </div>
-          )}
-
-          <div className="mt-6 flex justify-center">
-            <Button
-              onClick={goToFirstVideo}
-              className="bg-white/90 hover:bg-white text-gray-900"
-            >
-              Start Over
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-full rounded-xl overflow-hidden">
-      <div className="relative flex-1 bg-black rounded-xl">
-        <video
-
-          ref={videoRef}
-          src={currentVideo.url}
-          className="w-full h-full object-contain rounded-xl"
-          controls={false}
-          onEnded={handleVideoEnd}
-          onPlay={() => {
-            setIsPlaying(true);
-            setShowControls(false);
-          }}
-          onPause={() => {
-            setIsPlaying(false);
-            setShowControls(true);
-          }}
-        />
-
-        {videos.findIndex(v => v.id === currentVideo?.id) > 0 && (
-          <div 
-            className="absolute left-4 top-4 bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-colors duration-200"
-            onClick={goToFirstVideo}
-          >
-            <ChevronLeft className="w-6 h-6 text-white font-bold" />
-          </div>
-        )}
-
-        {showControls && !showQuestions && (
-          <div 
-            className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${isPlaying ? 'opacity-0' : 'opacity-100'}`}
-            onClick={togglePlayPause}
-          >
-            <div className={`bg-white/30 backdrop-blur-sm rounded-full p-4 shadow-lg border border-white/60 flex items-center justify-center transform transition-transform duration-300 ${isPlaying ? 'scale-90' : 'scale-100'}`}>
-              {isPlaying ? (
-                <div className="w-10 h-10 flex items-center justify-center">
-                  <div className="w-2 h-8 bg-white mx-1"></div>
-                  <div className="w-2 h-8 bg-white mx-1"></div>
-                </div>
-              ) : (
-                <svg
-                  className="w-10 h-10 text-white transform transition-transform duration-300 hover:scale-110"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              )}
-            </div>
-          </div>
-        )}
-
+      <CommonVideoPlayer
+        currentVideo={currentVideo}
+        videoLinks={videoLinks}
+        onVideoEnd={handleVideoEnd}
+        onVideoLinkClick={handleVideoLinkClick}
+        onBackNavigation={goToPreviousVideo}
+        showBackButton={!isFirstVideo()}
+      >
         {showQuestions && currentQuestion && (
           <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 space-y-4">
             <div className="bg-white/30 backdrop-blur-sm rounded-lg p-4 shadow-lg border border-white/60">
@@ -371,7 +331,7 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
             </div>
           </div>
         )}
-      </div>
+      </CommonVideoPlayer>
     </div>
   );
 }
