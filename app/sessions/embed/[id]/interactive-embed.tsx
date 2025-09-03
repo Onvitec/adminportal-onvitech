@@ -21,7 +21,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [videoHistory, setVideoHistory] = useState<VideoType[]>([]);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [currentSolution, setCurrentSolution] = useState<Solution | null>(null);
-
+  const [hoveredLinkId, setHoveredLinkId] = useState<number | null>(null);
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -78,7 +78,10 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
                   .single();
 
                 if (videoError) {
-                  console.error("Error fetching destination video:", videoError);
+                  console.error(
+                    "Error fetching destination video:",
+                    videoError
+                  );
                   return { ...answer };
                 }
 
@@ -228,7 +231,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
   const goToPreviousVideo = () => {
     if (videoHistory.length === 0) return;
-    
+
     setIsNavigatingBack(true);
     const lastVideo = videoHistory[videoHistory.length - 1];
 
@@ -270,6 +273,8 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         onVideoLinkClick={handleVideoLinkClick}
         onBackNavigation={goToPreviousVideo}
         showBackButton={videoHistory.length > 0}
+        hoverLinkedId={hoveredLinkId}
+        setHoveredLinkId={setHoveredLinkId}
       >
         {showQuestions && currentQuestions.length > 0 && (
           <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 space-y-4">

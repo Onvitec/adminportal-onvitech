@@ -12,6 +12,8 @@ interface CommonVideoPlayerProps {
   onBackNavigation?: () => void;
   showBackButton?: boolean;
   children?: React.ReactNode;
+  hoverLinkedId?: number | null;
+  setHoveredLinkId: (id: number | null) => void;
 }
 
 export function CommonVideoPlayer({
@@ -21,7 +23,9 @@ export function CommonVideoPlayer({
   onVideoLinkClick,
   onBackNavigation,
   showBackButton = false,
-  children
+  setHoveredLinkId,
+  hoverLinkedId,
+  children,
 }: CommonVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -85,6 +89,32 @@ export function CommonVideoPlayer({
         setShowControls(false);
       }
     }, 2000);
+  };
+
+  const getImageUrl = (link: VideoLink) => {
+    console.log("COMING HERE", hoverLinkedId, link.id);
+    if (String(hoverLinkedId) === link.id && link.hover_state_image) {
+      console.log("HOVER IMAGE", link.hover_state_image);
+      return link.hover_state_image;
+    }
+    return link.normal_state_image;
+  };
+
+  // Function to get the appropriate image dimensions based on hover state
+  const getImageDimensions = (link: VideoLink) => {
+    if (
+      String(hoverLinkedId) === link.id &&
+      (link.hover_image_width || link.hover_image_height)
+    ) {
+      return {
+        width: link.hover_image_width || 100,
+        height: link.hover_image_height || 100,
+      };
+    }
+    return {
+      width: link.normal_image_width || 100,
+      height: link.normal_image_height || 100,
+    };
   };
 
   useEffect(() => {
@@ -176,32 +206,45 @@ export function CommonVideoPlayer({
       {/* Enhanced Video Link Buttons - Support both URL and Video navigation */}
       {activeLinks.length > 0 && (
         <>
-          {activeLinks.map((link) => (
-            <button
-              key={link.id}
-              onClick={() => onVideoLinkClick(link)}
-              className={`absolute px-3 py-2 rounded-lg shadow-lg text-sm font-medium transition-colors ${
-                link.link_type === "url"
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "bg-green-600 text-white hover:bg-green-700"
-              }`}
-              style={{
-                left: `${link.position_x}%`,
-                top: `${link.position_y}%`,
-                transform: "translate(-50%, -50%)",
-              }}
-              title={
-                link.link_type === "url"
-                  ? `Open link: ${link.url}`
-                  : `Go to video: ${link.destination_video?.title || "Unknown"}`
-              }
-            >
-              {link.label}
-              {link.link_type === "video" && (
-                <span className="ml-1 text-xs opacity-75">▶</span>
-              )}
-            </button>
-          ))}
+          {activeLinks.map((link) => {
+            const imageUrl = getImageUrl(link);
+            const dimensions = getImageDimensions(link);
+            return imageUrl ? (
+              <div
+                key={link.id}
+                className="absolute z-10 cursor-pointer transition-all duration-200 hover:opacity-90 hover:scale-105"
+                style={{
+                  left: `${link.position_x}%`,
+                  top: `${link.position_y}%`,
+                  transform: "translate(-50%, -50%)",
+                }}
+                // onClick={() => handleVideoLinkClick(link)}
+                // onMouseEnter={() => setHoveredLinkId(link.id)}
+                // onMouseLeave={() => setHoveredLinkId(null)} // this might cause issue
+                onClick={() => onVideoLinkClick(link)}
+                onMouseEnter={() => setHoveredLinkId(link.id as any)}
+                onMouseLeave={() => setHoveredLinkId(null)}
+                title={
+                  link.link_type === "url"
+                    ? `Open link: ${link.url}`
+                    : `Go to video: ${
+                        link.destination_video?.title || "Unknown"
+                      }`
+                }
+              >
+                <img
+                  src={imageUrl}
+                  alt={link.label}
+                  style={{
+                    width: `${dimensions.width}px`,
+                    height: `${dimensions.height}px`,
+                  }}
+                  className="object-cover rounded shadow-lg"
+                  draggable={false}
+                />
+              </div>
+            ) : null;
+          })}
         </>
       )}
 

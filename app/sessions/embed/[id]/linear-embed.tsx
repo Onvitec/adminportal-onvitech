@@ -35,6 +35,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
   const [videoHistory, setVideoHistory] = useState<Video[]>([]);
   const [isBackNavigation, setIsBackNavigation] = useState(false);
   const [videoLinks, setVideoLinks] = useState<Record<string, VideoLink[]>>({});
+  const [hoveredLinkId, setHoveredLinkId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchSessionData();
@@ -167,7 +168,7 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
 
   const handleVideoEnd = () => {
     if (!currentVideo) return;
-    
+
     const newWatched = new Set(watchedVideos);
     newWatched.add(currentVideo.id);
     setWatchedVideos(newWatched);
@@ -257,6 +258,8 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
             onVideoLinkClick={handleVideoLinkClick}
             onBackNavigation={goToPreviousVideo}
             showBackButton={!isFirstVideo()}
+            hoverLinkedId={hoveredLinkId}
+            setHoveredLinkId={setHoveredLinkId}
           />
         </div>
       )}

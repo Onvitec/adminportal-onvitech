@@ -7,8 +7,8 @@ export type VideoType = {
   duration: number; // Add duration in seconds
   links?: VideoLink[]; // Add links array
 
-  db_id?:string
-  path?:string
+  db_id?: string;
+  path?: string;
 };
 export type VideoLink = {
   id: string;
@@ -21,6 +21,18 @@ export type VideoLink = {
   link_type: "url" | "video"; // Type discriminator
   position_x: number;
   position_y: number;
+  // for images
+
+  normal_state_image?: string;
+  hover_state_image?: string;
+  normal_image_width?: number;
+  normal_image_height?: number;
+  hover_image_width?: number;
+  hover_image_height?: number;
+
+  // just here
+  normalImageFile?: File | null;
+  hoverImageFile?: File | null;
 };
 
 export type Question = {

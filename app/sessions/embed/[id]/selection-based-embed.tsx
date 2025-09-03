@@ -22,13 +22,16 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
   const [combinations, setCombinations] = useState<AnswerCombination[]>([]);
   const [currentVideo, setCurrentVideo] = useState<VideoType | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
+  const [selectedAnswers, setSelectedAnswers] = useState<
+    Record<string, string>
+  >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showQuestions, setShowQuestions] = useState(false);
   const [currentSolution, setCurrentSolution] = useState<Solution | null>(null);
   const [videoLinks, setVideoLinks] = useState<Record<string, VideoLink[]>>({});
   const [videoHistory, setVideoHistory] = useState<VideoType[]>([]);
+  const [hoveredLinkId, setHoveredLinkId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -56,7 +59,10 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
         const { data: questionsData, error: questionsError } = await supabase
           .from("questions")
           .select("*, answers(*)")
-          .in("video_id", videosData.map(v => v.id));
+          .in(
+            "video_id",
+            videosData.map((v) => v.id)
+          );
 
         if (questionsError) throw questionsError;
 
@@ -72,18 +78,20 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
         setSolutions(solutionsData || []);
 
         // Fetch answer combinations
-        const { data: combinationsData, error: combinationsError } = await supabase
-          .from("answer_combinations")
-          .select("*, combination_answers(answer_id)")
-          .eq("session_id", sessionId);
+        const { data: combinationsData, error: combinationsError } =
+          await supabase
+            .from("answer_combinations")
+            .select("*, combination_answers(answer_id)")
+            .eq("session_id", sessionId);
 
         if (combinationsError) throw combinationsError;
 
-        const processedCombinations = combinationsData?.map(combo => ({
-          id: combo.id,
-          answers: combo.combination_answers.map((ca: any) => ca.answer_id),
-          solution_id: combo.solution_id
-        })) || [];
+        const processedCombinations =
+          combinationsData?.map((combo) => ({
+            id: combo.id,
+            answers: combo.combination_answers.map((ca: any) => ca.answer_id),
+            solution_id: combo.solution_id,
+          })) || [];
 
         setCombinations(processedCombinations);
 
@@ -91,7 +99,10 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
         const { data: linksData, error: linksError } = await supabase
           .from("video_links")
           .select("*")
-          .in("video_id", videosData.map(v => v.id));
+          .in(
+            "video_id",
+            videosData.map((v) => v.id)
+          );
 
         if (linksError) throw linksError;
 
@@ -122,7 +133,6 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
         });
 
         setVideoLinks(groupedLinks);
-
       } catch (error) {
         console.error("Error fetching selection session data:", error);
         setError(error instanceof Error ? error.message : "An error occurred");
@@ -136,7 +146,9 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
 
   useEffect(() => {
     if (currentVideo && questions.length > 0) {
-      const videoQuestion = questions.find(q => q.video_id === currentVideo.id);
+      const videoQuestion = questions.find(
+        (q) => q.video_id === currentVideo.id
+      );
       setCurrentQuestion(videoQuestion || null);
       setShowQuestions(false);
     }
@@ -146,7 +158,7 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
     if (currentQuestion) {
       setShowQuestions(true);
     } else {
-      const currentIndex = videos.findIndex(v => v.id === currentVideo?.id);
+      const currentIndex = videos.findIndex((v) => v.id === currentVideo?.id);
       if (currentIndex < videos.length - 1) {
         if (currentVideo) {
           setVideoHistory((prev) => [...prev, currentVideo]);
@@ -176,35 +188,37 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
     // Update selected answers
     const newSelectedAnswers = {
       ...selectedAnswers,
-      [currentQuestion.id]: answerId
+      [currentQuestion.id]: answerId,
     };
     setSelectedAnswers(newSelectedAnswers);
 
     // Check if we have answers for all questions
-    const allQuestionsAnswered = questions.every(q => 
-      newSelectedAnswers[q.id] !== undefined
+    const allQuestionsAnswered = questions.every(
+      (q) => newSelectedAnswers[q.id] !== undefined
     );
 
     if (allQuestionsAnswered) {
       // Find the matching combination
-      const selectedAnswerIds = questions.map(q => newSelectedAnswers[q.id]);
-      const matchingCombination = combinations.find(combo => 
-        combo.answers.every(answerId => selectedAnswerIds.includes(answerId))
+      const selectedAnswerIds = questions.map((q) => newSelectedAnswers[q.id]);
+      const matchingCombination = combinations.find((combo) =>
+        combo.answers.every((answerId) => selectedAnswerIds.includes(answerId))
       );
 
       if (matchingCombination?.solution_id) {
-        const solution = solutions.find(s => s.id === matchingCombination.solution_id);
+        const solution = solutions.find(
+          (s) => s.id === matchingCombination.solution_id
+        );
         setCurrentSolution(solution || null);
         return;
       }
     }
 
     // Move to next video with a question
-    const currentIndex = videos.findIndex(v => v.id === currentVideo?.id);
-    const nextVideo = videos.slice(currentIndex + 1).find(v => 
-      questions.some(q => q.video_id === v.id)
-    );
-    
+    const currentIndex = videos.findIndex((v) => v.id === currentVideo?.id);
+    const nextVideo = videos
+      .slice(currentIndex + 1)
+      .find((v) => questions.some((q) => q.video_id === v.id));
+
     if (nextVideo) {
       if (currentVideo) {
         setVideoHistory((prev) => [...prev, currentVideo]);
@@ -212,13 +226,15 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
       setCurrentVideo(nextVideo);
     } else {
       // No more videos with questions - show solution if we have one
-      const selectedAnswerIds = questions.map(q => newSelectedAnswers[q.id]);
-      const finalCombination = combinations.find(combo => 
-        combo.answers.every(answerId => selectedAnswerIds.includes(answerId))
+      const selectedAnswerIds = questions.map((q) => newSelectedAnswers[q.id]);
+      const finalCombination = combinations.find((combo) =>
+        combo.answers.every((answerId) => selectedAnswerIds.includes(answerId))
       );
 
       if (finalCombination?.solution_id) {
-        const solution = solutions.find(s => s.id === finalCombination.solution_id);
+        const solution = solutions.find(
+          (s) => s.id === finalCombination.solution_id
+        );
         setCurrentSolution(solution || null);
       }
     }
@@ -251,19 +267,13 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
   }
 
   if (error) {
-    return (
-      <div className="text-center p-4 text-red-500">
-        {error}
-      </div>
-    );
+    return <div className="text-center p-4 text-red-500">{error}</div>;
   }
 
   if (currentSolution) {
     return (
       <div className="flex flex-col items-center justify-center text-center py-20">
-        <h2 className="text-2xl font-bold mb-4">
-          Session Complete
-        </h2>
+        <h2 className="text-2xl font-bold mb-4">Session Complete</h2>
         <p className="text-gray-600 mb-6">
           Based on your selections, here is your solution:
         </p>
@@ -283,11 +293,7 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
   }
 
   if (!currentVideo) {
-    return (
-      <div className="text-center p-4">
-        No video content available
-      </div>
-    );
+    return <div className="text-center p-4">No video content available</div>;
   }
 
   return (
@@ -299,13 +305,17 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
         onVideoLinkClick={handleVideoLinkClick}
         onBackNavigation={goToPreviousVideo}
         showBackButton={!isFirstVideo()}
+        hoverLinkedId={hoveredLinkId}
+        setHoveredLinkId={setHoveredLinkId}
       >
         {showQuestions && currentQuestion && (
           <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 space-y-4">
             <div className="bg-white/30 backdrop-blur-sm rounded-lg p-4 shadow-lg border border-white/60">
               <div className="flex items-center gap-2 mb-2">
-                <Questions className="text-white"/>
-                <span className="text-white font-semibold text-sm uppercase tracking-wider">Question</span>
+                <Questions className="text-white" />
+                <span className="text-white font-semibold text-sm uppercase tracking-wider">
+                  Question
+                </span>
               </div>
               <h3 className="text-lg text-white text-[16px] font-bold pl-2">
                 {currentQuestion.question_text}
@@ -324,7 +334,9 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
                 >
                   <div className="flex items-center gap-3">
                     <Answers className="text-white" />
-                    <p className="text-white font-semibold text-[16px]">{answer.answer_text}</p>
+                    <p className="text-white font-semibold text-[16px]">
+                      {answer.answer_text}
+                    </p>
                   </div>
                 </div>
               ))}

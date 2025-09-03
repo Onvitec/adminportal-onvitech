@@ -488,14 +488,65 @@ export default function SelectionSessionForm() {
 
         // Insert links if available - Updated to handle both URL and video links
         if (video.links && video.links.length > 0) {
-          const linkInserts = video.links.map((l) => ({
-            video_id: videoData.id,
-            timestamp_seconds: l.timestamp_seconds,
-            label: l.label,
-            url: l.link_type === "url" ? l.url : null,
-            destination_video_id: l.link_type === "video" ? null : null, // Will be updated later for video links
-            link_type: l.link_type,
-          }));
+          const linkInserts = [];
+
+          for (const link of video.links) {
+            let normalImageUrl = link.normal_state_image;
+            let hoverImageUrl = link.hover_state_image;
+
+            // Upload normal state image if it's a File object
+            if (link.normalImageFile) {
+              const normalFileExt = link.normalImageFile.name.split(".").pop();
+              const normalFilePath = `${userId}/${sessionData.id}/images/${link.id}_normal.${normalFileExt}`;
+
+              const { error: normalUploadError } = await supabase.storage
+                .from("video-link-images")
+                .upload(normalFilePath, link.normalImageFile);
+
+              if (normalUploadError) throw normalUploadError;
+
+              const { data: normalUrlData } = supabase.storage
+                .from("video-link-images")
+                .getPublicUrl(normalFilePath);
+
+              normalImageUrl = normalUrlData.publicUrl;
+            }
+
+            // Upload hover state image if it's a File object
+            if (link.hoverImageFile) {
+              const hoverFileExt = link.hoverImageFile.name.split(".").pop();
+              const hoverFilePath = `${userId}/${sessionData.id}/images/${link.id}_hover.${hoverFileExt}`;
+
+              const { error: hoverUploadError } = await supabase.storage
+                .from("video-link-images")
+                .upload(hoverFilePath, link.hoverImageFile);
+
+              if (hoverUploadError) throw hoverUploadError;
+
+              const { data: hoverUrlData } = supabase.storage
+                .from("video-link-images")
+                .getPublicUrl(hoverFilePath);
+
+              hoverImageUrl = hoverUrlData.publicUrl;
+            }
+
+            linkInserts.push({
+              video_id: videoData.id,
+              timestamp_seconds: link.timestamp_seconds,
+              label: link.label,
+              url: link.link_type === "url" ? link.url : null,
+              destination_video_id: link.link_type === "video" ? null : null,
+              link_type: link.link_type,
+              position_x: link.position_x || 20,
+              position_y: link.position_y || 20,
+              normal_state_image: normalImageUrl,
+              hover_state_image: hoverImageUrl,
+              normal_image_width: link.normal_image_width,
+              normal_image_height: link.normal_image_height,
+              hover_image_width: link.hover_image_width,
+              hover_image_height: link.hover_image_height,
+            });
+          }
 
           const { data: insertedLinks, error: linksError } = await supabase
             .from("video_links")
@@ -511,10 +562,8 @@ export default function SelectionSessionForm() {
                 originalLink.link_type === "video" &&
                 originalLink.destination_video_id
               ) {
-                // Store the mapping for later processing
                 const insertedLink = insertedLinks[linkIndex];
                 if (insertedLink) {
-                  // We'll update this after all videos are uploaded
                   insertedLink._temp_destination_video_id =
                     originalLink.destination_video_id;
                   insertedLink._temp_link_id = originalLink.id;

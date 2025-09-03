@@ -289,13 +289,16 @@ export default function InteractiveSessionForm() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      const userId = user.id;
+      setUserId(userId);
+
       // Create session
       const { data: sessionData, error: sessionError } = await supabase
         .from("sessions")
         .insert({
           title: sessionName,
           session_type: "interactive",
-          created_by: user.id,
+          created_by: userId,
         })
         .select()
         .single();
@@ -311,7 +314,7 @@ export default function InteractiveSessionForm() {
 
         // Upload file to storage
         const fileExt = video.file.name.split(".").pop();
-        const filePath = `${user.id}/${sessionData.id}/${video.id}.${fileExt}`;
+        const filePath = `${userId}/${sessionData.id}/${video.id}.${fileExt}`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from("videos")
@@ -333,6 +336,7 @@ export default function InteractiveSessionForm() {
             session_id: sessionData.id,
             is_interactive: true,
             order_index: index,
+            duration: video.duration,
           })
           .select()
           .single();
@@ -343,18 +347,67 @@ export default function InteractiveSessionForm() {
         // Store mapping of temporary ID to actual DB ID
         uploadedVideos[video.id] = videoData.id;
 
-        // Insert links if available - Updated to handle both URL and video links
+        // Upload images and insert links if available
         if (video.links && video.links.length > 0) {
-          const linkInserts = video.links.map((l) => ({
-            video_id: videoData.id,
-            timestamp_seconds: l.timestamp_seconds,
-            label: l.label,
-            url: l.link_type === "url" ? l.url : null,
-            destination_video_id: l.link_type === "video" ? null : null,
-            link_type: l.link_type,
-            position_x: l.position_x || 20, // Add position data with default
-            position_y: l.position_y || 20, // Add position data with default
-          }));
+          const linkInserts = [];
+
+          for (const link of video.links) {
+            let normalImageUrl = link.normal_state_image;
+            let hoverImageUrl = link.hover_state_image;
+
+            // Upload normal state image if it's a File object
+            if (link.normalImageFile) {
+              const normalFileExt = link.normalImageFile.name.split(".").pop();
+              const normalFilePath = `${userId}/${sessionData.id}/images/${link.id}_normal.${normalFileExt}`;
+
+              const { error: normalUploadError } = await supabase.storage
+                .from("video-link-images")
+                .upload(normalFilePath, link.normalImageFile);
+
+              if (normalUploadError) throw normalUploadError;
+
+              const { data: normalUrlData } = supabase.storage
+                .from("video-link-images")
+                .getPublicUrl(normalFilePath);
+
+              normalImageUrl = normalUrlData.publicUrl;
+            }
+
+            // Upload hover state image if it's a File object
+            if (link.hoverImageFile) {
+              const hoverFileExt = link.hoverImageFile.name.split(".").pop();
+              const hoverFilePath = `${userId}/${sessionData.id}/images/${link.id}_hover.${hoverFileExt}`;
+
+              const { error: hoverUploadError } = await supabase.storage
+                .from("video-link-images")
+                .upload(hoverFilePath, link.hoverImageFile);
+
+              if (hoverUploadError) throw hoverUploadError;
+
+              const { data: hoverUrlData } = supabase.storage
+                .from("video-link-images")
+                .getPublicUrl(hoverFilePath);
+
+              hoverImageUrl = hoverUrlData.publicUrl;
+            }
+
+            linkInserts.push({
+              video_id: videoData.id,
+              timestamp_seconds: link.timestamp_seconds,
+              label: link.label,
+              url: link.link_type === "url" ? link.url : null,
+              destination_video_id: link.link_type === "video" ? null : null,
+              link_type: link.link_type,
+              position_x: link.position_x || 20,
+              position_y: link.position_y || 20,
+              normal_state_image: normalImageUrl,
+              hover_state_image: hoverImageUrl,
+              normal_image_width: link.normal_image_width,
+              normal_image_height: link.normal_image_height,
+              hover_image_width: link.hover_image_width,
+              hover_image_height: link.hover_image_height,
+            });
+          }
 
           const { data: insertedLinks, error: linksError } = await supabase
             .from("video_links")
@@ -518,6 +571,7 @@ export default function InteractiveSessionForm() {
 
         await supabase.from("solutions").insert(solutionData);
       }
+
       // Redirect to sessions page
       router.push("/sessions");
       showToast("success", "Interactive Session created successfully!");
