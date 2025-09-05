@@ -35,7 +35,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { cn, solutionCategories } from "@/lib/utils";
-import { VideoUploadWithLinks } from "../linear-flow/videoo-upload";
+import { VideoUploadWithLinks } from "../videoo-upload";
 import { Solution, SolutionCategory, VideoLink } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
 import { toast } from "sonner";
@@ -276,8 +276,8 @@ export default function InteractiveSessionForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!solution || sessionName.length === 0) {
-      showToast("error", "session name or solution is missing");
+    if (sessionName.length === 0) {
+      showToast("error", "session name is missing");
       return;
     }
     setIsLoading(true);
@@ -396,7 +396,10 @@ export default function InteractiveSessionForm() {
               timestamp_seconds: link.timestamp_seconds,
               label: link.label,
               url: link.link_type === "url" ? link.url : null,
-              destination_video_id: link.link_type === "video" ? null : null,
+              destination_video_id:
+                link.link_type === "video" || link.link_type === "form"
+                  ? null // Will be updated later after all videos are uploaded
+                  : null,
               link_type: link.link_type,
               position_x: link.position_x || 20,
               position_y: link.position_y || 20,
@@ -406,6 +409,7 @@ export default function InteractiveSessionForm() {
               normal_image_height: link.normal_image_height,
               hover_image_width: link.hover_image_width,
               hover_image_height: link.hover_image_height,
+              form_data: link.link_type === "form" ? link.form_data : null,
             });
           }
 
@@ -509,13 +513,14 @@ export default function InteractiveSessionForm() {
 
         if (!videoLinks) continue;
 
-        // Update destination_video_id for video-type links
+        // Update destination_video_id for video-type AND form-type links
         for (let i = 0; i < video.links.length; i++) {
           const originalLink = video.links[i];
           const dbLink = videoLinks[i];
 
           if (
-            originalLink.link_type === "video" &&
+            (originalLink.link_type === "video" ||
+              originalLink.link_type === "form") && // ADDED: form type
             originalLink.destination_video_id &&
             dbLink
           ) {
@@ -938,7 +943,7 @@ export default function InteractiveSessionForm() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isLoading || !solution || !hasAtLeastOneVideo}
+                  disabled={isLoading || !hasAtLeastOneVideo}
                   className="h-10 px-6"
                 >
                   {isLoading ? "Saving..." : "Save"}

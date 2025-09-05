@@ -11,11 +11,11 @@ import { InteractiveSessionView } from "./InteractiveViewSesion";
 import SelectionSessionView from "./SelectionView";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { TreeViewSession } from "./TreeViewSession";
 import { EditIcon } from "@/components/icons";
 import { IframeModal } from "@/components/Modal/IframeModal";
 import ViewSelectionSession from "./SelectionView";
 import { Loader } from "@/components/Loader";
+import { TreeViewSession } from "./TreeViewSession";
 
 export default function SessionViewPage() {
   const { id } = useParams();
@@ -122,7 +122,8 @@ export default function SessionViewPage() {
       return (
         <TreeViewSession
           videos={videos}
-          questions={questions}
+          // questions={questions}
+          
           sessionId={session?.id || ""}
         />
       );

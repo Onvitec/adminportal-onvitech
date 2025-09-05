@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { VideoUploadWithLinks } from "./videoo-upload";
+import { VideoUploadWithLinks } from "../videoo-upload";
 import { VideoLink } from "@/lib/types";
 
 // Updated Video type to include links

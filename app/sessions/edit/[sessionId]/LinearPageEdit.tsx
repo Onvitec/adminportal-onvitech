@@ -52,7 +52,7 @@ import { toast } from "sonner";
 import { showToast } from "@/components/toast";
 import Link from "next/link";
 import Heading from "@/components/Heading";
-import { VideoUploadWithLinks } from "@/components/forms/linear-flow/videoo-upload";
+import { VideoUploadWithLinks } from "@/components/forms/videoo-upload";
 
 type Video = {
   id: string;

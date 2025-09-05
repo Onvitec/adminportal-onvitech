@@ -1,21 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { VideoType, Question, Answer, Solution } from "@/lib/types";
+import { VideoType, Question, Answer, Solution, VideoLink } from "@/lib/types";
 import { Answers, DestinationVedio, Questions } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { SolutionCard } from "@/components/SolutionCard";
 import { Loader } from "@/components/Loader";
 
 export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [videoLinks, setVideoLinks] = useState<Record<string, VideoLink[]>>({});
   const [loading, setLoading] = useState(true);
-
   const [solutions, setSolutions] = useState<Solution[]>([]);
   const [solutionsExpanded, setSolutionsExpanded] = useState(true);
+  const [activeLinks, setActiveLinks] = useState<Record<string, VideoLink[]>>(
+    {}
+  );
+  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
+  const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null);
+  const [currentTimes, setCurrentTimes] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -30,6 +36,42 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
         if (videosError) throw videosError;
 
         setVideos(videosData || []);
+
+        // Fetch video links for each video
+        const linksByVideo: Record<string, VideoLink[]> = {};
+
+        for (const video of videosData || []) {
+          const { data: linksData, error: linksError } = await supabase
+            .from("video_links")
+            .select("*")
+            .eq("video_id", video.id)
+            .order("timestamp_seconds", { ascending: true });
+
+          if (!linksError && linksData) {
+            linksByVideo[video.id] = linksData.map((link) => ({
+              id: link.id.toString(),
+              timestamp_seconds: link.timestamp_seconds,
+              label: link.label,
+              url: link.url || undefined,
+              video_id: link.video_id,
+              destination_video_id: link.destination_video_id || undefined,
+              link_type:
+                (link.link_type as "url" | "video") ||
+                (link.url ? "url" : "video"),
+              position_x: link.position_x || 20,
+              position_y: link.position_y || 20,
+              normal_state_image: link.normal_state_image || undefined,
+              hover_state_image: link.hover_state_image || undefined,
+              normal_image_width: link.normal_image_width || 100,
+              normal_image_height: link.normal_image_height || 100,
+              hover_image_width: link.hover_image_width || 100,
+              hover_image_height: link.hover_image_height || 100,
+            }));
+          }
+        }
+
+        setVideoLinks(linksByVideo);
+        setActiveLinks({});
 
         // Fetch questions
         const { data: questionsData, error: questionsError } = await supabase
@@ -83,6 +125,7 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
             };
           })
         );
+
         // Fetch solutions and categories
         const { data: solutionsData, error: solutionsError } = await supabase
           .from("solutions")
@@ -109,16 +152,108 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
     fetchData();
   }, [sessionId]);
 
+  // Setup timeupdate listeners for each video
+  useEffect(() => {
+    const timeUpdateHandlers: Record<string, (e: Event) => void> = {};
+
+    Object.keys(videoRefs.current).forEach((videoId) => {
+      const videoEl = videoRefs.current[videoId];
+      if (!videoEl) return;
+
+      const links = videoLinks[videoId] || [];
+
+      timeUpdateHandlers[videoId] = (e: Event) => {
+        const video = e.target as HTMLVideoElement;
+        const currentTime = Math.floor(video.currentTime);
+
+        // Update current time for this video
+        setCurrentTimes((prev) => ({
+          ...prev,
+          [videoId]: currentTime,
+        }));
+
+        // Show links that are active within a 3-second window
+        const visibleLinks = links.filter(
+          (link) =>
+            currentTime >= link.timestamp_seconds &&
+            currentTime <= link.timestamp_seconds + 3
+        );
+
+        setActiveLinks((prev) => ({
+          ...prev,
+          [videoId]: visibleLinks,
+        }));
+      };
+
+      videoEl.addEventListener("timeupdate", timeUpdateHandlers[videoId]);
+    });
+
+    return () => {
+      Object.keys(timeUpdateHandlers).forEach((videoId) => {
+        const videoEl = videoRefs.current[videoId];
+        if (videoEl) {
+          videoEl.removeEventListener(
+            "timeupdate",
+            timeUpdateHandlers[videoId]
+          );
+        }
+      });
+    };
+  }, [videoLinks]);
+
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const getImageUrl = (link: VideoLink) => {
+    if (hoveredLinkId === link.id && link.hover_state_image) {
+      return link.hover_state_image;
+    }
+    return link.normal_state_image;
+  };
+
+  const getImageDimensions = (link: VideoLink) => {
+    if (
+      hoveredLinkId === link.id &&
+      (link.hover_image_width || link.hover_image_height)
+    ) {
+      return {
+        width: link.hover_image_width || 100,
+        height: link.hover_image_height || 100,
+      };
+    }
+    return {
+      width: link.normal_image_width || 100,
+      height: link.normal_image_height || 100,
+    };
+  };
+
+  const seekToTime = (videoId: string, time: number) => {
+    const videoEl = videoRefs.current[videoId];
+    if (videoEl) {
+      videoEl.currentTime = time;
+      videoEl.play();
+    }
+  };
+
   if (loading) {
     return (
-      <div className="p-6 text-center"><Loader size="md"/></div>
+      <div className="p-6 text-center">
+        <Loader size="md" />
+      </div>
     );
   }
 
   return (
-    <div className="space-y-8  py-6">
+    <div className="space-y-8 py-6">
       {videos.map((video) => {
         const videoQuestions = questions.filter((q) => q.video_id === video.id);
+        const links = videoLinks[video.id] || [];
+        const currentActiveLinks = activeLinks[video.id] || [];
+        const currentTime = currentTimes[video.id] || 0;
+        const duration = video.duration || 0;
 
         return (
           <div
@@ -133,12 +268,121 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
 
             <div className="flex flex-col md:flex-row">
               {/* Video on the left */}
-              <div className="w-full md:w-2/5 p-4 ">
-                <video
-                  src={video.url}
-                  controls
-                  className="w-full aspect-video object-cover rounded-lg bg-black h-[351px]"
-                />
+              <div className="w-full md:w-2/5 p-4">
+                <div className="relative">
+                  <video
+                    ref={(el: any) => (videoRefs.current[video.id] = el)}
+                    src={video.url}
+                    controls
+                    className="w-full aspect-video object-cover rounded-lg bg-black"
+                  />
+
+                  {/* Display active video links as overlay images */}
+                  {currentActiveLinks.map(
+                    (link) =>
+                      link.normal_state_image && (
+                        <div
+                          key={link.id}
+                          className="absolute z-10 cursor-pointer transition-all duration-200 hover:opacity-90 hover:scale-105"
+                          style={{
+                            left: `${link.position_x}%`,
+                            top: `${link.position_y}%`,
+                            transform: "translate(-50%, -50%)",
+                          }}
+                          onMouseEnter={() => setHoveredLinkId(link.id)}
+                          onMouseLeave={() => setHoveredLinkId(null)}
+                          title={`${link.label} - ${formatTime(
+                            link.timestamp_seconds
+                          )}`}
+                        >
+                          <img
+                            src={getImageUrl(link)}
+                            alt={link.label}
+                            style={{
+                              width: `${getImageDimensions(link).width}px`,
+                              height: `${getImageDimensions(link).height}px`,
+                            }}
+                            className="object-cover rounded shadow-lg border-2 border-yellow-400"
+                            draggable={false}
+                          />
+                        </div>
+                      )
+                  )}
+                </div>
+
+                {/* Timeline with markers below the video */}
+                {duration > 0 && links.length > 0 && (
+                  <div className="relative mt-4 bg-gray-100 rounded-md overflow-hidden p-2">
+                    {/* Current time indicator */}
+                    <div
+                      className="absolute top-0 w-1 h-full bg-red-500 z-20"
+                      style={{ left: `${(currentTime / duration) * 100}%` }}
+                    />
+
+                    <div className="flex justify-between items-center h-8 relative">
+                      {links.map((link) => (
+                        <div
+                          key={link.id}
+                          className="absolute flex flex-col items-center z-10"
+                          style={{
+                            left: `${
+                              (link.timestamp_seconds / duration) * 100
+                            }%`,
+                            transform: "translateX(-50%)",
+                          }}
+                        >
+                          {/* Image on timeline */}
+                          {link.normal_state_image && (
+                            <div className="mb-1">
+                              <img
+                                src={link.normal_state_image}
+                                alt={link.label}
+                                style={{
+                                  width: `${Math.min(
+                                    link.normal_image_width || 40,
+                                    60
+                                  )}px`,
+                                  height: `${Math.min(
+                                    link.normal_image_height || 40,
+                                    60
+                                  )}px`,
+                                }}
+                                className="object-cover rounded border cursor-pointer hover:scale-110 transition-transform"
+                                onClick={() =>
+                                  seekToTime(video.id, link.timestamp_seconds)
+                                }
+                                title={`${link.label} - ${formatTime(
+                                  link.timestamp_seconds
+                                )}`}
+                              />
+                            </div>
+                          )}
+
+                          {/* Time indicator */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              seekToTime(video.id, link.timestamp_seconds);
+                            }}
+                            className={`text-xs px-2 py-1 rounded ${
+                              link.link_type === "url"
+                                ? "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                                : "bg-green-100 text-green-800 hover:bg-green-200"
+                            } whitespace-nowrap`}
+                            title={`${link.label} - ${formatTime(
+                              link.timestamp_seconds
+                            )} (${
+                              link.link_type === "url" ? "Link" : "Video"
+                            })`}
+                          >
+                            {formatTime(link.timestamp_seconds)}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Questions on the right */}

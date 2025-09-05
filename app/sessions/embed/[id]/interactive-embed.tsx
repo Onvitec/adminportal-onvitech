@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import { VideoType, Question, Answer, VideoLink, Solution } from "@/lib/types";
+import {
+  VideoType,
+  Question,
+  Answer,
+  VideoLink,
+  Solution,
+  FormSolutionData,
+} from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Loader2, ChevronLeft } from "lucide-react";
+import { ChevronDown, ChevronUp, Loader2, ChevronLeft, X } from "lucide-react";
 import { Questions } from "@/components/icons";
 import { CommonVideoPlayer } from "../CommonVideoPlaye";
 import { SolutionDisplay } from "../SolutionDisplay";
-
 export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -21,7 +27,15 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [videoHistory, setVideoHistory] = useState<VideoType[]>([]);
   const [isNavigatingBack, setIsNavigatingBack] = useState(false);
   const [currentSolution, setCurrentSolution] = useState<Solution | null>(null);
-  const [hoveredLinkId, setHoveredLinkId] = useState<number | null>(null);
+  const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null);
+  const [currentForm, setCurrentForm] = useState<FormSolutionData | null>(null);
+  const [isVideoPaused, setIsVideoPaused] = useState(false);
+
+  // Modify the video link click handler to store the form link
+  const [currentFormLink, setCurrentFormLink] = useState<VideoLink | null>(
+    null
+  );
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -111,18 +125,54 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         if (linksError) throw linksError;
 
         // Process links and fetch destination videos for video-type links
+        // Process links and fetch destination videos for video-type links
         const linksWithDestinations = await Promise.all(
           (linksData || []).map(async (link): Promise<VideoLink> => {
-            if (link.link_type === "video" && link.destination_video_id) {
+            if (
+              (link.link_type === "video" || link.link_type === "form") &&
+              link.destination_video_id
+            ) {
               // Find the destination video from our already loaded videos
               const destinationVideo = videosData.find(
                 (v) => v.id === link.destination_video_id
               );
 
-              return {
+              const result = {
                 ...link,
-                destination_video: destinationVideo,
+                destination_video: destinationVideo, // Store the video object
               };
+
+              // Parse form data if it's a form link
+              if (link.link_type === "form" && link.form_data) {
+                try {
+                  const formData =
+                    typeof link.form_data === "string"
+                      ? JSON.parse(link.form_data)
+                      : link.form_data;
+
+                  result.form_data = formData;
+                } catch (error) {
+                  console.error("Error parsing form data:", error);
+                }
+              }
+
+              return result;
+            } else if (link.link_type === "form" && link.form_data) {
+              // Parse form data for form links without destination video
+              try {
+                const formData =
+                  typeof link.form_data === "string"
+                    ? JSON.parse(link.form_data)
+                    : link.form_data;
+
+                return {
+                  ...link,
+                  form_data: formData,
+                };
+              } catch (error) {
+                console.error("Error parsing form data:", error);
+                return link;
+              }
             }
 
             return link;
@@ -190,7 +240,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         }
         setCurrentVideo(nextVideo);
       } else {
-        // ❌ no next video → show solution
         showSolution();
       }
     }
@@ -207,26 +256,71 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       setCurrentVideo(answer.destination_video);
       setShowQuestions(false);
     } else {
-      // ❌ no destination video → show solution
       showSolution();
     }
   };
 
   // Handle video link clicks
-  const handleVideoLinkClick = (link: VideoLink) => {
-    if (link.link_type === "url" && link.url) {
-      // Open external URL in new tab
-      window.open(link.url, "_blank", "noopener,noreferrer");
-    } else if (link.link_type === "video" && link.destination_video) {
-      // Save current video to history
-      if (currentVideo && !isNavigatingBack) {
-        setVideoHistory((prev) => [...prev, currentVideo]);
+  const handleVideoLinkClick = useCallback(
+    (link: VideoLink) => {
+      console.log("Link clicked:", link);
+
+      if (link.link_type === "url" && link.url) {
+        window.open(link.url, "_blank", "noopener,noreferrer");
+      } else if (link.link_type === "video" && link.destination_video_id) {
+        const destinationVideo = videos.find(
+          (v) => v.id === link.destination_video_id
+        );
+
+        if (destinationVideo) {
+          if (currentVideo && !isNavigatingBack) {
+            setVideoHistory((prev) => [...prev, currentVideo]);
+          }
+          setCurrentVideo(destinationVideo);
+          setShowQuestions(false);
+        }
+      } else if (link.link_type === "form" && link.form_data) {
+        console.log("Form link clicked, pausing video");
+        setIsVideoPaused(true);
+        setCurrentForm(link.form_data);
+        setCurrentFormLink(link);
+      }
+    },
+    [videos, currentVideo, isNavigatingBack]
+  );
+
+  // Handle form submission
+  const handleFormSubmit = useCallback(
+    (data: Record<string, any>) => {
+      console.log("Form data submitted:", data);
+
+      if (currentFormLink && currentFormLink.destination_video_id) {
+        const destinationVideo = videos.find(
+          (v) => v.id === currentFormLink.destination_video_id
+        );
+
+        if (destinationVideo) {
+          if (currentVideo && !isNavigatingBack) {
+            setVideoHistory((prev) => [...prev, currentVideo]);
+          }
+          setCurrentVideo(destinationVideo);
+        }
       }
 
-      // Switch to destination video
-      setCurrentVideo(link.destination_video as VideoType);
-      setShowQuestions(false);
-    }
+      // Always resume playback and close form
+      setIsVideoPaused(false);
+      setCurrentForm(null);
+      setCurrentFormLink(null);
+    },
+    [currentFormLink, videos, currentVideo, isNavigatingBack]
+  );
+
+  // Handle form cancellation
+  const handleFormCancel = () => {
+    // Resume video playback
+    setIsVideoPaused(false);
+    setCurrentForm(null);
+    setCurrentFormLink(null);
   };
 
   const goToPreviousVideo = () => {
@@ -273,8 +367,13 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         onVideoLinkClick={handleVideoLinkClick}
         onBackNavigation={goToPreviousVideo}
         showBackButton={videoHistory.length > 0}
-        hoverLinkedId={hoveredLinkId}
+        hoveredLinkId={hoveredLinkId}
         setHoveredLinkId={setHoveredLinkId}
+        currentForm={currentForm}
+        onFormSubmit={handleFormSubmit}
+        onFormCancel={handleFormCancel}
+        isPaused={isVideoPaused}
+        currentFormLink={currentFormLink}
       >
         {showQuestions && currentQuestions.length > 0 && (
           <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 space-y-4">

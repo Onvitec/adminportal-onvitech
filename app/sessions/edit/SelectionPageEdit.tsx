@@ -38,7 +38,7 @@ import { cn, solutionCategories } from "@/lib/utils";
 import { Solution, SolutionCategory } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
 import { Loader } from "@/components/Loader";
-import { VideoUploadWithLinks } from "@/components/forms/linear-flow/videoo-upload";
+import { VideoUploadWithLinks } from "@/components/forms/videoo-upload";
 
 type Answer = {
   id: string;

@@ -42,7 +42,7 @@ import { showToast } from "@/components/toast";
 import Link from "next/link";
 import Heading from "@/components/Heading";
 import { Loader } from "@/components/Loader";
-import { VideoUploadWithLinks } from "@/components/forms/linear-flow/videoo-upload";
+import { VideoUploadWithLinks } from "@/components/forms/videoo-upload";
 
 type Answer = {
   id: string;
@@ -150,7 +150,6 @@ export default function EditInteractiveSession({
             .select("*")
             .eq("video_id", video.db_id)
             .order("timestamp_seconds", { ascending: true });
-
           if (!linksError && linksData && linksData.length > 0) {
             video.links = linksData.map((link) => ({
               id: link.id.toString(),
@@ -167,6 +166,13 @@ export default function EditInteractiveSession({
                 (link.url ? "url" : "video"),
               position_x: link.position_x || 20,
               position_y: link.position_y || 20,
+              normal_state_image: link.normal_state_image || undefined,
+              hover_state_image: link.hover_state_image || undefined,
+              normal_image_width: link.normal_image_width || undefined,
+              normal_image_height: link.normal_image_height || undefined,
+              hover_image_width: link.hover_image_width || undefined,
+              hover_image_height: link.hover_image_height || undefined,
+              form_data: link.form_data || undefined,
             }));
           }
 
@@ -539,7 +545,7 @@ export default function EditInteractiveSession({
         uploadedVideos[video.id] = videoDbId!;
       }
 
-      // Second pass: Handle video links with proper destination mapping
+      // Second pass: Handle video links with proper destination mapping and image uploads
       for (const video of videos) {
         const videoDbId = uploadedVideos[video.id];
 
@@ -547,35 +553,106 @@ export default function EditInteractiveSession({
         await supabase.from("video_links").delete().eq("video_id", videoDbId);
 
         if (video.links && video.links.length > 0) {
-          const linkInserts = video.links.map((l) => {
+          const linkInserts = [];
+
+          for (const link of video.links) {
+            let normalImageUrl = link.normal_state_image;
+            let hoverImageUrl = link.hover_state_image;
+
+            // Upload normal state image if it's a new File object
+            if (link.normalImageFile) {
+              const normalFileExt = link.normalImageFile.name.split(".").pop();
+              const normalFilePath = `${user.id}/${sessionId}/images/${link.id}_normal.${normalFileExt}`;
+
+              // Delete old normal image if exists
+              if (link.normal_state_image) {
+                const oldNormalFilePath = link.normal_state_image
+                  .split("/")
+                  .slice(3)
+                  .join("/");
+                await supabase.storage
+                  .from("video-link-images")
+                  .remove([oldNormalFilePath]);
+              }
+
+              const { error: normalUploadError } = await supabase.storage
+                .from("video-link-images")
+                .upload(normalFilePath, link.normalImageFile);
+
+              if (normalUploadError) throw normalUploadError;
+
+              const { data: normalUrlData } = supabase.storage
+                .from("video-link-images")
+                .getPublicUrl(normalFilePath);
+
+              normalImageUrl = normalUrlData.publicUrl;
+            }
+
+            // Upload hover state image if it's a new File object
+            if (link.hoverImageFile) {
+              const hoverFileExt = link.hoverImageFile.name.split(".").pop();
+              const hoverFilePath = `${user.id}/${sessionId}/images/${link.id}_hover.${hoverFileExt}`;
+
+              // Delete old hover image if exists
+              if (link.hover_state_image) {
+                const oldHoverFilePath = link.hover_state_image
+                  .split("/")
+                  .slice(3)
+                  .join("/");
+                await supabase.storage
+                  .from("video-link-images")
+                  .remove([oldHoverFilePath]);
+              }
+
+              const { error: hoverUploadError } = await supabase.storage
+                .from("video-link-images")
+                .upload(hoverFilePath, link.hoverImageFile);
+
+              if (hoverUploadError) throw hoverUploadError;
+
+              const { data: hoverUrlData } = supabase.storage
+                .from("video-link-images")
+                .getPublicUrl(hoverFilePath);
+
+              hoverImageUrl = hoverUrlData.publicUrl;
+            }
+
             const linkData: any = {
               video_id: videoDbId,
-              timestamp_seconds: l.timestamp_seconds,
-              label: l.label,
-              link_type: l.link_type,
-              position_x: l.position_x || 20,
-              position_y: l.position_y || 20,
+              timestamp_seconds: link.timestamp_seconds,
+              label: link.label,
+              link_type: link.link_type,
+              position_x: link.position_x || 20,
+              position_y: link.position_y || 20,
+              normal_state_image: normalImageUrl,
+              hover_state_image: hoverImageUrl,
+              normal_image_width: link.normal_image_width,
+              normal_image_height: link.normal_image_height,
+              hover_image_width: link.hover_image_width,
+              hover_image_height: link.hover_image_height,
+              form_data: link.form_data || null,
             };
 
-            if (l.link_type === "url") {
-              linkData.url = l.url;
+            // Handle different link types
+            if (link.link_type === "url") {
+              linkData.url = link.url;
               linkData.destination_video_id = null;
-            } else if (l.link_type === "video" && l.destination_video_id) {
+            } else if (
+              (link.link_type === "video" || link.link_type === "form") && // ADDED: form type
+              link.destination_video_id
+            ) {
               linkData.url = null;
               // Map the temporary video ID to the actual database ID
               linkData.destination_video_id =
-                uploadedVideos[l.destination_video_id];
-
-              // Debug log
-              console.log("Mapping video link:", {
-                tempId: l.destination_video_id,
-                dbId: uploadedVideos[l.destination_video_id],
-                allMappings: uploadedVideos,
-              });
+                uploadedVideos[link.destination_video_id];
+            } else {
+              // For other link types or no destination
+              linkData.url = null;
+              linkData.destination_video_id = null;
             }
 
-            return linkData;
-          });
+            linkInserts.push(linkData);
+          }
 
           const { error: linksError } = await supabase
             .from("video_links")
@@ -587,7 +664,6 @@ export default function EditInteractiveSession({
           }
         }
       }
-
       // Third pass: Handle questions and answers
       for (const video of videos) {
         const videoDbId = uploadedVideos[video.id];
@@ -706,6 +782,7 @@ export default function EditInteractiveSession({
           }
         }
       }
+
       console.log("SOLution", solution);
       // Handle solution
       if (solution) {
@@ -725,7 +802,9 @@ export default function EditInteractiveSession({
         } else if (solution.category_id === 4) {
           if (solution.videoFile) {
             const fileExt = solution.videoFile.name.split(".").pop();
-            const filePath = `${userId}/${sessionId}/solutions/${uuidv4()}.${fileExt}`;
+            const filePath = `${
+              user.id
+            }/${sessionId}/solutions/${uuidv4()}.${fileExt}`;
 
             // Delete old solution video if exists
             if (solution.video_url) {

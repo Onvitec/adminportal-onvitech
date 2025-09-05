@@ -27,20 +27,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { VideoLink } from "@/lib/types";
-
-// Using your defined types
-type VideoType = {
-  id: string;
-  title: string;
-  file: File | null;
-  url: string;
-  is_main?: boolean;
-  duration: number;
-  links?: VideoLink[];
-  db_id?: string;
-  path?: string;
-};
+import { VideoLink, VideoType } from "@/lib/types";
+import { EnhancedFormBuilder, FormSolutionData } from "./form-builder";
 
 // Enhanced Video Player Component with image support
 function VideoPlayerWithDraggableImages({
@@ -172,11 +160,14 @@ function VideoPlayerWithDraggableImages({
     return links.filter((link) => currentTime >= link.timestamp_seconds);
   }, [links, currentTime, showPreview, isEditMode]);
 
+  // Get the appropriate image URL - prioritize preview URLs for editing, then database URLs
   const getImageUrl = useCallback((link: VideoLink, isHovered: boolean) => {
-    if (isHovered && link.hover_state_image) {
-      return link.hover_state_image;
+    if (isHovered) {
+      // Check for hover preview first, then hover database URL
+      return link.hoverImagePreview || link.hover_state_image;
     }
-    return link.normal_state_image;
+    // Check for normal preview first, then normal database URL
+    return link.normalImagePreview || link.normal_state_image;
   }, []);
 
   const getImageDimensions = useCallback(
@@ -260,7 +251,7 @@ function VideoPlayerWithDraggableImages({
         {isEditMode && (
           <div className="absolute inset-0 bg-blue-100 bg-opacity-20 rounded-lg pointer-events-none">
             <div className="absolute top-2 left-2 bg-yellow-400 text-black px-2 py-1 text-xs rounded font-medium">
-              Edit Mode: Drag images to reposition
+              Edit Mode: Drag Buttons to reposition
             </div>
           </div>
         )}
@@ -283,12 +274,20 @@ function VideoPlayerWithDraggableImages({
             >
               <Clock
                 className={`w-3 h-3 ${
-                  link.link_type === "url" ? "text-blue-500" : "text-green-500"
+                  link.link_type === "url"
+                    ? "text-blue-500"
+                    : link.link_type === "video"
+                    ? "text-green-500"
+                    : "text-purple-500"
                 }`}
               />
               <div
                 className={`w-px h-3 ${
-                  link.link_type === "url" ? "bg-blue-500" : "bg-green-500"
+                  link.link_type === "url"
+                    ? "bg-blue-500"
+                    : link.link_type === "video"
+                    ? "bg-green-500"
+                    : "bg-purple-500"
                 }`}
               />
               <button
@@ -300,11 +299,13 @@ function VideoPlayerWithDraggableImages({
                 className={`text-xs ${
                   link.link_type === "url"
                     ? "text-blue-600 hover:text-blue-800"
-                    : "text-green-600 hover:text-green-800"
+                    : link.link_type === "video"
+                    ? "text-green-600 hover:text-green-800"
+                    : "text-purple-600 hover:text-purple-800"
                 } mt-1 whitespace-nowrap`}
                 title={`${link.label} - ${formatTime(
                   link.timestamp_seconds
-                )} (${link.link_type === "url" ? "Link" : "Video"})`}
+                )} (${link.link_type})`}
               >
                 {formatTime(link.timestamp_seconds)}
               </button>
@@ -316,23 +317,30 @@ function VideoPlayerWithDraggableImages({
   );
 }
 
-// Image upload component
+// Fixed Image upload component
 function ImageUploader({
   label,
   imageUrl,
+  previewUrl,
   onImageChange,
   onDimensionsChange,
   width,
   height,
 }: {
   label: string;
-  imageUrl?: string;
+  imageUrl?: string; // Database URL
+  previewUrl?: string; // Preview URL (blob or temporary)
   onImageChange: (file: File | null, url?: string) => void;
   onDimensionsChange: (width: number, height: number) => void;
   width?: number;
   height?: number;
 }) {
-  const [previewUrl, setPreviewUrl] = useState<string | null>(imageUrl || null);
+  // Track whether we've explicitly removed the image
+  const [isRemoved, setIsRemoved] = useState(false);
+
+  // Determine which URL to display - prioritize preview, but respect removal state
+  const displayUrl = isRemoved ? undefined : previewUrl || imageUrl;
+  const isBlobUrl = previewUrl?.startsWith("blob:");
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -350,13 +358,12 @@ function ImageUploader({
       }
 
       const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+      setIsRemoved(false); // Reset removal state when new file is selected
 
       // Get image dimensions
       const img = new Image();
       img.onload = () => {
         onDimensionsChange(img.width, img.height);
-        URL.revokeObjectURL(img.src);
       };
       img.src = url;
 
@@ -365,21 +372,37 @@ function ImageUploader({
   };
 
   const handleRemoveImage = () => {
-    setPreviewUrl(null);
+    // Clean up blob URL if it exists
+    if (previewUrl && isBlobUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setIsRemoved(true); // Mark as removed
     onImageChange(null);
     onDimensionsChange(0, 0);
   };
+
+  // Reset removal state when imageUrl changes (e.g., when modal reopens)
+  useEffect(() => {
+    if (imageUrl) {
+      setIsRemoved(false);
+    }
+  }, [imageUrl]);
 
   return (
     <div className="space-y-2">
       <Label className="font-bold">{label}</Label>
 
-      {previewUrl ? (
+      {displayUrl ? (
         <div className="relative inline-block">
           <img
-            src={previewUrl}
+            src={displayUrl}
             alt="Preview"
             className="max-w-32 max-h-32 object-cover rounded border"
+            style={{
+              width: width ? `${width}px` : "auto",
+              height: height ? `${height}px` : "auto",
+            }}
           />
           <button
             type="button"
@@ -390,6 +413,8 @@ function ImageUploader({
           </button>
           <div className="mt-1 text-xs text-gray-500">
             {width}x{height}px
+            {!isBlobUrl && imageUrl && " (from database)"}
+            {isBlobUrl && " (local file)"}
           </div>
         </div>
       ) : (
@@ -409,7 +434,7 @@ function ImageUploader({
         </div>
       )}
 
-      {previewUrl && (
+      {displayUrl && (
         <div className="flex gap-2">
           <div className="flex-1">
             <Label className="text-xs">Width (px)</Label>
@@ -417,10 +442,15 @@ function ImageUploader({
               type="number"
               value={width || ""}
               onChange={(e) =>
-                onDimensionsChange(parseInt(e.target.value) || 0, height || 0)
+                onDimensionsChange(
+                  parseInt(e.target.value) || 100,
+                  height || 100
+                )
               }
               placeholder="Width"
               className="h-8"
+              min="10"
+              max="500"
             />
           </div>
           <div className="flex-1">
@@ -429,10 +459,15 @@ function ImageUploader({
               type="number"
               value={height || ""}
               onChange={(e) =>
-                onDimensionsChange(width || 0, parseInt(e.target.value) || 0)
+                onDimensionsChange(
+                  width || 100,
+                  parseInt(e.target.value) || 100
+                )
               }
               placeholder="Height"
               className="h-8"
+              min="10"
+              max="500"
             />
           </div>
         </div>
@@ -462,14 +497,14 @@ function VideoUploadWithLinksComponent({
   const [isEditMode, setIsEditMode] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-
+  console.log("VIDEO LINKS", video.links);
   const [buttonForms, setButtonForms] = useState<
     {
       id?: string;
       label: string;
       url: string;
       timestamp: string;
-      linkType: "url" | "video";
+      linkType: "url" | "video" | "form";
       destinationVideoId: string;
       position_x: number;
       position_y: number;
@@ -483,19 +518,108 @@ function VideoUploadWithLinksComponent({
       hover_state_image?: string;
       normalImagePreview?: string;
       hoverImagePreview?: string;
+      formData?: FormSolutionData;
     }[]
   >([]);
 
   // Ref to track unsaved changes
   const unsavedChangesRef = useRef<typeof buttonForms>([]);
 
-  // Sync modal state with existing video.links when modal opens
+  const handleImageUpload = useCallback(
+    (
+      index: number,
+      type: "normal" | "hover",
+      file: File | null,
+      url?: string
+    ) => {
+      setButtonForms((prev) =>
+        prev.map((form, i) => {
+          if (i !== index) return form;
+
+          // If file is null (removed), clear all related fields
+          if (file === null) {
+            if (type === "normal") {
+              if (form.normalImagePreview?.startsWith("blob:")) {
+                URL.revokeObjectURL(form.normalImagePreview);
+              }
+              return {
+                ...form,
+                normalImageFile: null,
+                normalImagePreview: undefined,
+                normal_state_image: undefined, // Also clear the database reference
+                normal_image_width: 0,
+                normal_image_height: 0,
+              };
+            } else {
+              if (form.hoverImagePreview?.startsWith("blob:")) {
+                URL.revokeObjectURL(form.hoverImagePreview);
+              }
+              return {
+                ...form,
+                hoverImageFile: null,
+                hoverImagePreview: undefined,
+                hover_state_image: undefined, // Also clear the database reference
+                hover_image_width: 0,
+                hover_image_height: 0,
+              };
+            }
+          }
+
+          // Clean up old blob URL if it exists
+          if (type === "normal") {
+            if (form.normalImagePreview?.startsWith("blob:")) {
+              URL.revokeObjectURL(form.normalImagePreview);
+            }
+            return {
+              ...form,
+              normalImageFile: file,
+              normalImagePreview: url,
+              normal_state_image: form.normal_state_image || undefined,
+              hover_state_image: form.hover_state_image || undefined,
+            };
+          } else {
+            if (form.hoverImagePreview?.startsWith("blob:")) {
+              URL.revokeObjectURL(form.hoverImagePreview);
+            }
+            return {
+              ...form,
+              hoverImageFile: file,
+              hoverImagePreview: url,
+            };
+          }
+        })
+      );
+    },
+    []
+  );
+
+  // Enhanced sync modal state with existing video.links when modal opens
   useEffect(() => {
     if (isModalOpen) {
-      // Use unsaved changes if they exist, otherwise use video.links
       if (unsavedChangesRef.current.length > 0) {
-        setButtonForms(unsavedChangesRef.current);
+        // Restore unsaved changes and regenerate blob URLs for files
+        const formsWithRegeneratedBlobs = unsavedChangesRef.current.map(
+          (form) => {
+            let newForm = { ...form };
+
+            // Regenerate blob URLs for files that still exist
+            if (form.normalImageFile) {
+              const newBlobUrl = URL.createObjectURL(form.normalImageFile);
+              newForm.normalImagePreview = newBlobUrl;
+            }
+
+            if (form.hoverImageFile) {
+              const newBlobUrl = URL.createObjectURL(form.hoverImageFile);
+              newForm.hoverImagePreview = newBlobUrl;
+            }
+
+            return newForm;
+          }
+        );
+
+        setButtonForms(formsWithRegeneratedBlobs);
       } else if (video.links && video.links.length > 0) {
+        // Initialize from saved video links
         setButtonForms(
           video.links.map((link) => ({
             id: link.id,
@@ -506,14 +630,22 @@ function VideoUploadWithLinksComponent({
             destinationVideoId: link.destination_video_id || "",
             position_x: link.position_x || 20,
             position_y: link.position_y || 20,
-            normalImageFile: null,
-            hoverImageFile: null,
-            normal_image_width: link.normal_image_width || 0,
-            normal_image_height: link.normal_image_height || 0,
-            hover_image_width: link.hover_image_width || 0,
-            hover_image_height: link.hover_image_height || 0,
+            normalImageFile: link.normalImageFile || null,
+            hoverImageFile: link.hoverImageFile || null,
+            normal_image_width: link.normal_image_width || 100,
+            normal_image_height: link.normal_image_height || 100,
+            hover_image_width: link.hover_image_width || 100,
+            hover_image_height: link.hover_image_height || 100,
             normal_state_image: link.normal_state_image,
             hover_state_image: link.hover_state_image,
+            // Generate preview URLs for existing files
+            normalImagePreview: link.normalImageFile
+              ? URL.createObjectURL(link.normalImageFile)
+              : link.normalImagePreview,
+            hoverImagePreview: link.hoverImageFile
+              ? URL.createObjectURL(link.hoverImageFile)
+              : link.hoverImagePreview,
+            formData: link.form_data as FormSolutionData | undefined,
           }))
         );
       } else {
@@ -521,6 +653,20 @@ function VideoUploadWithLinksComponent({
       }
     }
   }, [isModalOpen, video.links]);
+
+  // Cleanup blob URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      buttonForms.forEach((form) => {
+        if (form.normalImagePreview?.startsWith("blob:")) {
+          URL.revokeObjectURL(form.normalImagePreview);
+        }
+        if (form.hoverImagePreview?.startsWith("blob:")) {
+          URL.revokeObjectURL(form.hoverImagePreview);
+        }
+      });
+    };
+  }, []);
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -559,9 +705,44 @@ function VideoUploadWithLinksComponent({
           if (field === "url" && value) {
             updated.linkType = "url";
             updated.destinationVideoId = "";
+            updated.formData = undefined;
           } else if (field === "destinationVideoId" && value) {
-            updated.linkType = "video";
             updated.url = "";
+            if (updated.linkType === "url") {
+              updated.linkType = "video";
+            }
+            if (updated.linkType !== "form") {
+              updated.formData = undefined;
+            }
+          } else if (field === "linkType") {
+            if (value === "form") {
+              if (!updated.formData) {
+                updated.formData = {
+                  title: "Contact Form",
+                  elements: [
+                    {
+                      id: `elem-${Date.now()}`,
+                      type: "text",
+                      label: "Name",
+                      placeholder: "Enter your name",
+                    },
+                    {
+                      id: `elem-${Date.now() + 1}`,
+                      type: "email",
+                      label: "Email",
+                      placeholder: "Enter your email",
+                    },
+                  ],
+                };
+              }
+              updated.url = "";
+            } else if (value === "url") {
+              updated.formData = undefined;
+              updated.destinationVideoId = "";
+            } else if (value === "video") {
+              updated.formData = undefined;
+              updated.url = "";
+            }
           }
 
           return updated;
@@ -574,13 +755,13 @@ function VideoUploadWithLinksComponent({
   const handleImageMove = useCallback(
     (linkId: string, x: number, y: number) => {
       setButtonForms((prev) =>
-        prev.map((form) => {
+        prev.map((form, formIndex) => {
           const isMatch =
             form.id === linkId ||
             (!form.id && buttonForms.length === 1) ||
             (linkId.startsWith("temp_") &&
               !form.id &&
-              buttonForms.indexOf(form) === parseInt(linkId.split("_")[1]));
+              formIndex === parseInt(linkId.split("_")[1]));
 
           return isMatch
             ? { ...form, position_x: Math.round(x), position_y: Math.round(y) }
@@ -608,49 +789,39 @@ function VideoUploadWithLinksComponent({
         normal_image_height: 0,
         hover_image_width: 0,
         hover_image_height: 0,
+        formData: undefined,
       },
     ]);
   }, []);
 
   const handleRemoveForm = useCallback((index: number) => {
-    setButtonForms((prev) => prev.filter((_, i) => i !== index));
+    setButtonForms((prev) => {
+      const formToRemove = prev[index];
+      // Clean up blob URLs before removing
+      if (formToRemove.normalImagePreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(formToRemove.normalImagePreview);
+      }
+      if (formToRemove.hoverImagePreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(formToRemove.hoverImagePreview);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   }, []);
 
   const handleRemoveAllForms = useCallback(() => {
+    // Clean up all blob URLs
+    buttonForms.forEach((form) => {
+      if (form.normalImagePreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(form.normalImagePreview);
+      }
+      if (form.hoverImagePreview?.startsWith("blob:")) {
+        URL.revokeObjectURL(form.hoverImagePreview);
+      }
+    });
     setButtonForms([]);
     onLinksChange([]);
     unsavedChangesRef.current = [];
-  }, [onLinksChange]);
-
-  const uploadImages = async (
-    formData: any,
-    sessionId: string,
-    userId: string
-  ) => {
-    const updates: any = {};
-
-    if (formData.normalImageFile && uploadImageToSupabase) {
-      const normalPath = `${userId}/${sessionId}/images/${
-        formData.id || Date.now()
-      }_normal.${formData.normalImageFile.name.split(".").pop()}`;
-      updates.normal_state_image = await uploadImageToSupabase(
-        formData.normalImageFile,
-        normalPath
-      );
-    }
-
-    if (formData.hoverImageFile && uploadImageToSupabase) {
-      const hoverPath = `${userId}/${sessionId}/images/${
-        formData.id || Date.now()
-      }_hover.${formData.hoverImageFile.name.split(".").pop()}`;
-      updates.hover_state_image = await uploadImageToSupabase(
-        formData.hoverImageFile,
-        hoverPath
-      );
-    }
-
-    return updates;
-  };
+  }, [buttonForms, onLinksChange]);
 
   const handleSaveButton = useCallback(async () => {
     setIsUploading(true);
@@ -659,36 +830,6 @@ function VideoUploadWithLinksComponent({
 
       for (const formData of buttonForms) {
         const ts = parseInt(formData.timestamp);
-
-        // Basic validation
-        if (!formData.label || isNaN(ts) || ts < 0) {
-          alert("Please fill all fields with valid details.");
-          return;
-        }
-
-        if (video.duration && ts > video.duration) {
-          alert(
-            `Timestamp cannot exceed video duration of ${video.duration} seconds.`
-          );
-          return;
-        }
-
-        // Validate images
-        if (!formData.normalImageFile && !formData.normal_state_image) {
-          alert("Please upload a normal state image for each link.");
-          return;
-        }
-
-        // Type-specific validation
-        if (formData.linkType === "url" && !formData.url) {
-          alert("Please provide a URL for link buttons.");
-          return;
-        }
-
-        if (formData.linkType === "video" && !formData.destinationVideoId) {
-          alert("Please select a destination video for video buttons.");
-          return;
-        }
 
         const linkData: VideoLink = {
           id: formData.id ?? Math.random().toString(36).substr(2, 9),
@@ -703,30 +844,32 @@ function VideoUploadWithLinksComponent({
           normal_image_height: formData.normal_image_height,
           hover_image_width: formData.hover_image_width,
           hover_image_height: formData.hover_image_height,
+          normalImageFile: formData.normalImageFile,
+          hoverImageFile: formData.hoverImageFile,
+          normalImagePreview: formData.normalImagePreview,
+          hoverImagePreview: formData.hoverImagePreview,
         };
 
         if (formData.linkType === "url") {
           linkData.url = formData.url.startsWith("http")
             ? formData.url
             : `https://${formData.url}`;
-        } else {
+        } else if (
+          formData.linkType === "video" ||
+          formData.linkType === "form"
+        ) {
           linkData.destination_video_id = formData.destinationVideoId;
         }
 
-        // Note: Image upload would happen in parent component during form submission
-        // For now, we'll store the File objects and let parent handle upload
-        if (formData.normalImageFile) {
-          (linkData as any).normalImageFile = formData.normalImageFile;
-        }
-        if (formData.hoverImageFile) {
-          (linkData as any).hoverImageFile = formData.hoverImageFile;
+        if (formData.linkType === "form") {
+          linkData.form_data = formData.formData as any;
         }
 
         updatedLinks.push(linkData);
       }
 
-      // Clear unsaved changes after successful save
-      unsavedChangesRef.current = [];
+      // Store current state for unsaved changes
+      unsavedChangesRef.current = buttonForms;
 
       onLinksChange(updatedLinks);
       setIsModalOpen(false);
@@ -737,7 +880,7 @@ function VideoUploadWithLinksComponent({
     } finally {
       setIsUploading(false);
     }
-  }, [buttonForms, video.duration, onLinksChange]);
+  }, [buttonForms, onLinksChange]);
 
   // Get video URL - works for both local files and remote URLs
   const videoUrl = useMemo(() => {
@@ -787,12 +930,12 @@ function VideoUploadWithLinksComponent({
             link_type: form.linkType,
             position_x: form.position_x,
             position_y: form.position_y,
-            normal_state_image: form.normalImageFile
-              ? URL.createObjectURL(form.normalImageFile)
-              : form.normal_state_image,
-            hover_state_image: form.hoverImageFile
-              ? URL.createObjectURL(form.hoverImageFile)
-              : form.hover_state_image,
+            form_data: form.formData as any,
+            // Use preview URLs if available, otherwise use database URLs
+            normal_state_image: form.normal_state_image,
+            hover_state_image: form.hover_state_image,
+            normalImagePreview: form.normalImagePreview,
+            hoverImagePreview: form.hoverImagePreview,
             normal_image_width: form.normal_image_width,
             normal_image_height: form.normal_image_height,
             hover_image_width: form.hover_image_width,
@@ -807,8 +950,8 @@ function VideoUploadWithLinksComponent({
         videoUrl={videoUrl}
         links={
           isModalOpen && (isEditMode || showPreview)
-            ? previewLinks
-            : video.links || []
+            ? previewLinks // Use previewLinks when modal is open
+            : video.links || [] // Use saved links when modal is closed
         }
         isEditMode={isModalOpen && isEditMode}
         onImageMove={handleImageMove}
@@ -827,25 +970,23 @@ function VideoUploadWithLinksComponent({
   );
 
   const hasVideoContent = video.file || video.url;
-
   return (
     <Card className="mb-6">
       <CardContent className="relative">
         {!hasVideoContent ? uploadSection : videoPlayerSection}
 
-        <div className="absolute top-4 right-4 flex space-x-2">
+        <div className="absolute top-0 right-4 flex space-x-2">
           {hasVideoContent && video?.links && video.links.length > 0 && (
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={() => setShowPreview(!showPreview)}
               className="bg-white"
             >
               {showPreview ? (
-                <EyeOff className="h-4 w-4" />
+                <EyeOff className="h-10 w-10" />
               ) : (
-                <Eye className="h-4 w-4" />
+                <Eye className="h-10 w-10" />
               )}
             </Button>
           )}
@@ -856,8 +997,8 @@ function VideoUploadWithLinksComponent({
               className="bg-white text-black hover:bg-gray-100"
             >
               {video.links && video.links.length > 0
-                ? "Edit Images"
-                : "Add Images"}
+                ? "Edit Buttons"
+                : "Add Buttons"}
             </Button>
           )}
         </div>
@@ -1014,13 +1155,10 @@ function VideoUploadWithLinksComponent({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <ImageUploader
                         label="Normal State Image"
-                        imageUrl={
-                          formData.normalImageFile
-                            ? URL.createObjectURL(formData.normalImageFile)
-                            : formData.normal_state_image
-                        }
-                        onImageChange={(file) =>
-                          handleFormChange(index, "normalImageFile", file)
+                        imageUrl={formData.normal_state_image}
+                        previewUrl={formData.normalImagePreview}
+                        onImageChange={(file, url) =>
+                          handleImageUpload(index, "normal", file, url)
                         }
                         onDimensionsChange={(width, height) => {
                           handleFormChange(index, "normal_image_width", width);
@@ -1034,14 +1172,11 @@ function VideoUploadWithLinksComponent({
                         height={formData.normal_image_height}
                       />
                       <ImageUploader
-                        label="Hover State Image (Optional)"
-                        imageUrl={
-                          formData.hoverImageFile
-                            ? URL.createObjectURL(formData.hoverImageFile)
-                            : formData.hover_state_image
-                        }
-                        onImageChange={(file) =>
-                          handleFormChange(index, "hoverImageFile", file)
+                        label="Hover State Image"
+                        imageUrl={formData.hover_state_image}
+                        previewUrl={formData.hoverImagePreview}
+                        onImageChange={(file, url) =>
+                          handleImageUpload(index, "hover", file, url)
                         }
                         onDimensionsChange={(width, height) => {
                           handleFormChange(index, "hover_image_width", width);
@@ -1055,44 +1190,151 @@ function VideoUploadWithLinksComponent({
                     {/* Link Action */}
                     <div className="space-y-3">
                       <div>
-                        <Label className="font-bold">URL</Label>
-                        <Input
-                          placeholder="https://example.com"
-                          value={formData.url}
-                          disabled={!!formData.destinationVideoId}
-                          onChange={(e) =>
-                            handleFormChange(index, "url", e.target.value)
-                          }
-                        />
+                        <Label className="font-bold">Link Type</Label>
+                        <div className="flex gap-4 mt-2">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              id={`url-${index}`}
+                              name={`linkType-${index}`}
+                              value="url"
+                              checked={formData.linkType === "url"}
+                              onChange={(e) =>
+                                handleFormChange(
+                                  index,
+                                  "linkType",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            <Label htmlFor={`url-${index}`}>URL</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              id={`video-${index}`}
+                              name={`linkType-${index}`}
+                              value="video"
+                              checked={formData.linkType === "video"}
+                              onChange={(e) =>
+                                handleFormChange(
+                                  index,
+                                  "linkType",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            <Label htmlFor={`video-${index}`}>Video</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="radio"
+                              id={`form-${index}`}
+                              name={`linkType-${index}`}
+                              value="form"
+                              checked={formData.linkType === "form"}
+                              onChange={(e) =>
+                                handleFormChange(
+                                  index,
+                                  "linkType",
+                                  e.target.value
+                                )
+                              }
+                            />
+                            <Label htmlFor={`form-${index}`}>Form</Label>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="text-center text-gray-500 font-medium">
-                        OR
-                      </div>
+                      {formData.linkType === "url" && (
+                        <div>
+                          <Label className="font-bold">URL</Label>
+                          <Input
+                            placeholder="https://example.com"
+                            value={formData.url}
+                            onChange={(e) =>
+                              handleFormChange(index, "url", e.target.value)
+                            }
+                          />
+                        </div>
+                      )}
 
-                      <div>
-                        <Label className="font-bold">Destination Video</Label>
-                        <Select
-                          value={formData.destinationVideoId}
-                          onValueChange={(value) =>
-                            handleFormChange(index, "destinationVideoId", value)
-                          }
-                          disabled={!!formData.url}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select destination video" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {availableVideos
-                              .filter((v) => v.id !== video.id)
-                              .map((v) => (
-                                <SelectItem key={v.id} value={v.id}>
-                                  {v.title}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      {formData.linkType === "video" && (
+                        <div>
+                          <Label className="font-bold">Destination Video</Label>
+                          <Select
+                            value={formData.destinationVideoId}
+                            onValueChange={(value) =>
+                              handleFormChange(
+                                index,
+                                "destinationVideoId",
+                                value
+                              )
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select destination video" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {availableVideos
+                                .filter((v) => v.id !== video.id)
+                                .map((v) => (
+                                  <SelectItem key={v.id} value={v.id}>
+                                    {v.title}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {formData.linkType === "form" && (
+                        <>
+                          <div className="my-2">
+                            <Label className="font-bold">
+                              Destination Video (After Form Submission)
+                            </Label>
+                            <Select
+                              value={formData.destinationVideoId}
+                              onValueChange={(value) =>
+                                handleFormChange(
+                                  index,
+                                  "destinationVideoId",
+                                  value
+                                )
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select destination video after form submission" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableVideos
+                                  .filter((v) => v.id !== video.id)
+                                  .map((v) => (
+                                    <SelectItem key={v.id} value={v.id}>
+                                      {v.title}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {formData.formData && (
+                            <div>
+                              <EnhancedFormBuilder
+                                formData={formData.formData}
+                                onChange={(newFormData) =>
+                                  handleFormChange(
+                                    index,
+                                    "formData",
+                                    newFormData
+                                  )
+                                }
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 ))

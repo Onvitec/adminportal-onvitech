@@ -46,7 +46,7 @@ import {
 } from "@/components/ui/dialog";
 import Link from "next/link";
 import Heading from "@/components/Heading";
-import { VideoUploadWithLinks } from "../linear-flow/videoo-upload";
+import { VideoUploadWithLinks } from "../videoo-upload";
 
 type Answer = {
   id: string;

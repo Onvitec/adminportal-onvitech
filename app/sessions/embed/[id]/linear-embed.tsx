@@ -258,8 +258,8 @@ function LinearSessionEmbed({ sessionId }: { sessionId: string }) {
             onVideoLinkClick={handleVideoLinkClick}
             onBackNavigation={goToPreviousVideo}
             showBackButton={!isFirstVideo()}
-            hoverLinkedId={hoveredLinkId}
-            setHoveredLinkId={setHoveredLinkId}
+            // hoverLinkedId={hoveredLinkId}
+            // setHoveredLinkId={setHoveredLinkId}
           />
         </div>
       )}

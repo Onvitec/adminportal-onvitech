@@ -305,8 +305,8 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
         onVideoLinkClick={handleVideoLinkClick}
         onBackNavigation={goToPreviousVideo}
         showBackButton={!isFirstVideo()}
-        hoverLinkedId={hoveredLinkId}
-        setHoveredLinkId={setHoveredLinkId}
+        // hoverLinkedId={hoveredLinkId}
+        // setHoveredLinkId={setHoveredLinkId}
       >
         {showQuestions && currentQuestion && (
           <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 space-y-4">

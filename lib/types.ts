@@ -18,11 +18,11 @@ export type VideoLink = {
   video_id?: string;
   destination_video_id?: string; // Optional destination video ID
   destination_video?: VideoType;
-  link_type: "url" | "video"; // Type discriminator
+  link_type: "url" | "video" | "form"; // Type discriminator
   position_x: number;
   position_y: number;
-  // for images
-
+  
+  // Database image URLs (persisted)
   normal_state_image?: string;
   hover_state_image?: string;
   normal_image_width?: number;
@@ -30,9 +30,15 @@ export type VideoLink = {
   hover_image_width?: number;
   hover_image_height?: number;
 
-  // just here
+  // Temporary files for upload (not persisted)
   normalImageFile?: File | null;
-  hoverImageFile?: File | null;
+  hoverImageFile?: File | null;  
+
+  // Temporary preview URLs for UI (not persisted)
+  normalImagePreview?: string; // Add this
+  hoverImagePreview?: string; // Add this
+
+  form_data?: FormSolutionData | null | undefined;
 };
 
 export type Question = {
@@ -114,15 +120,16 @@ export type FormElementType =
   | "checkbox"
   | "radio"
   | "paragraph"
-  | "button";
-
+  | "button"
+  | "email"
+  | "textarea";
 export type FormElement = {
   id: string;
-  type: FormElementType;
+  type: FormElementType | any;
   label: string;
   required?: boolean;
   placeholder?: string;
-  options?: string[]; // For dropdown, radio
+  options?: any[]; // For dropdown, radio
   defaultValue?: string;
 };
 
