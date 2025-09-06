@@ -374,6 +374,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         onFormCancel={handleFormCancel}
         isPaused={isVideoPaused}
         currentFormLink={currentFormLink}
+        hasQuestions={currentQuestions.length > 0}
         onVideoRestart={() => {
           setShowQuestions(false);
           setCurrentForm(null);

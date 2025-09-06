@@ -1,230 +1,231 @@
-"use client";
+  "use client";
 
-import { useEffect, useState, useRef } from "react";
-import {
-  VideoType,
-  VideoLink,
-  FormSolutionData,
-  FormElement,
-} from "@/lib/types";
-import { ChevronLeft, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+  import { useEffect, useState, useRef } from "react";
+  import {
+    VideoType,
+    VideoLink,
+    FormSolutionData,
+    FormElement,
+  } from "@/lib/types";
+  import { ChevronLeft, RefreshCw, X } from "lucide-react";
+  import { Button } from "@/components/ui/button";
+  import { Input } from "@/components/ui/input";
+  import { Label } from "@/components/ui/label";
 
-interface CommonVideoPlayerProps {
-  currentVideo: VideoType | null;
-  videoLinks: Record<string, VideoLink[]>;
-  onVideoEnd: () => void;
-  onVideoLinkClick: (link: VideoLink) => void;
-  onBackNavigation?: () => void;
-  showBackButton?: boolean;
-  hoveredLinkId?: string | null;
-  setHoveredLinkId?: (id: string | null) => void;
-  currentForm?: FormSolutionData | null;
-  onFormSubmit?: (data: Record<string, any>) => void;
-  currentFormLink?: VideoLink | null;
-  onFormCancel?: () => void;
-  isPaused?: boolean;
-  children?: React.ReactNode;
-  onVideoRestart?: () => void;
-}
+  interface CommonVideoPlayerProps {
+    currentVideo: VideoType | null;
+    videoLinks: Record<string, VideoLink[]>;
+    onVideoEnd: () => void;
+    onVideoLinkClick: (link: VideoLink) => void;
+    onBackNavigation?: () => void;
+    showBackButton?: boolean;
+    hoveredLinkId?: string | null;
+    setHoveredLinkId?: (id: string | null) => void;
+    currentForm?: FormSolutionData | null;
+    onFormSubmit?: (data: Record<string, any>) => void;
+    currentFormLink?: VideoLink | null;
+    onFormCancel?: () => void;
+    isPaused?: boolean;
+    children?: React.ReactNode;
+    onVideoRestart?: () => void;
+    hasQuestions?: boolean; // New prop to indicate if there are questions
+  }
 
-// Form Display Component
-function FormDisplay({
-  formData,
-  onSubmit,
-  formLink,
-  onCancel,
-}: {
-  formData: FormSolutionData;
-  onSubmit: (data: Record<string, any>) => void;
-  formLink?: VideoLink | null;
-  onCancel: () => void;
-}) {
-  const [formValues, setFormValues] = useState<Record<string, any>>({});
+  // Form Display Component
+  function FormDisplay({
+    formData,
+    onSubmit,
+    formLink,
+    onCancel,
+  }: {
+    formData: FormSolutionData;
+    onSubmit: (data: Record<string, any>) => void;
+    formLink?: VideoLink | null;
+    onCancel: () => void;
+  }) {
+    const [formValues, setFormValues] = useState<Record<string, any>>({});
 
-  const handleInputChange = (elementId: string, value: any) => {
-    setFormValues((prev) => ({ ...prev, [elementId]: value }));
-  };
+    const handleInputChange = (elementId: string, value: any) => {
+      setFormValues((prev) => ({ ...prev, [elementId]: value }));
+    };
 
-  const handleCheckboxChange = (
-    elementId: string,
-    optionId: string,
-    checked: boolean
-  ) => {
-    setFormValues((prev) => {
-      const currentValues = prev[elementId] || [];
-      if (checked) {
-        return { ...prev, [elementId]: [...currentValues, optionId] };
-      } else {
-        return {
-          ...prev,
-          [elementId]: currentValues.filter((id: string) => id !== optionId),
-        };
-      }
-    });
-  };
+    const handleCheckboxChange = (
+      elementId: string,
+      optionId: string,
+      checked: boolean
+    ) => {
+      setFormValues((prev) => {
+        const currentValues = prev[elementId] || [];
+        if (checked) {
+          return { ...prev, [elementId]: [...currentValues, optionId] };
+        } else {
+          return {
+            ...prev,
+            [elementId]: currentValues.filter((id: string) => id !== optionId),
+          };
+        }
+      });
+    };
 
-  const handleRadioChange = (elementId: string, optionId: string) => {
-    setFormValues((prev) => ({ ...prev, [elementId]: optionId }));
-  };
+    const handleRadioChange = (elementId: string, optionId: string) => {
+      setFormValues((prev) => ({ ...prev, [elementId]: optionId }));
+    };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Form submitted with data:", formValues);
-    onSubmit(formValues);
-  };
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      console.log("Form submitted with data:", formValues);
+      onSubmit(formValues);
+    };
 
-  const renderFormElement = (element: FormElement) => {
-    switch (element.type) {
-      case "text":
-      case "email":
-      case "number":
-        return (
-          <Input
-            id={element.id}
-            type={element.type}
-            placeholder={element.placeholder}
-            value={formValues[element.id] || ""}
-            onChange={(e) => handleInputChange(element.id, e.target.value)}
-            className="w-full bg-white/80 backdrop-blur-sm"
-          />
-        );
+    const renderFormElement = (element: FormElement) => {
+      switch (element.type) {
+        case "text":
+        case "email":
+        case "number":
+          return (
+            <Input
+              id={element.id}
+              type={element.type}
+              placeholder={element.placeholder}
+              value={formValues[element.id] || ""}
+              onChange={(e) => handleInputChange(element.id, e.target.value)}
+              className="w-full bg-white/80 backdrop-blur-sm"
+            />
+          );
 
-      case "textarea":
-        return (
-          <textarea
-            id={element.id}
-            placeholder={element.placeholder}
-            value={formValues[element.id] || ""}
-            onChange={(e) => handleInputChange(element.id, e.target.value)}
-            className="w-full p-2 border rounded-md bg-white/80 backdrop-blur-sm"
-            rows={4}
-          />
-        );
+        case "textarea":
+          return (
+            <textarea
+              id={element.id}
+              placeholder={element.placeholder}
+              value={formValues[element.id] || ""}
+              onChange={(e) => handleInputChange(element.id, e.target.value)}
+              className="w-full p-2 border rounded-md bg-white/80 backdrop-blur-sm"
+              rows={4}
+            />
+          );
 
-      case "dropdown":
-        return (
-          <select
-            id={element.id}
-            value={formValues[element.id] || ""}
-            onChange={(e) => handleInputChange(element.id, e.target.value)}
-            className="w-full p-2 border rounded-md bg-white/80 backdrop-blur-sm"
-          >
-            <option value="">Select an option</option>
-            {element.options?.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        );
-
-      case "checkbox":
-        return (
-          <div className="space-y-2">
-            {element.options?.map((option) => (
-              <div key={option.id} className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id={option.id}
-                  checked={(formValues[element.id] || []).includes(option.id)}
-                  onChange={(e) =>
-                    handleCheckboxChange(
-                      element.id,
-                      option.id,
-                      e.target.checked
-                    )
-                  }
-                  className="h-4 w-4"
-                />
-                <Label htmlFor={option.id} className="font-normal text-white">
+        case "dropdown":
+          return (
+            <select
+              id={element.id}
+              value={formValues[element.id] || ""}
+              onChange={(e) => handleInputChange(element.id, e.target.value)}
+              className="w-full p-2 border rounded-md bg-white/80 backdrop-blur-sm"
+            >
+              <option value="">Select an option</option>
+              {element.options?.map((option) => (
+                <option key={option.id} value={option.id}>
                   {option.label}
-                </Label>
-              </div>
-            ))}
-          </div>
-        );
+                </option>
+              ))}
+            </select>
+          );
 
-      case "radio":
-        return (
-          <div className="space-y-2">
-            {element.options?.map((option) => (
-              <div key={option.id} className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  id={option.id}
-                  name={element.id}
-                  value={option.id}
-                  checked={formValues[element.id] === option.id}
-                  onChange={(e) =>
-                    handleRadioChange(element.id, e.target.value)
-                  }
-                  className="h-4 w-4"
-                />
-                <Label htmlFor={option.id} className="font-normal text-white">
-                  {option.label}
-                </Label>
-              </div>
-            ))}
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 z-50">
-      <div className="bg-white/30 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-white/60">
-        <div className="flex justify-between items-center mb-4">
-          {/* <h2 className="text-xl font-bold text-white">{formData. || "Form"}</h2> */}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onCancel}
-            className="text-white hover:bg-white/20"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {formData.elements.map((element) => (
-            <div key={element.id} className="space-y-2">
-              <Label htmlFor={element.id} className="text-white">
-                {element.label}
-              </Label>
-              {renderFormElement(element)}
+        case "checkbox":
+          return (
+            <div className="space-y-2">
+              {element.options?.map((option) => (
+                <div key={option.id} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={option.id}
+                    checked={(formValues[element.id] || []).includes(option.id)}
+                    onChange={(e) =>
+                      handleCheckboxChange(
+                        element.id,
+                        option.id,
+                        e.target.checked
+                      )
+                    }
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor={option.id} className="font-normal text-white">
+                    {option.label}
+                  </Label>
+                </div>
+              ))}
             </div>
-          ))}
+          );
 
-          <div className="flex gap-2 pt-4">
+        case "radio":
+          return (
+            <div className="space-y-2">
+              {element.options?.map((option) => (
+                <div key={option.id} className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id={option.id}
+                    name={element.id}
+                    value={option.id}
+                    checked={formValues[element.id] === option.id}
+                    onChange={(e) =>
+                      handleRadioChange(element.id, e.target.value)
+                    }
+                    className="h-4 w-4"
+                  />
+                  <Label htmlFor={option.id} className="font-normal text-white">
+                    {option.label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          );
+
+        default:
+          return null;
+      }
+    };
+
+    return (
+      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 z-50">
+        <div className="bg-white/30 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-white/60">
+          <div className="flex justify-between items-center mb-4">
+            {/* <h2 className="text-xl font-bold text-white">{formData. || "Form"}</h2> */}
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
+              size="sm"
               onClick={onCancel}
-              className="flex-1 bg-white/20 text-white hover:bg-white/30"
+              className="text-white hover:bg-white/20"
             >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              className="flex-1 bg-white/30 text-white hover:bg-white/40"
-            >
-              Submit
+              <X className="h-4 w-4" />
             </Button>
           </div>
-        </form>
-      </div>
-    </div>
-  );
-}
 
-export function CommonVideoPlayer({
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {formData.elements.map((element) => (
+              <div key={element.id} className="space-y-2">
+                <Label htmlFor={element.id} className="text-white">
+                  {element.label}
+                </Label>
+                {renderFormElement(element)}
+              </div>
+            ))}
+
+            <div className="flex gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onCancel}
+                className="flex-1 bg-white/20 text-white hover:bg-white/30"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="flex-1 bg-white/30 text-white hover:bg-white/40"
+              >
+                Submit
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  export function CommonVideoPlayer({
   currentVideo,
   videoLinks,
   onVideoEnd,
@@ -240,11 +241,13 @@ export function CommonVideoPlayer({
   onVideoRestart,
   isPaused = false,
   children,
+  hasQuestions = false, // Add this new prop
 }: CommonVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [mouseActive, setMouseActive] = useState(false);
   const [activeLinks, setActiveLinks] = useState<VideoLink[]>([]);
+  const [showFreezeControls, setShowFreezeControls] = useState(false); // New state for freeze mode
   const videoRef = useRef<HTMLVideoElement>(null);
   const mouseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -285,6 +288,11 @@ export function CommonVideoPlayer({
     }
   }, [isPaused]);
 
+  // Reset freeze controls when video changes
+  useEffect(() => {
+    setShowFreezeControls(false);
+  }, [currentVideo]);
+
   const togglePlayPause = () => {
     if (videoRef.current) {
       if (isPlaying) {
@@ -296,6 +304,8 @@ export function CommonVideoPlayer({
         setIsPlaying(true);
         setMouseActive(true);
         resetMouseTimeout();
+        // Hide freeze controls when playing
+        setShowFreezeControls(false);
       }
     }
   };
@@ -342,6 +352,38 @@ export function CommonVideoPlayer({
     };
   };
 
+  const handleVideoEnd = () => {
+    // Check if we should freeze at end (no questions AND freezeAtEnd is true)
+    const shouldFreeze = !hasQuestions && currentVideo?.freezeAtEnd;
+    
+    if (shouldFreeze) {
+      // Show freeze controls instead of proceeding
+      setShowFreezeControls(true);
+      setIsPlaying(false);
+      setShowControls(true);
+    } else {
+      // Proceed normally (either has questions or doesn't need to freeze)
+      onVideoEnd();
+    }
+  };
+
+  const handleRestartVideo = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play();
+      setIsPlaying(true);
+      setShowFreezeControls(false);
+      setMouseActive(true);
+      resetMouseTimeout();
+    }
+  };
+
+  const handleContinue = () => {
+    // Hide freeze controls and proceed to next video/solution
+    setShowFreezeControls(false);
+    onVideoEnd();
+  };
+
   useEffect(() => {
     return () => {
       if (mouseTimeoutRef.current) {
@@ -377,7 +419,7 @@ export function CommonVideoPlayer({
         className="w-full h-[700px] object-contain rounded-xl cursor-pointer"
         controls={false}
         onClick={togglePlayPause}
-        onEnded={onVideoEnd}
+        onEnded={handleVideoEnd} // Use our custom handler
         onPlay={() => {
           setIsPlaying(true);
           if (videoRef.current?.currentTime === 0) {
@@ -401,7 +443,36 @@ export function CommonVideoPlayer({
         </div>
       )}
 
-      {!isPlaying && (
+      {/* Freeze at end controls */}
+      {showFreezeControls && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm z-40">
+          <div className="bg-white/30 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-white/60 text-center max-w-md">
+            <h3 className="text-white text-lg font-semibold mb-4">
+              Video Completed
+            </h3>
+            <p className="text-white mb-6">
+              What would you like to do next?
+            </p>
+            <div className="flex flex-col gap-3">
+              <Button
+                onClick={handleRestartVideo}
+                className="bg-white/30 text-white hover:bg-white/40"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Watch Again
+              </Button>
+              <Button
+                onClick={handleContinue}
+                className="bg-white/30 text-white hover:bg-white/40"
+              >
+                Continue to Next
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isPlaying && !showFreezeControls && (
         <div
           className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${
             mouseActive || !isPlaying ? "opacity-100" : "opacity-0"
