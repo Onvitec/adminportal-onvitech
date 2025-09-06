@@ -374,6 +374,11 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         onFormCancel={handleFormCancel}
         isPaused={isVideoPaused}
         currentFormLink={currentFormLink}
+        onVideoRestart={() => {
+          setShowQuestions(false);
+          setCurrentForm(null);
+          setCurrentFormLink(null);
+        }}
       >
         {showQuestions && currentQuestions.length > 0 && (
           <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 space-y-4">

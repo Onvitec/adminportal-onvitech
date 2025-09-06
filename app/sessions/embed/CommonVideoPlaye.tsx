@@ -27,6 +27,7 @@ interface CommonVideoPlayerProps {
   onFormCancel?: () => void;
   isPaused?: boolean;
   children?: React.ReactNode;
+  onVideoRestart?: () => void;
 }
 
 // Form Display Component
@@ -236,6 +237,7 @@ export function CommonVideoPlayer({
   onFormSubmit,
   onFormCancel,
   currentFormLink,
+  onVideoRestart,
   isPaused = false,
   children,
 }: CommonVideoPlayerProps) {
@@ -369,13 +371,18 @@ export function CommonVideoPlayer({
     >
       <video
         ref={videoRef}
+        autoPlay
+        muted
         src={currentVideo.url}
-        className="w-full h-full object-contain rounded-xl cursor-pointer"
+        className="w-full h-[700px] object-contain rounded-xl cursor-pointer"
         controls={false}
         onClick={togglePlayPause}
         onEnded={onVideoEnd}
         onPlay={() => {
           setIsPlaying(true);
+          if (videoRef.current?.currentTime === 0) {
+            onVideoRestart?.(); // 👈 clear forms/questions on restart
+          }
         }}
         onPause={() => {
           setIsPlaying(false);
@@ -441,11 +448,10 @@ export function CommonVideoPlayer({
         <>
           {activeLinks.map((link) => {
             const imageUrl = getImageUrl(link);
-            const dimensions = getImageDimensions(link);
             return imageUrl ? (
               <div
                 key={link.id}
-                className="absolute z-10 cursor-pointer transition-transform duration-200 hover:opacity-90 hover:scale-105"
+                className="absolute z-10 cursor-pointer transition-transform duration-200 hover:opacity-90 hover:scale-105 group"
                 style={{
                   left: `${link.position_x}%`,
                   top: `${link.position_y}%`,
@@ -460,7 +466,6 @@ export function CommonVideoPlayer({
                     : `Fill form: ${link.label}`
                 }
               >
-                
                 <div className="relative">
                   {/* Normal image */}
                   {link.normal_state_image && (
@@ -468,8 +473,8 @@ export function CommonVideoPlayer({
                       src={link.normal_state_image}
                       alt={link.label}
                       style={{
-                        width: `${link.normal_image_width || 100}px`,
-                        height: `${link.normal_image_height || 100}px`,
+                        width: `${link.normal_image_width ?? 100}px`,
+                        height: `${link.normal_image_height ?? 100}px`,
                       }}
                       className="object-cover rounded shadow-lg block group-hover:hidden"
                       draggable={false}
@@ -483,13 +488,13 @@ export function CommonVideoPlayer({
                       alt={link.label}
                       style={{
                         width: `${
-                          link.hover_image_width ||
-                          link.normal_image_width ||
+                          link.hover_image_width ??
+                          link.normal_image_width ??
                           100
                         }px`,
                         height: `${
-                          link.hover_image_height ||
-                          link.normal_image_height ||
+                          link.hover_image_height ??
+                          link.normal_image_height ??
                           100
                         }px`,
                       }}

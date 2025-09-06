@@ -46,7 +46,7 @@ import Heading from "@/components/Heading";
 type Answer = {
   id: string;
   answer_text: string;
-  destination_video_id: string;
+  destination_video_id: string | null;
 };
 
 type Question = {
@@ -64,6 +64,7 @@ type Video = {
   isExpanded: boolean;
   duration: number; // Add duration in seconds
   links: VideoLink[]; // Updated links array with new type
+  freezeAtEnd?: boolean; // Optional: whether to freeze at the end of the video
 };
 
 export default function InteractiveSessionForm() {
@@ -84,6 +85,7 @@ export default function InteractiveSessionForm() {
       isExpanded: true,
       links: [],
       duration: 0,
+      freezeAtEnd: false,
     },
   ]);
 
@@ -105,6 +107,7 @@ export default function InteractiveSessionForm() {
         isExpanded: true,
         links: [],
         duration: 0,
+        freezeAtEnd: false,
       },
     ]);
   };
@@ -254,7 +257,7 @@ export default function InteractiveSessionForm() {
   const updateDestinationVideo = (
     videoId: string,
     answerId: string,
-    destination_video_id: string
+    destination_video_id: string | null
   ) => {
     setVideos(
       videos.map((v) =>
@@ -337,6 +340,7 @@ export default function InteractiveSessionForm() {
             is_interactive: true,
             order_index: index,
             duration: video.duration,
+            freezeAtEnd: video.freezeAtEnd || false,
           })
           .select()
           .single();
@@ -607,7 +611,14 @@ export default function InteractiveSessionForm() {
       setSolution({ ...solution, ...updates });
     }
   };
+
+  const toggleFreezeAtEnd = (videoId: string, freeze: boolean) => {
+    setVideos(
+      videos.map((v) => (v.id === videoId ? { ...v, freezeAtEnd: freeze } : v))
+    );
+  };
   const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
+
   return (
     <div className="container mx-auto">
       <div>
@@ -722,7 +733,55 @@ export default function InteractiveSessionForm() {
                             onDelete={() => removeVideo(video.id)}
                           />
                         </div>
+                        {/* Freeze at end option */}
+                        <div className="mt-4 p-4 border rounded-md bg-gray-50">
+                          <Label className="text-sm font-medium">
+                            Video Playback Behavior
+                          </Label>
+                          <p className="text-xs text-gray-500 mb-2">
+                            Choose what happens when this video finishes playing
+                          </p>
 
+                          <div className="flex items-center space-x-4 gap-3">
+                            <label className="flex items-center space-x-2">
+                              <input
+                                type="radio"
+                                name={`freeze-${video.id}`}
+                                checked={
+                                  video.freezeAtEnd === false ||
+                                  video.freezeAtEnd === undefined
+                                }
+                                onChange={() =>
+                                  toggleFreezeAtEnd(video.id, false)
+                                }
+                                className="h-4 w-4 text-blue-600"
+                              />
+                              <span className="text-sm">
+                                Autplay next video
+                              </span>
+                            </label>
+
+                            <label className="flex items-center space-x-2">
+                              <input
+                                type="radio"
+                                name={`freeze-${video.id}`}
+                                checked={video.freezeAtEnd === true}
+                                onChange={() =>
+                                  toggleFreezeAtEnd(video.id, true)
+                                }
+                                className="h-4 w-4 text-blue-600"
+                              />
+                              <span className="text-sm">Freeze at end</span>
+                            </label>
+                          </div>
+
+                          {!video.freezeAtEnd && (
+                            <p className="text-xs text-red-600 mt-2">
+                              NOTE: if the video has questions, this option
+                              won't work.
+                            </p>
+                          )}
+                        </div>
                         {video.question ? (
                           <div className="space-y-4 mt-4">
                             <div className="space-y-2">
@@ -759,12 +818,14 @@ export default function InteractiveSessionForm() {
                                   </div>
                                   <div className="col-span-5">
                                     <Select
-                                      value={answer.destination_video_id}
+                                      value={
+                                        answer.destination_video_id ?? "no"
+                                      }
                                       onValueChange={(value) =>
                                         updateDestinationVideo(
                                           video.id,
                                           answer.id,
-                                          value
+                                          value === "no" ? null : value
                                         )
                                       }
                                     >
@@ -772,6 +833,9 @@ export default function InteractiveSessionForm() {
                                         <SelectValue placeholder="Select destination video" />
                                       </SelectTrigger>
                                       <SelectContent>
+                                        <SelectItem value="no">
+                                          No video
+                                        </SelectItem>
                                         {videos
                                           .filter((v) => v.id !== video.id)
                                           .map((v) => (
@@ -782,6 +846,7 @@ export default function InteractiveSessionForm() {
                                       </SelectContent>
                                     </Select>
                                   </div>
+
                                   <div className="col-span-2 flex justify-end">
                                     <Button
                                       type="button"

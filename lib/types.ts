@@ -9,14 +9,15 @@ export type VideoType = {
 
   db_id?: string;
   path?: string;
+  freezeAtEnd?:boolean
 };
 export type VideoLink = {
   id: string;
-  timestamp_seconds: number;
+  timestamp_seconds: number ;
   label: string;
   url?: string;
   video_id?: string;
-  destination_video_id?: string; // Optional destination video ID
+  destination_video_id?: string | null; // Optional destination video ID
   destination_video?: VideoType;
   link_type: "url" | "video" | "form"; // Type discriminator
   position_x: number;

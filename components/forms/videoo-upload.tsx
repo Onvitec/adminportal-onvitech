@@ -235,7 +235,7 @@ function VideoPlayerWithDraggableImages({
                   width: `${dimensions.width}px`,
                   height: `${dimensions.height}px`,
                 }}
-                className="object-cover rounded shadow-lg"
+                className=" rounded shadow-lg"
                 draggable={false}
               />
               {showPreview && (
@@ -395,15 +395,11 @@ function ImageUploader({
 
       {displayUrl ? (
         <div className="relative inline-block">
-          <img
-            src={displayUrl}
-            alt="Preview"
-            className="max-w-32 max-h-32 object-cover rounded border"
-            style={{
-              width: width ? `${width}px` : "auto",
-              height: height ? `${height}px` : "auto",
-            }}
-          />
+          {/* Fixed container */}
+          <div className="w-32 h-32 border rounded flex items-center justify-center bg-gray-50">
+            <img src={displayUrl} alt="Preview" className="" />
+          </div>
+
           <button
             type="button"
             onClick={handleRemoveImage}
@@ -411,6 +407,7 @@ function ImageUploader({
           >
             <X className="h-3 w-3" />
           </button>
+
           <div className="mt-1 text-xs text-gray-500">
             {width}x{height}px
             {!isBlobUrl && imageUrl && " (from database)"}
@@ -418,7 +415,7 @@ function ImageUploader({
           </div>
         </div>
       ) : (
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+        <div className="border-2 w-full border-dashed border-gray-300 rounded-lg p-4 text-center w-32 h-32 flex flex-col justify-center">
           <Upload className="h-8 w-8 mx-auto text-gray-400 mb-2" />
           <p className="text-sm text-gray-500 mb-2">Upload {label}</p>
           <Button variant="outline" size="sm" className="relative">
@@ -830,7 +827,11 @@ function VideoUploadWithLinksComponent({
 
       for (const formData of buttonForms) {
         const ts = parseInt(formData.timestamp);
-
+        if (!formData.label) {
+          alert("Please provide a label for all buttons.");
+          setIsUploading(false);
+          return;
+        }
         const linkData: VideoLink = {
           id: formData.id ?? Math.random().toString(36).substr(2, 9),
           timestamp_seconds: ts,
@@ -1021,7 +1022,7 @@ function VideoUploadWithLinksComponent({
         <DialogContent className="sm:max-w-6xl overflow-y-auto max-h-[90vh]">
           <DialogHeader className="border-b py-4">
             <DialogTitle className="flex items-center justify-between">
-              <span>Add / Edit Image Links</span>
+              <span>Add / Edit Buttons</span>
               <div className="flex items-center space-x-2">
                 <Button
                   type="button"
@@ -1062,10 +1063,10 @@ function VideoUploadWithLinksComponent({
             <div className="flex-1 space-y-6 pr-2 max-h-[60vh] overflow-y-auto">
               {buttonForms.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  <p>No image links added yet.</p>
+                  <p>No buttons added yet.</p>
                   <Button onClick={handleAddForm} className="mt-4">
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Your First Image Link
+                    Add Your First button
                   </Button>
                 </div>
               ) : (
@@ -1076,7 +1077,7 @@ function VideoUploadWithLinksComponent({
                   >
                     <div className="flex justify-between items-center">
                       <h4 className="font-medium text-gray-700">
-                        Image Link {index + 1}
+                        Button {index + 1}
                       </h4>
                       <Button
                         variant="ghost"
@@ -1093,13 +1094,23 @@ function VideoUploadWithLinksComponent({
                       <Label className="font-bold">Timestamp (seconds)</Label>
                       <Input
                         type="number"
+                        min={0}
+                        max={video.duration || undefined}
                         placeholder={`0${
                           video.duration ? ` - ${video.duration}` : ""
                         }`}
                         value={formData.timestamp}
-                        onChange={(e) =>
-                          handleFormChange(index, "timestamp", e.target.value)
-                        }
+                        onChange={(e) => {
+                          const rawValue = Number(e.target.value);
+
+                          // Clamp the value between 0 and video.duration
+                          let clampedValue = rawValue;
+                          if (rawValue < 0) clampedValue = 0;
+                          if (video.duration && rawValue > video.duration)
+                            clampedValue = video.duration;
+
+                          handleFormChange(index, "timestamp", clampedValue);
+                        }}
                       />
                     </div>
 
@@ -1263,12 +1274,12 @@ function VideoUploadWithLinksComponent({
                         <div>
                           <Label className="font-bold">Destination Video</Label>
                           <Select
-                            value={formData.destinationVideoId}
+                            value={formData.destinationVideoId ?? "no"}
                             onValueChange={(value) =>
                               handleFormChange(
                                 index,
                                 "destinationVideoId",
-                                value
+                                value === "no" ? null : value
                               )
                             }
                           >
@@ -1276,6 +1287,7 @@ function VideoUploadWithLinksComponent({
                               <SelectValue placeholder="Select destination video" />
                             </SelectTrigger>
                             <SelectContent>
+                              <SelectItem value="no">No video</SelectItem>
                               {availableVideos
                                 .filter((v) => v.id !== video.id)
                                 .map((v) => (
@@ -1295,12 +1307,12 @@ function VideoUploadWithLinksComponent({
                               Destination Video (After Form Submission)
                             </Label>
                             <Select
-                              value={formData.destinationVideoId}
+                              value={formData.destinationVideoId ?? "no"}
                               onValueChange={(value) =>
                                 handleFormChange(
                                   index,
                                   "destinationVideoId",
-                                  value
+                                  value === "no" ? null : value
                                 )
                               }
                             >
@@ -1308,6 +1320,7 @@ function VideoUploadWithLinksComponent({
                                 <SelectValue placeholder="Select destination video after form submission" />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="no">No video</SelectItem>
                                 {availableVideos
                                   .filter((v) => v.id !== video.id)
                                   .map((v) => (
@@ -1344,7 +1357,7 @@ function VideoUploadWithLinksComponent({
                 <div className="w-full flex justify-center">
                   <Button onClick={handleAddForm}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Another Image Link
+                    Add Another Button
                   </Button>
                 </div>
               )}
