@@ -22,6 +22,9 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null);
   const [currentTimes, setCurrentTimes] = useState<Record<string, number>>({});
+  const [destinationVideos, setDestinationVideos] = useState<
+    Record<string, VideoType>
+  >({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -36,6 +39,35 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
         if (videosError) throw videosError;
 
         setVideos(videosData || []);
+
+        // Create a mapping of destination videos
+        const destVideos: Record<string, VideoType> = {};
+
+        // First, get all destination video IDs
+        const destinationVideoIds = new Set<string>();
+
+        for (const video of videosData || []) {
+          if (video.destination_video_id) {
+            destinationVideoIds.add(video.destination_video_id);
+          }
+        }
+
+        // Fetch destination videos
+        if (destinationVideoIds.size > 0) {
+          const { data: destVideosData, error: destVideosError } =
+            await supabase
+              .from("videos")
+              .select("*")
+              .in("id", Array.from(destinationVideoIds));
+
+          if (!destVideosError && destVideosData) {
+            destVideosData.forEach((video) => {
+              destVideos[video.id] = video;
+            });
+          }
+        }
+
+        setDestinationVideos(destVideos);
 
         // Fetch video links for each video
         const linksByVideo: Record<string, VideoLink[]> = {};
@@ -56,7 +88,7 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
               video_id: link.video_id,
               destination_video_id: link.destination_video_id || undefined,
               link_type:
-                (link.link_type as "url" | "video") ||
+                (link.link_type as "url" | "video" | "form") ||
                 (link.url ? "url" : "video"),
               position_x: link.position_x || 20,
               position_y: link.position_y || 20,
@@ -254,6 +286,9 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
         const currentActiveLinks = activeLinks[video.id] || [];
         const currentTime = currentTimes[video.id] || 0;
         const duration = video.duration || 0;
+        const destinationVideo = video.destination_video_id
+          ? destinationVideos[video.destination_video_id]
+          : null;
 
         return (
           <div
@@ -310,6 +345,40 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                   )}
                 </div>
 
+                {/* Video Playback Behavior */}
+                <div className="mt-4 p-3 bg-gray-50 rounded-md border">
+                  <h4 className="text-sm font-medium mb-2">
+                    Playback Behavior
+                  </h4>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {video.freezeAtEnd ? (
+                        <>
+                          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                          <span className="text-sm">Freeze at end</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                          <span className="text-sm">Autoplay next video</span>
+                        </>
+                      )}
+                    </div>
+
+                    {!video.freezeAtEnd && destinationVideo ? (
+                      <div className="text-sm text-gray-600">
+                        Next:{" "}
+                        <span className="font-medium">
+                          {destinationVideo.title}
+                        </span>
+                      </div>
+                    ) : (
+                      <div>  No video</div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Timeline with markers below the video */}
                 {duration > 0 && links.length > 0 && (
                   <div className="relative mt-4 bg-gray-100 rounded-md overflow-hidden p-2">
@@ -337,17 +406,7 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                               <img
                                 src={link.normal_state_image}
                                 alt={link.label}
-                                style={{
-                                  width: `${Math.min(
-                                    link.normal_image_width || 40,
-                                    60
-                                  )}px`,
-                                  height: `${Math.min(
-                                    link.normal_image_height || 40,
-                                    60
-                                  )}px`,
-                                }}
-                                className="object-cover rounded border cursor-pointer hover:scale-110 transition-transform"
+                                className="object-cover h-6 w-6 rounded border cursor-pointer hover:scale-110 transition-transform"
                                 onClick={() =>
                                   seekToTime(video.id, link.timestamp_seconds)
                                 }
@@ -357,7 +416,6 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                               />
                             </div>
                           )}
-
                           {/* Time indicator */}
                           <button
                             type="button"

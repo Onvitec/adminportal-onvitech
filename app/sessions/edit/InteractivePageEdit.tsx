@@ -69,6 +69,7 @@ type Video = {
   duration: number;
   links: VideoLink[];
   freezeAtEnd?: boolean;
+  destination_video_id: string | null;
 };
 
 export default function EditInteractiveSession({
@@ -132,6 +133,7 @@ export default function EditInteractiveSession({
               duration: video.duration || 0,
               links: [], // Will be populated in second pass
               freezeAtEnd: video.freezeAtEnd || false,
+              destination_video_id: video.destination_video_id || null, // Add this
             };
 
             return videoObj;
@@ -140,8 +142,12 @@ export default function EditInteractiveSession({
 
         // Create ID mapping for video references
         const videoIdMap: Record<string, string> = {};
+        const dbIdToTempIdMap: Record<string, string> = {}; // Add reverse mapping
         videosWithQuestions.forEach((v) => {
-          if (v.db_id) videoIdMap[v.db_id] = v.id;
+          if (v.db_id) {
+            videoIdMap[v.db_id] = v.id;
+            dbIdToTempIdMap[v.id] = v.db_id; // Add reverse mapping
+          }
         });
 
         // Second pass: Fetch links and questions with proper ID mapping
@@ -152,6 +158,7 @@ export default function EditInteractiveSession({
             .select("*")
             .eq("video_id", video.db_id)
             .order("timestamp_seconds", { ascending: true });
+
           if (!linksError && linksData && linksData.length > 0) {
             video.links = linksData.map((link) => ({
               id: link.id.toString(),
@@ -164,7 +171,7 @@ export default function EditInteractiveSession({
                   link.destination_video_id
                 : undefined,
               link_type:
-                (link.link_type as "url" | "video") ||
+                (link.link_type as "url" | "video" | "form") ||
                 (link.url ? "url" : "video"),
               position_x: link.position_x || 20,
               position_y: link.position_y || 20,
@@ -207,6 +214,51 @@ export default function EditInteractiveSession({
                     : "",
                 })),
               };
+            }
+          }
+        }
+
+        // Third pass: Update destination_video_id references to use temporary IDs
+        for (const video of videosWithQuestions) {
+          // Update video destination_video_id to use temporary ID
+          if (
+            video.destination_video_id &&
+            typeof video.destination_video_id === "string"
+          ) {
+            // Check if it's a database ID (not already a temporary ID)
+            if (video.destination_video_id in videoIdMap) {
+              video.destination_video_id =
+                videoIdMap[video.destination_video_id];
+            }
+          }
+
+          // Update answer destination_video_id references
+          if (video.question) {
+            for (const answer of video.question.answers) {
+              if (
+                answer.destination_video_id &&
+                typeof answer.destination_video_id === "string"
+              ) {
+                // Check if it's a database ID (not already a temporary ID)
+                if (answer.destination_video_id in videoIdMap) {
+                  answer.destination_video_id =
+                    videoIdMap[answer.destination_video_id];
+                }
+              }
+            }
+          }
+
+          // Update link destination_video_id references
+          for (const link of video.links) {
+            if (
+              link.destination_video_id &&
+              typeof link.destination_video_id === "string"
+            ) {
+              // Check if it's a database ID (not already a temporary ID)
+              if (link.destination_video_id in videoIdMap) {
+                link.destination_video_id =
+                  videoIdMap[link.destination_video_id];
+              }
             }
           }
         }
@@ -258,6 +310,7 @@ export default function EditInteractiveSession({
         duration: 0,
         links: [],
         freezeAtEnd: false,
+        destination_video_id: null,
       },
     ]);
   };
@@ -521,6 +574,7 @@ export default function EditInteractiveSession({
               order_index: index,
               duration: video.duration,
               freezeAtEnd: video.freezeAtEnd || false,
+              destination_video_id: null, // Will be updated later
             })
             .eq("id", videoDbId);
 
@@ -537,6 +591,7 @@ export default function EditInteractiveSession({
               order_index: index,
               duration: video.duration,
               freezeAtEnd: video.freezeAtEnd || false,
+              destination_video_id: null, // Will be updated later
             })
             .select()
             .single();
@@ -548,6 +603,29 @@ export default function EditInteractiveSession({
 
         // Store mapping of temporary ID to actual DB ID
         uploadedVideos[video.id] = videoDbId!;
+      }
+
+      // Update video destination_video_id after all videos are uploaded
+      for (const video of videos) {
+        const videoDbId = uploadedVideos[video.id];
+        if (!videoDbId) continue;
+
+        // Handle destination video for the video itself
+        if (video.destination_video_id) {
+          const destinationDbId = uploadedVideos[video.destination_video_id];
+
+          // Only update if the destination video exists in the database
+          if (destinationDbId) {
+            await supabase
+              .from("videos")
+              .update({ destination_video_id: destinationDbId })
+              .eq("id", videoDbId);
+          } else {
+            console.warn(
+              `Destination video ${video.destination_video_id} not found for video ${video.id}`
+            );
+          }
+        }
       }
 
       // Second pass: Handle video links with proper destination mapping and image uploads
@@ -643,13 +721,20 @@ export default function EditInteractiveSession({
               linkData.url = link.url;
               linkData.destination_video_id = null;
             } else if (
-              (link.link_type === "video" || link.link_type === "form") && // ADDED: form type
+              (link.link_type === "video" || link.link_type === "form") &&
               link.destination_video_id
             ) {
               linkData.url = null;
               // Map the temporary video ID to the actual database ID
-              linkData.destination_video_id =
-                uploadedVideos[link.destination_video_id];
+              const destinationDbId = uploadedVideos[link.destination_video_id];
+              if (destinationDbId) {
+                linkData.destination_video_id = destinationDbId;
+              } else {
+                console.warn(
+                  `Destination video ${link.destination_video_id} not found for link`
+                );
+                linkData.destination_video_id = null;
+              }
             } else {
               // For other link types or no destination
               linkData.url = null;
@@ -669,6 +754,7 @@ export default function EditInteractiveSession({
           }
         }
       }
+
       // Third pass: Handle questions and answers
       for (const video of videos) {
         const videoDbId = uploadedVideos[video.id];
@@ -788,7 +874,6 @@ export default function EditInteractiveSession({
         }
       }
 
-      console.log("SOLution", solution);
       // Handle solution
       if (solution) {
         let solutionData: any = {
@@ -1043,6 +1128,19 @@ export default function EditInteractiveSession({
                               <input
                                 type="radio"
                                 name={`freeze-${video.id}`}
+                                checked={video.freezeAtEnd === true}
+                                onChange={() =>
+                                  toggleFreezeAtEnd(video.id, true)
+                                }
+                                className="h-4 w-4 text-blue-600"
+                              />
+                              <span className="text-sm">Freeze at end</span>
+                            </label>
+
+                            <label className="flex items-center space-x-2">
+                              <input
+                                type="radio"
+                                name={`freeze-${video.id}`}
                                 checked={
                                   video.freezeAtEnd === false ||
                                   video.freezeAtEnd === undefined
@@ -1053,29 +1151,57 @@ export default function EditInteractiveSession({
                                 className="h-4 w-4 text-blue-600"
                               />
                               <span className="text-sm">
-                                Autplay next video
+                                Autoplay next video
                               </span>
-                            </label>
-
-                            <label className="flex items-center space-x-2">
-                              <input
-                                type="radio"
-                                name={`freeze-${video.id}`}
-                                checked={video.freezeAtEnd === true}
-                                onChange={() =>
-                                  toggleFreezeAtEnd(video.id, true)
-                                }
-                                className="h-4 w-4 text-blue-600"
-                              />
-                              <span className="text-sm">Freeze at end</span>
                             </label>
                           </div>
 
                           {!video.freezeAtEnd && (
-                            <p className="text-xs text-red-600 mt-2">
-                              NOTE: if the video has questions, this option
-                              won't work.
-                            </p>
+                            <>
+                              <p className="text-xs text-red-600 mt-2">
+                                NOTE: If the video has questions, the video will
+                                automatically be paused at the last frame.
+                              </p>
+                              <div className="grid grid-cols-12 gap-3 mt-3 items-center">
+                                <Label className="col-span-3">
+                                  Next Video:
+                                </Label>
+                                <div className="col-span-9">
+                                  <Select
+                                    value={video.destination_video_id || "no"}
+                                    onValueChange={(value) =>
+                                      setVideos(
+                                        videos.map((v) =>
+                                          v.id === video.id
+                                            ? {
+                                                ...v,
+                                                destination_video_id:
+                                                  value === "no" ? null : value,
+                                              }
+                                            : v
+                                        )
+                                      )
+                                    }
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select next video" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="no">
+                                        No video (end session)
+                                      </SelectItem>
+                                      {videos
+                                        .filter((v) => v.id !== video.id)
+                                        .map((v) => (
+                                          <SelectItem key={v.id} value={v.id}>
+                                            {v.title}
+                                          </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </div>
+                            </>
                           )}
                         </div>
 

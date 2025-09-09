@@ -9,11 +9,12 @@ export type VideoType = {
 
   db_id?: string;
   path?: string;
-  freezeAtEnd?:boolean
+  freezeAtEnd?: boolean;
+  destination_video_id: string | null;
 };
 export type VideoLink = {
   id: string;
-  timestamp_seconds: number ;
+  timestamp_seconds: number;
   label: string;
   url?: string;
   video_id?: string;
@@ -22,7 +23,7 @@ export type VideoLink = {
   link_type: "url" | "video" | "form"; // Type discriminator
   position_x: number;
   position_y: number;
-  
+
   // Database image URLs (persisted)
   normal_state_image?: string;
   hover_state_image?: string;
@@ -33,7 +34,7 @@ export type VideoLink = {
 
   // Temporary files for upload (not persisted)
   normalImageFile?: File | null;
-  hoverImageFile?: File | null;  
+  hoverImageFile?: File | null;
 
   // Temporary preview URLs for UI (not persisted)
   normalImagePreview?: string; // Add this

@@ -132,6 +132,16 @@ function CustomSolutionNode({ data }: NodeProps<{ solution: Solution }>) {
     </div>
   );
 }
+function CustomAfterFormNode({ data }: NodeProps<{ link: VideoLink, destinationTitle?: string }>) {
+  return (
+    <div className="p-3 rounded-lg shadow-sm bg-orange-100 border border-orange-400 text-orange-800 w-64 flex flex-col justify-center items-center text-center">
+      <div className="font-semibold text-[14px]">After Form Submission</div>
+      <div className="text-xs opacity-70">Leads to {data.destinationTitle}</div>
+      <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
+      <Handle type="source" position={Position.Bottom} style={{ opacity: 0 }} />
+    </div>
+  );
+}
 
 const nodeTypes = {
   video: CustomVideoNode,
@@ -139,6 +149,7 @@ const nodeTypes = {
   link: CustomLinkNode,
   form: CustomFormNode,
   solution: CustomSolutionNode,
+  afterForm: CustomAfterFormNode,
 };
 
 interface TreeViewSessionProps {
@@ -222,6 +233,22 @@ export function TreeViewSession({ sessionId, videos }: TreeViewSessionProps) {
         (link) => link.video_id === video.id
       );
 
+      // Check if this video has a destination video (direct video-to-video connection)
+      if (video.destination_video_id) {
+        const destVideoNodeId = `video-${video.destination_video_id}`;
+
+        // Create edge from current video to destination video
+        createdEdges.push({
+          id: `edge-direct-${videoNodeId}-to-${destVideoNodeId}`,
+          source: videoNodeId,
+          target: destVideoNodeId,
+          markerEnd: { type: MarkerType.ArrowClosed },
+          style: { strokeWidth: 3, stroke: "#F59E0B", strokeDasharray: "5,5" }, // orange
+          label: "Auto-play",
+          labelStyle: { fill: "#3B82F6", fontWeight: "bold" },
+        });
+      }
+
       if (videoLinksForThisVideo.length === 0) {
         // Video with no links is terminal
         terminalNodes.push(videoNode);
@@ -250,7 +277,7 @@ export function TreeViewSession({ sessionId, videos }: TreeViewSessionProps) {
           source: videoNodeId,
           target: buttonNodeId,
           markerEnd: { type: MarkerType.ArrowClosed },
-          style: { strokeWidth: 2, stroke: "#9CA3AF" },
+          style: { strokeWidth: 2, stroke: "#F59E0B", strokeDasharray: "5,5" }, // orange
         });
 
         // Create destination node based on link type
@@ -300,24 +327,39 @@ export function TreeViewSession({ sessionId, videos }: TreeViewSessionProps) {
           });
 
           if (link.destination_video_id) {
-            // Form has destination video - create connection arrow
-            const destVideoNodeId = `video-${link.destination_video_id}`;
-            const destVideoNode = createdNodes.get(destVideoNodeId);
+            const destVideo = videos?.find(
+              (v) => v.id === link.destination_video_id
+            );
 
-            if (destVideoNode) {
-              // Create curved edge from form to destination video
-              createdEdges.push({
-                id: `edge-${formNodeId}-to-${destVideoNodeId}`,
-                source: formNodeId,
-                target: destVideoNodeId,
-                markerEnd: { type: MarkerType.ArrowClosed },
-                style: {
-                  strokeWidth: 2,
-                  stroke: "#F59E0B",
-                  strokeDasharray: "5,5",
-                },
-              });
-            }
+            const afterFormNodeId = `afterForm-${link.id}`;
+            const afterFormNode: Node = {
+              id: afterFormNodeId,
+              type: "afterForm",
+              position: { x: destinationX, y: destinationY + ySpacing },
+              data: { link, destinationTitle: destVideo?.title },
+            };
+            createdNodes.set(afterFormNodeId, afterFormNode);
+
+            // Edge from form → afterForm
+            createdEdges.push({
+              id: `edge-${formNodeId}-to-${afterFormNodeId}`,
+              source: formNodeId,
+              target: afterFormNodeId,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              style: { strokeWidth: 2, stroke: "#F59E0B" }, // orange
+              label: "After Submit",
+              labelStyle: { fill: "#F59E0B", fontWeight: "bold" },
+            }); 
+
+            // Edge from afterForm → destination video
+            const destVideoNodeId = `video-${link.destination_video_id}`;
+            createdEdges.push({
+              id: `edge-${afterFormNodeId}-to-${destVideoNodeId}`,
+              source: afterFormNodeId,
+              target: destVideoNodeId,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              style: { strokeWidth: 2, stroke: "#F59E0B" }, // orange
+            });
           } else {
             // Form is terminal
             terminalNodes.push(formNode);
@@ -339,6 +381,8 @@ export function TreeViewSession({ sessionId, videos }: TreeViewSessionProps) {
                 stroke: "#10B981",
                 strokeDasharray: "5,5",
               },
+              label: "Video Link",
+              labelStyle: { fill: "#10B981", fontWeight: "bold" },
             });
           } else {
             terminalNodes.push(buttonNode);
@@ -381,6 +425,8 @@ export function TreeViewSession({ sessionId, videos }: TreeViewSessionProps) {
             stroke: "#8B5CF6",
             strokeDasharray: "5,5",
           },
+          label: "Solution",
+          labelStyle: { fill: "#8B5CF6", fontWeight: "bold" },
         });
       });
     }
@@ -408,6 +454,7 @@ export function TreeViewSession({ sessionId, videos }: TreeViewSessionProps) {
         <div className="bg-blue-600 px-8 py-2"> Clips </div>
         <div className="bg-green-600 px-8 py-2"> Buttons </div>
         <div className="bg-gray-700 px-8 py-2"> Functions / Links </div>
+        <div className="bg-orange-500 px-8 py-2"> Destination Videos </div>
       </div>
       <ReactFlow
         nodes={nodes}

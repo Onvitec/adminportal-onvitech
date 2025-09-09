@@ -65,6 +65,7 @@ type Video = {
   duration: number; // Add duration in seconds
   links: VideoLink[]; // Updated links array with new type
   freezeAtEnd?: boolean; // Optional: whether to freeze at the end of the video
+  destination_video_id: string | null;
 };
 
 export default function InteractiveSessionForm() {
@@ -86,6 +87,7 @@ export default function InteractiveSessionForm() {
       links: [],
       duration: 0,
       freezeAtEnd: false,
+      destination_video_id: null,
     },
   ]);
 
@@ -108,6 +110,7 @@ export default function InteractiveSessionForm() {
         links: [],
         duration: 0,
         freezeAtEnd: false,
+        destination_video_id: null,
       },
     ]);
   };
@@ -341,6 +344,7 @@ export default function InteractiveSessionForm() {
             order_index: index,
             duration: video.duration,
             freezeAtEnd: video.freezeAtEnd || false,
+            destination_video_id: null, // Will be updated later after all videos are uploaded
           })
           .select()
           .single();
@@ -466,39 +470,64 @@ export default function InteractiveSessionForm() {
         }
       }
 
-      // Update answer destination_video_id after all videos are uploaded
+      // Update video destination_video_id after all videos are uploaded
       for (const video of videos) {
-        if (!video.question) continue;
-
         const videoDbId = uploadedVideos[video.id];
         if (!videoDbId) continue;
 
-        const { data: questions } = await supabase
-          .from("questions")
-          .select("id")
-          .eq("video_id", videoDbId);
+        // Handle destination video for the video itself
+        if (video.destination_video_id) {
+          const destinationDbId = uploadedVideos[video.destination_video_id];
 
-        if (!questions || questions.length === 0) continue;
-        const questionId = questions[0].id;
+          // Only update if the destination video exists in the database
+          if (destinationDbId) {
+            await supabase
+              .from("videos")
+              .update({ destination_video_id: destinationDbId })
+              .eq("id", videoDbId);
+          } else {
+            console.warn(
+              `Destination video ${video.destination_video_id} not found for video ${video.id}`
+            );
+          }
+        }
 
-        for (const [index, answer] of video.question.answers.entries()) {
-          if (!answer.destination_video_id) continue;
-
-          const destinationDbId = uploadedVideos[answer.destination_video_id];
-          if (!destinationDbId) continue;
-
-          const { data: answers } = await supabase
-            .from("answers")
+        // Update answer destination_video_id
+        if (video.question) {
+          const { data: questions } = await supabase
+            .from("questions")
             .select("id")
-            .eq("question_id", questionId)
-            .order("created_at", { ascending: true });
+            .eq("video_id", videoDbId);
 
-          if (!answers || !answers[index]) continue;
+          if (!questions || questions.length === 0) continue;
+          const questionId = questions[0].id;
 
-          await supabase
-            .from("answers")
-            .update({ destination_video_id: destinationDbId })
-            .eq("id", answers[index].id);
+          for (const [index, answer] of video.question.answers.entries()) {
+            if (!answer.destination_video_id) continue;
+
+            const destinationDbId = uploadedVideos[answer.destination_video_id];
+
+            // Skip if destination video doesn't exist
+            if (!destinationDbId) {
+              console.warn(
+                `Destination video ${answer.destination_video_id} not found for answer ${answer.id}`
+              );
+              continue;
+            }
+
+            const { data: answers } = await supabase
+              .from("answers")
+              .select("id")
+              .eq("question_id", questionId)
+              .order("created_at", { ascending: true });
+
+            if (!answers || !answers[index]) continue;
+
+            await supabase
+              .from("answers")
+              .update({ destination_video_id: destinationDbId })
+              .eq("id", answers[index].id);
+          }
         }
       }
 
@@ -524,17 +553,23 @@ export default function InteractiveSessionForm() {
 
           if (
             (originalLink.link_type === "video" ||
-              originalLink.link_type === "form") && // ADDED: form type
+              originalLink.link_type === "form") &&
             originalLink.destination_video_id &&
             dbLink
           ) {
             const destinationDbId =
               uploadedVideos[originalLink.destination_video_id];
+
+            // Only update if destination video exists
             if (destinationDbId) {
               await supabase
                 .from("video_links")
                 .update({ destination_video_id: destinationDbId })
                 .eq("id", dbLink.id);
+            } else {
+              console.warn(
+                `Destination video ${originalLink.destination_video_id} not found for video link ${dbLink.id}`
+              );
             }
           }
         }
@@ -747,6 +782,18 @@ export default function InteractiveSessionForm() {
                               <input
                                 type="radio"
                                 name={`freeze-${video.id}`}
+                                checked={video.freezeAtEnd === true}
+                                onChange={() =>
+                                  toggleFreezeAtEnd(video.id, true)
+                                }
+                                className="h-4 w-4 text-blue-600"
+                              />
+                              <span className="text-sm">Freeze at end</span>
+                            </label>
+                            <label className="flex items-center space-x-2">
+                              <input
+                                type="radio"
+                                name={`freeze-${video.id}`}
                                 checked={
                                   video.freezeAtEnd === false ||
                                   video.freezeAtEnd === undefined
@@ -760,26 +807,52 @@ export default function InteractiveSessionForm() {
                                 Autplay next video
                               </span>
                             </label>
-
-                            <label className="flex items-center space-x-2">
-                              <input
-                                type="radio"
-                                name={`freeze-${video.id}`}
-                                checked={video.freezeAtEnd === true}
-                                onChange={() =>
-                                  toggleFreezeAtEnd(video.id, true)
-                                }
-                                className="h-4 w-4 text-blue-600"
-                              />
-                              <span className="text-sm">Freeze at end</span>
-                            </label>
                           </div>
 
                           {!video.freezeAtEnd && (
-                            <p className="text-xs text-red-600 mt-2">
-                              NOTE: if the video has questions, this option
-                              won't work.
+                            <p className="text-xs text-red-600 my-2">
+                              NOTE: If the video has questions, the video will
+                              automatically be paused at the last frame.
                             </p>
+                          )}
+                          {!video.freezeAtEnd && (
+                            <div className="grid grid-cols-12 gap-3 mt-3 items-center">
+                              <Label className="col-span-3">Next Video:</Label>
+                              <div className="col-span-9">
+                                <Select
+                                  value={video.destination_video_id || "no"}
+                                  onValueChange={(value) =>
+                                    setVideos(
+                                      videos.map((v) =>
+                                        v.id === video.id
+                                          ? {
+                                              ...v,
+                                              destination_video_id:
+                                                value === "no" ? null : value,
+                                            }
+                                          : v
+                                      )
+                                    )
+                                  }
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select next video" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="no">
+                                      No video (end session)
+                                    </SelectItem>
+                                    {videos
+                                      .filter((v) => v.id !== video.id)
+                                      .map((v) => (
+                                        <SelectItem key={v.id} value={v.id}>
+                                          {v.title}
+                                        </SelectItem>
+                                      ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
                           )}
                         </div>
                         {video.question ? (

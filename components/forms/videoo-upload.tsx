@@ -162,11 +162,9 @@ function VideoPlayerWithDraggableImages({
 
   // Get the appropriate image URL - prioritize preview URLs for editing, then database URLs
   const getImageUrl = useCallback((link: VideoLink, isHovered: boolean) => {
-    if (isHovered) {
-      // Check for hover preview first, then hover database URL
+    if (isHovered && (link.hoverImagePreview || link.hover_state_image)) {
       return link.hoverImagePreview || link.hover_state_image;
     }
-    // Check for normal preview first, then normal database URL
     return link.normalImagePreview || link.normal_state_image;
   }, []);
 
@@ -222,7 +220,11 @@ function VideoPlayerWithDraggableImages({
               }}
               onMouseDown={(e) => handleMouseDown(e, link.id)}
               onClick={(e) => handleImageClick(link, e)}
-              onMouseEnter={() => setHoveredImageId(link.id)}
+              onMouseEnter={() => {
+                if (link.hoverImagePreview || link.hover_state_image) {
+                  setHoveredImageId(link.id);
+                }
+              }}
               onMouseLeave={() => setHoveredImageId(null)}
               title={
                 isEditMode ? `Drag to reposition • ${link.label}` : link.label
@@ -1371,7 +1373,7 @@ function VideoUploadWithLinksComponent({
               disabled={buttonForms.length === 0}
             >
               <Trash2 className="h-4 w-4 mr-1" />
-              Delete All Image Links
+              Delete All buttons
             </Button>
 
             <div className="flex gap-2">

@@ -15,6 +15,7 @@ import { ChevronDown, ChevronUp, Loader2, ChevronLeft, X } from "lucide-react";
 import { Questions } from "@/components/icons";
 import { CommonVideoPlayer } from "../CommonVideoPlaye";
 import { SolutionDisplay } from "../SolutionDisplay";
+
 export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [videos, setVideos] = useState<VideoType[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -30,6 +31,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null);
   const [currentForm, setCurrentForm] = useState<FormSolutionData | null>(null);
   const [isVideoPaused, setIsVideoPaused] = useState(false);
+  const [destinationVideos, setDestinationVideos] = useState<Record<string, VideoType>>({});
 
   // Modify the video link click handler to store the form link
   const [currentFormLink, setCurrentFormLink] = useState<VideoLink | null>(
@@ -57,6 +59,34 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
         setVideos(videosData);
         setCurrentVideo(videosData[0]);
+
+        // Create a mapping of destination videos
+        const destVideos: Record<string, VideoType> = {};
+        
+        // First, get all destination video IDs
+        const destinationVideoIds = new Set<string>();
+        
+        for (const video of videosData || []) {
+          if (video.destination_video_id) {
+            destinationVideoIds.add(video.destination_video_id);
+          }
+        }
+
+        // Fetch destination videos
+        if (destinationVideoIds.size > 0) {
+          const { data: destVideosData, error: destVideosError } = await supabase
+            .from("videos")
+            .select("*")
+            .in("id", Array.from(destinationVideoIds));
+
+          if (!destVideosError && destVideosData) {
+            destVideosData.forEach(video => {
+              destVideos[video.id] = video;
+            });
+          }
+        }
+
+        setDestinationVideos(destVideos);
 
         // Fetch questions
         const { data: questionsData, error: questionsError } = await supabase
@@ -125,7 +155,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         if (linksError) throw linksError;
 
         // Process links and fetch destination videos for video-type links
-        // Process links and fetch destination videos for video-type links
         const linksWithDestinations = await Promise.all(
           (linksData || []).map(async (link): Promise<VideoLink> => {
             if (
@@ -135,7 +164,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
               // Find the destination video from our already loaded videos
               const destinationVideo = videosData.find(
                 (v) => v.id === link.destination_video_id
-              );
+              ) || destVideos[link.destination_video_id];
 
               const result = {
                 ...link,
@@ -231,8 +260,25 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     if (currentQuestions.length > 0) {
       setShowQuestions(true);
     } else {
+      // Check if current video has a destination video
+      if (currentVideo?.destination_video_id && !currentVideo.freezeAtEnd) {
+        const destinationVideo = destinationVideos[currentVideo.destination_video_id] || 
+                                videos.find(v => v.id === currentVideo.destination_video_id);
+        
+        if (destinationVideo) {
+          // Go to destination video
+          if (currentVideo && !isNavigatingBack) {
+            setVideoHistory((prev) => [...prev, currentVideo]);
+          }
+          setCurrentVideo(destinationVideo);
+          setShowQuestions(false);
+          return;
+        }
+      }
+      
+      // If no destination video or freezeAtEnd is true, check for next video in order
       const currentIndex = videos.findIndex((v) => v.id === currentVideo?.id);
-      if (currentIndex < videos.length - 1) {
+      if (currentIndex < videos.length - 1 && !currentVideo?.freezeAtEnd) {
         // has next video → play it
         const nextVideo = videos[currentIndex + 1];
         if (currentVideo && !isNavigatingBack) {
@@ -268,9 +314,8 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       if (link.link_type === "url" && link.url) {
         window.open(link.url, "_blank", "noopener,noreferrer");
       } else if (link.link_type === "video" && link.destination_video_id) {
-        const destinationVideo = videos.find(
-          (v) => v.id === link.destination_video_id
-        );
+        const destinationVideo = destinationVideos[link.destination_video_id] || 
+                                videos.find(v => v.id === link.destination_video_id);
 
         if (destinationVideo) {
           if (currentVideo && !isNavigatingBack) {
@@ -286,7 +331,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         setCurrentFormLink(link);
       }
     },
-    [videos, currentVideo, isNavigatingBack]
+    [videos, currentVideo, isNavigatingBack, destinationVideos]
   );
 
   // Handle form submission
@@ -295,9 +340,8 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       console.log("Form data submitted:", data);
 
       if (currentFormLink && currentFormLink.destination_video_id) {
-        const destinationVideo = videos.find(
-          (v) => v.id === currentFormLink.destination_video_id
-        );
+        const destinationVideo = destinationVideos[currentFormLink.destination_video_id] || 
+                                videos.find(v => v.id === currentFormLink.destination_video_id);
 
         if (destinationVideo) {
           if (currentVideo && !isNavigatingBack) {
@@ -312,7 +356,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       setCurrentForm(null);
       setCurrentFormLink(null);
     },
-    [currentFormLink, videos, currentVideo, isNavigatingBack]
+    [currentFormLink, videos, currentVideo, isNavigatingBack, destinationVideos]
   );
 
   // Handle form cancellation
