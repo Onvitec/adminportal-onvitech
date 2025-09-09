@@ -15,23 +15,14 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { VideoUploadWithLinks } from "../videoo-upload";
-import { VideoLink } from "@/lib/types";
+import { VideoLink, VideoType } from "@/lib/types";
 
-// Updated Video type to include links
-type Video = {
-  id: string;
-  title: string;
-  file: File | null;
-  url: string;
-  duration: number;
-  links: VideoLink[];
-};
 
 // Updated Module type
 type Module = {
   id: string;
   title: string;
-  videos: Video[];
+  videos: VideoType[];
 };
 
 export function ModuleCard({
@@ -191,6 +182,7 @@ export function ModuleCard({
               {module.videos.map((video) => (
                 <VideoUploadWithLinks
                   key={video.id}
+                  
                   video={video}
                   // moduleId={module.id}
                   availableVideos={availableVideos || []}

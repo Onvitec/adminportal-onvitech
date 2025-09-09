@@ -69,6 +69,7 @@ type Video = {
   isExpanded: boolean;
   duration: number; // Add duration in seconds
   links: VideoLink[]; // Add links array
+  destination_video_id: string | null;
 };
 
 type AnswerCombination = {
@@ -93,6 +94,7 @@ export default function SelectionSessionForm() {
       title: "Video Name",
       duration: 0,
       links: [],
+      destination_video_id: null,
     },
   ]);
   const [combinations, setCombinations] = useState<AnswerCombination[]>([]);
@@ -243,6 +245,7 @@ export default function SelectionSessionForm() {
         title: `Video ${videos.length + 1}`,
         duration: 0,
         links: [],
+        destination_video_id: null,
       },
     ]);
   };
