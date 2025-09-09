@@ -21,6 +21,38 @@ import { solutionCategories } from "@/lib/utils";
 import { Loader } from "@/components/Loader";
 import { DestinationVedio } from "@/components/icons";
 import { ExternalLinkIcon, FormInputIcon, LinkIcon } from "lucide-react";
+import dagre from "dagre";
+
+/* ------------------------- DAGRE LAYOUT SETUP ------------------------- */
+const dagreGraph = new dagre.graphlib.Graph();
+dagreGraph.setDefaultEdgeLabel(() => ({}));
+const nodeWidth = 250;
+const nodeHeight = 120;
+
+function getLayoutedElements(nodes: Node[], edges: Edge[], direction = "TB") {
+  dagreGraph.setGraph({ rankdir: direction, nodesep: 60, ranksep: 100 });
+
+  nodes.forEach((node) => {
+    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+  });
+
+  edges.forEach((edge) => {
+    dagreGraph.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(dagreGraph);
+
+  const layoutedNodes = nodes.map((node) => {
+    const { x, y } = dagreGraph.node(node.id);
+    return {
+      ...node,
+      position: { x, y },
+    };
+  });
+
+  return { nodes: layoutedNodes, edges };
+}
+
 
 function CustomVideoNode({ data }: NodeProps<{ video: VideoType }>) {
   return (
@@ -430,9 +462,14 @@ export function TreeViewSession({ sessionId, videos }: TreeViewSessionProps) {
         });
       });
     }
+     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+      Array.from(createdNodes.values()),
+      createdEdges,
+      "TB" // top-to-bottom layout
+    );
 
-    setNodes(Array.from(createdNodes.values()));
-    setEdges(createdEdges);
+    setNodes(layoutedNodes);
+    setEdges(layoutedEdges);
   }, [loading, videos, videoLinks, finalSolution]);
 
   const onConnect = useCallback(
@@ -453,7 +490,7 @@ export function TreeViewSession({ sessionId, videos }: TreeViewSessionProps) {
       <div className="p-4 border-b mb-2 text-white flex items-center gap-6 justify-center">
         <div className="bg-blue-600 px-8 py-2"> Clips </div>
         <div className="bg-green-600 px-8 py-2"> Buttons </div>
-        <div className="bg-gray-700 px-8 py-2"> Functions / Links </div>
+        {/* <div className="bg-gray-700 px-8 py-2"> Functions / Links </div> */}
         <div className="bg-orange-500 px-8 py-2"> Destination Videos </div>
       </div>
       <ReactFlow
