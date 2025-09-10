@@ -1,231 +1,234 @@
-  "use client";
+"use client";
 
-  import { useEffect, useState, useRef } from "react";
-  import {
-    VideoType,
-    VideoLink,
-    FormSolutionData,
-    FormElement,
-  } from "@/lib/types";
-  import { ChevronLeft, RefreshCw, X } from "lucide-react";
-  import { Button } from "@/components/ui/button";
-  import { Input } from "@/components/ui/input";
-  import { Label } from "@/components/ui/label";
+import { useEffect, useState, useRef } from "react";
+import {
+  VideoType,
+  VideoLink,
+  FormSolutionData,
+  FormElement,
+} from "@/lib/types";
+import { ChevronLeft, RefreshCw, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-  interface CommonVideoPlayerProps {
-    currentVideo: VideoType | null;
-    videoLinks: Record<string, VideoLink[]>;
-    onVideoEnd: () => void;
-    onVideoLinkClick: (link: VideoLink) => void;
-    onBackNavigation?: () => void;
-    showBackButton?: boolean;
-    hoveredLinkId?: string | null;
-    setHoveredLinkId?: (id: string | null) => void;
-    currentForm?: FormSolutionData | null;
-    onFormSubmit?: (data: Record<string, any>) => void;
-    currentFormLink?: VideoLink | null;
-    onFormCancel?: () => void;
-    isPaused?: boolean;
-    children?: React.ReactNode;
-    onVideoRestart?: () => void;
-    hasQuestions?: boolean; // New prop to indicate if there are questions
-  }
+interface CommonVideoPlayerProps {
+  currentVideo: VideoType | null;
+  videoLinks: Record<string, VideoLink[]>;
+  onVideoEnd: () => void;
+  onVideoLinkClick: (link: VideoLink) => void;
+  onBackNavigation?: () => void;
+  showBackButton?: boolean;
+  hoveredLinkId?: string | null;
+  setHoveredLinkId?: (id: string | null) => void;
+  currentForm?: FormSolutionData | null;
+  onFormSubmit?: (data: Record<string, any>) => void;
+  currentFormLink?: VideoLink | null;
+  onFormCancel?: () => void;
+  isPaused?: boolean;
+  children?: React.ReactNode;
+  onVideoRestart?: () => void;
+  hasQuestions?: boolean; // New prop to indicate if there are questions
+}
 
-  // Form Display Component
-  function FormDisplay({
-    formData,
-    onSubmit,
-    formLink,
-    onCancel,
-  }: {
-    formData: FormSolutionData;
-    onSubmit: (data: Record<string, any>) => void;
-    formLink?: VideoLink | null;
-    onCancel: () => void;
-  }) {
-    const [formValues, setFormValues] = useState<Record<string, any>>({});
+// Form Display Component
+function FormDisplay({
+  formData,
+  onSubmit,
+  formLink,
+  onCancel,
+}: {
+  formData: FormSolutionData;
+  onSubmit: (data: Record<string, any>) => void;
+  formLink?: VideoLink | null;
+  onCancel: () => void;
+}) {
+  const [formValues, setFormValues] = useState<Record<string, any>>({});
 
-    const handleInputChange = (elementId: string, value: any) => {
-      setFormValues((prev) => ({ ...prev, [elementId]: value }));
-    };
+  const handleInputChange = (elementId: string, value: any) => {
+    setFormValues((prev) => ({ ...prev, [elementId]: value }));
+  };
 
-    const handleCheckboxChange = (
-      elementId: string,
-      optionId: string,
-      checked: boolean
-    ) => {
-      setFormValues((prev) => {
-        const currentValues = prev[elementId] || [];
-        if (checked) {
-          return { ...prev, [elementId]: [...currentValues, optionId] };
-        } else {
-          return {
-            ...prev,
-            [elementId]: currentValues.filter((id: string) => id !== optionId),
-          };
-        }
-      });
-    };
-
-    const handleRadioChange = (elementId: string, optionId: string) => {
-      setFormValues((prev) => ({ ...prev, [elementId]: optionId }));
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      console.log("Form submitted with data:", formValues);
-      onSubmit(formValues);
-    };
-
-    const renderFormElement = (element: FormElement) => {
-      switch (element.type) {
-        case "text":
-        case "email":
-        case "number":
-          return (
-            <Input
-              id={element.id}
-              type={element.type}
-              placeholder={element.placeholder}
-              value={formValues[element.id] || ""}
-              onChange={(e) => handleInputChange(element.id, e.target.value)}
-              className="w-full bg-white/80 backdrop-blur-sm"
-            />
-          );
-
-        case "textarea":
-          return (
-            <textarea
-              id={element.id}
-              placeholder={element.placeholder}
-              value={formValues[element.id] || ""}
-              onChange={(e) => handleInputChange(element.id, e.target.value)}
-              className="w-full p-2 border rounded-md bg-white/80 backdrop-blur-sm"
-              rows={4}
-            />
-          );
-
-        case "dropdown":
-          return (
-            <select
-              id={element.id}
-              value={formValues[element.id] || ""}
-              onChange={(e) => handleInputChange(element.id, e.target.value)}
-              className="w-full p-2 border rounded-md bg-white/80 backdrop-blur-sm"
-            >
-              <option value="">Select an option</option>
-              {element.options?.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          );
-
-        case "checkbox":
-          return (
-            <div className="space-y-2">
-              {element.options?.map((option) => (
-                <div key={option.id} className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id={option.id}
-                    checked={(formValues[element.id] || []).includes(option.id)}
-                    onChange={(e) =>
-                      handleCheckboxChange(
-                        element.id,
-                        option.id,
-                        e.target.checked
-                      )
-                    }
-                    className="h-4 w-4"
-                  />
-                  <Label htmlFor={option.id} className="font-normal text-white">
-                    {option.label}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          );
-
-        case "radio":
-          return (
-            <div className="space-y-2">
-              {element.options?.map((option) => (
-                <div key={option.id} className="flex items-center space-x-2">
-                  <input
-                    type="radio"
-                    id={option.id}
-                    name={element.id}
-                    value={option.id}
-                    checked={formValues[element.id] === option.id}
-                    onChange={(e) =>
-                      handleRadioChange(element.id, e.target.value)
-                    }
-                    className="h-4 w-4"
-                  />
-                  <Label htmlFor={option.id} className="font-normal text-white">
-                    {option.label}
-                  </Label>
-                </div>
-              ))}
-            </div>
-          );
-
-        default:
-          return null;
+  const handleCheckboxChange = (
+    elementId: string,
+    optionId: string,
+    checked: boolean
+  ) => {
+    setFormValues((prev) => {
+      const currentValues = prev[elementId] || [];
+      if (checked) {
+        return { ...prev, [elementId]: [...currentValues, optionId] };
+      } else {
+        return {
+          ...prev,
+          [elementId]: currentValues.filter((id: string) => id !== optionId),
+        };
       }
-    };
+    });
+  };
 
-    return (
-      <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 z-50">
-        <div className="bg-white/30 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-white/60">
-          <div className="flex justify-between items-center mb-4">
-            {/* <h2 className="text-xl font-bold text-white">{formData. || "Form"}</h2> */}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onCancel}
-              className="text-white hover:bg-white/20"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+  const handleRadioChange = (elementId: string, optionId: string) => {
+    setFormValues((prev) => ({ ...prev, [elementId]: optionId }));
+  };
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {formData.elements.map((element) => (
-              <div key={element.id} className="space-y-2">
-                <Label htmlFor={element.id} className="text-white">
-                  {element.label}
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Form submitted with data:", formValues);
+    onSubmit(formValues);
+  };
+
+  const renderFormElement = (element: FormElement) => {
+    switch (element.type) {
+      case "text":
+      case "email":
+      case "number":
+        return (
+          <Input
+            id={element.id}
+            type={element.type}
+            placeholder={element.placeholder}
+            value={formValues[element.id] || ""}
+            onChange={(e) => handleInputChange(element.id, e.target.value)}
+            className="w-full bg-white/80 backdrop-blur-sm"
+          />
+        );
+
+      case "textarea":
+        return (
+          <textarea
+            id={element.id}
+            placeholder={element.placeholder}
+            value={formValues[element.id] || ""}
+            onChange={(e) => handleInputChange(element.id, e.target.value)}
+            className="w-full p-2 border rounded-md bg-white/80 backdrop-blur-sm"
+            rows={4}
+          />
+        );
+
+      case "dropdown":
+        return (
+          <select
+            id={element.id}
+            value={formValues[element.id] || ""}
+            onChange={(e) => handleInputChange(element.id, e.target.value)}
+            className="w-full p-2 border rounded-md bg-white/80 backdrop-blur-sm"
+          >
+            <option value="">Select an option</option>
+            {element.options?.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        );
+
+      case "checkbox":
+        return (
+          <div className="space-y-2">
+            {element.options?.map((option) => (
+              <div key={option.id} className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id={option.id}
+                  checked={(formValues[element.id] || []).includes(option.id)}
+                  onChange={(e) =>
+                    handleCheckboxChange(
+                      element.id,
+                      option.id,
+                      e.target.checked
+                    )
+                  }
+                  className="h-4 w-4"
+                />
+                <Label htmlFor={option.id} className="font-normal text-white">
+                  {option.label}
                 </Label>
-                {renderFormElement(element)}
               </div>
             ))}
+          </div>
+        );
 
-            <div className="flex gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                className="flex-1 bg-white/20 text-white hover:bg-white/30"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="flex-1 bg-white/30 text-white hover:bg-white/40"
-              >
-                Submit
-              </Button>
-            </div>
-          </form>
+      case "radio":
+        return (
+          <div className="space-y-2">
+            {element.options?.map((option) => (
+              <div key={option.id} className="flex items-center space-x-2">
+                <input
+                  type="radio"
+                  id={option.id}
+                  name={element.id}
+                  value={option.id}
+                  checked={formValues[element.id] === option.id}
+                  onChange={(e) =>
+                    handleRadioChange(element.id, e.target.value)
+                  }
+                  className="h-4 w-4"
+                />
+                <Label htmlFor={option.id} className="font-normal text-white">
+                  {option.label}
+                </Label>
+              </div>
+            ))}
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 z-50">
+      <div className="bg-white/30 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-white/60">
+        <div className="flex justify-between items-center mb-4">
+          {/* <h2 className="text-xl font-bold text-white">{formData. || "Form"}</h2> */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            className="text-white hover:bg-white/20"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-      </div>
-    );
-  }
 
-  export function CommonVideoPlayer({
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 max-h-[380px] overflow-y-auto pr-2"
+        >
+          {formData.elements.map((element) => (
+            <div key={element.id} className="space-y-2">
+              <Label htmlFor={element.id} className="text-white">
+                {element.label}
+              </Label>
+              {renderFormElement(element)}
+            </div>
+          ))}
+
+          <div className="flex gap-2 pt-4 sticky bottom-0 bg-white/20 backdrop-blur-sm p-2 rounded-lg">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              className="flex-1 bg-white/20 text-black hover:bg-white/30"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="flex-1 bg-white/30 text-black hover:bg-white/40"
+            >
+              Submit
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export function CommonVideoPlayer({
   currentVideo,
   videoLinks,
   onVideoEnd,
@@ -355,7 +358,7 @@
   const handleVideoEnd = () => {
     // Check if we should freeze at end (no questions AND freezeAtEnd is true)
     const shouldFreeze = !hasQuestions && currentVideo?.freezeAtEnd;
-    
+
     if (shouldFreeze) {
       // Show freeze controls instead of proceeding
       setShowFreezeControls(true);
@@ -416,7 +419,7 @@
         autoPlay
         muted
         src={currentVideo.url}
-        className="w-full h-[700px] object-contain rounded-xl cursor-pointer"
+        className="w-full h-auto object-contain rounded-xl cursor-pointer"
         controls={false}
         onClick={togglePlayPause}
         onEnded={handleVideoEnd} // Use our custom handler
@@ -450,9 +453,7 @@
             <h3 className="text-white text-lg font-semibold mb-4">
               Video Completed
             </h3>
-            <p className="text-white mb-6">
-              What would you like to do next?
-            </p>
+            <p className="text-white mb-6">What would you like to do next?</p>
             <div className="flex flex-col gap-3">
               <Button
                 onClick={handleRestartVideo}
@@ -461,12 +462,12 @@
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Watch Again
               </Button>
-              <Button
+              {/* <Button
                 onClick={handleContinue}
                 className="bg-white/30 text-white hover:bg-white/40"
               >
                 Continue to Next
-              </Button>
+              </Button> */}
             </div>
           </div>
         </div>
@@ -538,7 +539,7 @@
                 }
               >
                 <div className="relative">
-                  {/* Normal image */}
+                  {/* Normal image (always shown) */}
                   {link.normal_state_image && (
                     <img
                       src={link.normal_state_image}
@@ -547,12 +548,14 @@
                         width: `${link.normal_image_width ?? 100}px`,
                         height: `${link.normal_image_height ?? 100}px`,
                       }}
-                      className="object-cover rounded shadow-lg block group-hover:hidden"
+                      className={`object-fill rounded block ${
+                        link.hover_state_image ? "group-hover:hidden" : ""
+                      }`}
                       draggable={false}
                     />
                   )}
 
-                  {/* Hover image */}
+                  {/* Hover image (optional, only rendered if available) */}
                   {link.hover_state_image && (
                     <img
                       src={link.hover_state_image}
@@ -569,7 +572,7 @@
                           100
                         }px`,
                       }}
-                      className="object-cover rounded shadow-lg hidden group-hover:block"
+                      className="object-fill rounded hidden group-hover:block"
                       draggable={false}
                     />
                   )}

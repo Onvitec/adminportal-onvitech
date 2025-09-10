@@ -816,9 +816,9 @@ export default function InteractiveSessionForm() {
                             </p>
                           )}
                           {!video.freezeAtEnd && (
-                            <div className="grid grid-cols-12 gap-3 mt-3 items-center">
-                              <Label className="col-span-3">Next Video:</Label>
-                              <div className="col-span-9">
+                            <div className="flex gap-3 mt-3 items-center">
+                              <Label className="">Next Video:</Label>
+                              <div className="">
                                 <Select
                                   value={video.destination_video_id || "no"}
                                   onValueChange={(value) =>

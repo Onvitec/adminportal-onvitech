@@ -237,7 +237,7 @@ function VideoPlayerWithDraggableImages({
                   width: `${dimensions.width}px`,
                   height: `${dimensions.height}px`,
                 }}
-                className=" rounded shadow-lg"
+                className=" rounded "
                 draggable={false}
               />
               {showPreview && (
@@ -432,41 +432,66 @@ function ImageUploader({
           <p className="text-xs text-gray-400 mt-1">PNG, JPG, GIF up to 5MB</p>
         </div>
       )}
-
       {displayUrl && (
         <div className="flex gap-2">
           <div className="flex-1">
             <Label className="text-xs">Width (px)</Label>
             <Input
               type="number"
-              value={width || ""}
-              onChange={(e) =>
-                onDimensionsChange(
-                  parseInt(e.target.value) || 100,
-                  height || 100
-                )
-              }
+              value={width === undefined ? "" : width}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "") {
+                  onDimensionsChange(undefined as any, height ?? 0); // allow clearing
+                  return;
+                }
+                const num = parseInt(val, 10);
+                if (!isNaN(num)) {
+                  onDimensionsChange(num, height ?? 0);
+                }
+              }}
+              onBlur={(e) => {
+                const num = parseInt(e.target.value, 10);
+                if (!isNaN(num)) {
+                  onDimensionsChange(
+                    Math.min(Math.max(num, 0), 500),
+                    height ?? 0
+                  );
+                }
+              }}
               placeholder="Width"
               className="h-8"
-              min="10"
-              max="500"
+              step={1}
             />
           </div>
           <div className="flex-1">
             <Label className="text-xs">Height (px)</Label>
             <Input
               type="number"
-              value={height || ""}
-              onChange={(e) =>
-                onDimensionsChange(
-                  width || 100,
-                  parseInt(e.target.value) || 100
-                )
-              }
+              value={height === undefined ? "" : height}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "") {
+                  onDimensionsChange(width ?? 0, undefined as any);
+                  return;
+                }
+                const num = parseInt(val, 10);
+                if (!isNaN(num)) {
+                  onDimensionsChange(width ?? 0, num);
+                }
+              }}
+              onBlur={(e) => {
+                const num = parseInt(e.target.value, 10);
+                if (!isNaN(num)) {
+                  onDimensionsChange(
+                    width ?? 0,
+                    Math.min(Math.max(num, 0), 500)
+                  );
+                }
+              }}
               placeholder="Height"
               className="h-8"
-              min="10"
-              max="500"
+              step={1}
             />
           </div>
         </div>
