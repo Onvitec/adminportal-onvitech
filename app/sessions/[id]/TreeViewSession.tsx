@@ -53,7 +53,6 @@ function getLayoutedElements(nodes: Node[], edges: Edge[], direction = "TB") {
   return { nodes: layoutedNodes, edges };
 }
 
-
 function CustomVideoNode({ data }: NodeProps<{ video: VideoType }>) {
   return (
     <div className="p-4 rounded-lg bg-blue-600 shadow-md  text-white border border-gray-300 w-64 h-full flex flex-col justify-center items-center text-center">
@@ -164,7 +163,9 @@ function CustomSolutionNode({ data }: NodeProps<{ solution: Solution }>) {
     </div>
   );
 }
-function CustomAfterFormNode({ data }: NodeProps<{ link: VideoLink, destinationTitle?: string }>) {
+function CustomAfterFormNode({
+  data,
+}: NodeProps<{ link: VideoLink; destinationTitle?: string }>) {
   return (
     <div className="p-3 rounded-lg shadow-sm bg-orange-100 border border-orange-400 text-orange-800 w-64 flex flex-col justify-center items-center text-center">
       <div className="font-semibold text-[14px]">After Form Submission</div>
@@ -381,7 +382,7 @@ export function TreeViewSession({ sessionId, videos }: TreeViewSessionProps) {
               style: { strokeWidth: 2, stroke: "#F59E0B" }, // orange
               label: "After Submit",
               labelStyle: { fill: "#F59E0B", fontWeight: "bold" },
-            }); 
+            });
 
             // Edge from afterForm → destination video
             const destVideoNodeId = `video-${link.destination_video_id}`;
@@ -397,28 +398,22 @@ export function TreeViewSession({ sessionId, videos }: TreeViewSessionProps) {
             terminalNodes.push(formNode);
           }
         } else if (link.link_type === "video" && link.destination_video_id) {
-          // Video links connect to destination videos
           const destVideoNodeId = `video-${link.destination_video_id}`;
-          const destVideoNode = createdNodes.get(destVideoNodeId);
 
-          if (destVideoNode) {
-            // Create curved edge from button to destination video
-            createdEdges.push({
-              id: `edge-${buttonNodeId}-to-${destVideoNodeId}`,
-              source: buttonNodeId,
-              target: destVideoNodeId,
-              markerEnd: { type: MarkerType.ArrowClosed },
-              style: {
-                strokeWidth: 2,
-                stroke: "#10B981",
-                strokeDasharray: "5,5",
-              },
-              label: "Video Link",
-              labelStyle: { fill: "#10B981", fontWeight: "bold" },
-            });
-          } else {
-            terminalNodes.push(buttonNode);
-          }
+          // Always create edge (even if node isn't built yet)
+          createdEdges.push({
+            id: `edge-${buttonNodeId}-to-${destVideoNodeId}`,
+            source: buttonNodeId,
+            target: destVideoNodeId,
+            markerEnd: { type: MarkerType.ArrowClosed },
+            style: {
+              strokeWidth: 2,
+              stroke: "#10B981",
+              strokeDasharray: "5,5",
+            },
+            label: "Video Link",
+            labelStyle: { fill: "#10B981", fontWeight: "bold" },
+          });
         } else {
           // Unknown link type or no destination
           terminalNodes.push(buttonNode);
@@ -462,7 +457,7 @@ export function TreeViewSession({ sessionId, videos }: TreeViewSessionProps) {
         });
       });
     }
-     const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
       Array.from(createdNodes.values()),
       createdEdges,
       "TB" // top-to-bottom layout

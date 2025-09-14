@@ -152,9 +152,13 @@ export default function InteractiveSessionForm() {
 
   const handleLinksChange = useCallback(
     (videoId: string, links: VideoLink[]) => {
-      setVideos(videos.map((v) => (v.id === videoId ? { ...v, links } : v)));
+      setVideos((prevVideos) =>
+        prevVideos.map((v) =>
+          v.id === videoId ? { ...v, links: [...links] } : v
+        )
+      );
     },
-    [videos]
+    []
   );
 
   const addQuestion = (videoId: string) => {
@@ -404,10 +408,7 @@ export default function InteractiveSessionForm() {
               timestamp_seconds: link.timestamp_seconds,
               label: link.label,
               url: link.link_type === "url" ? link.url : null,
-              destination_video_id:
-                link.link_type === "video" || link.link_type === "form"
-                  ? null // Will be updated later after all videos are uploaded
-                  : null,
+              destination_video_id: null,
               link_type: link.link_type,
               position_x: link.position_x || 20,
               position_y: link.position_y || 20,
