@@ -86,6 +86,8 @@ export default function EditInteractiveSession({
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(false);
   const [videos, setVideos] = useState<Video[]>([]);
+  // In parent component (EditInteractiveSession)
+  const [videoButtonForms, setVideoButtonForms] = useState({});
 
   // Generate available videos list for video link destinations
   const availableVideos = videos.map((video) => ({
@@ -108,6 +110,7 @@ export default function EditInteractiveSession({
           throw sessionError || new Error("Session not found");
 
         setSessionName(sessionData.title);
+
         setUserId(sessionData.created_by);
 
         // Get videos for this session
@@ -351,9 +354,16 @@ export default function EditInteractiveSession({
 
   const handleLinksChange = useCallback(
     (videoId: string, links: VideoLink[]) => {
-      setVideos(videos.map((v) => (v.id === videoId ? { ...v, links } : v)));
+      setVideos((prevVideos) => {
+        return prevVideos.map((v) => {
+          if (v.id === videoId) {
+            return { ...v, links };
+          }
+          return v;
+        });
+      });
     },
-    [videos]
+    []
   );
 
   const addQuestion = (videoId: string) => {
@@ -951,7 +961,7 @@ export default function EditInteractiveSession({
         }
       }
 
-      // router.push("/sessions");
+      router.push("/sessions");
       showToast("success", "Interactive Session updated successfully!");
     } catch (error) {
       console.error("Error updating session:", error);
@@ -999,6 +1009,11 @@ export default function EditInteractiveSession({
   }
 
   const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
+
+  console.log(
+    "LINKS",
+    videos.flatMap((v) => v.links)
+  );
 
   return (
     <div className="container mx-auto">
@@ -1112,6 +1127,12 @@ export default function EditInteractiveSession({
                               handleLinksChange(video.id, links)
                             }
                             onDelete={() => removeVideo(video.id)}
+                            onButtonFormsChange={(forms) =>
+                              setVideoButtonForms((prev) => ({
+                                ...prev,
+                                [video.id]: forms,
+                              }))
+                            }
                           />
                         </div>
                         {/* Freeze at end option */}
@@ -1162,11 +1183,9 @@ export default function EditInteractiveSession({
                                 NOTE: If the video has questions, the video will
                                 automatically be paused at the last frame.
                               </p>
-                              <div className="grid grid-cols-12 gap-3 mt-3 items-center">
-                                <Label className="col-span-3">
-                                  Next Video:
-                                </Label>
-                                <div className="col-span-9">
+                              <div className="flex gap-3 mt-3 items-center">
+                                <Label>Next Video:</Label>
+                                <div>
                                   <Select
                                     value={video.destination_video_id || "no"}
                                     onValueChange={(value) =>

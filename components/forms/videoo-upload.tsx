@@ -333,7 +333,7 @@ function ImageUploader({
   imageUrl?: string; // Database URL
   previewUrl?: string; // Preview URL (blob or temporary)
   onImageChange: (file: File | null, url?: string) => void;
-  onDimensionsChange: (width: number, height: number) => void;
+  onDimensionsChange: (width?: number, height?: number) => void;
   width?: number;
   height?: number;
 }) {
@@ -434,28 +434,36 @@ function ImageUploader({
       )}
       {displayUrl && (
         <div className="flex gap-2">
+          {/* Width Input */}
           <div className="flex-1">
             <Label className="text-xs">Width (px)</Label>
             <Input
               type="number"
-              value={width === undefined ? "" : width}
+              min={0}
+              max={500}
+              value={width ?? ""}
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === "") {
-                  onDimensionsChange(undefined as any, height ?? 0); // allow clearing
+                  onDimensionsChange(undefined, height); // ✅ allow clearing
                   return;
                 }
                 const num = parseInt(val, 10);
                 if (!isNaN(num)) {
-                  onDimensionsChange(num, height ?? 0);
+                  onDimensionsChange(num, height);
                 }
               }}
               onBlur={(e) => {
-                const num = parseInt(e.target.value, 10);
+                const val = e.target.value;
+                if (val === "") {
+                  onDimensionsChange(undefined, height); // ✅ allow clearing on blur too
+                  return;
+                }
+                const num = parseInt(val, 10);
                 if (!isNaN(num)) {
                   onDimensionsChange(
-                    Math.min(Math.max(num, 0), 500),
-                    height ?? 0
+                    Math.min(Math.max(num, 0), 500), // ✅ clamp to 0–500 (removed minimum of 10)
+                    height
                   );
                 }
               }}
@@ -464,28 +472,37 @@ function ImageUploader({
               step={1}
             />
           </div>
+
+          {/* Height Input */}
           <div className="flex-1">
             <Label className="text-xs">Height (px)</Label>
             <Input
               type="number"
-              value={height === undefined ? "" : height}
+              min={0}
+              max={500}
+              value={height ?? ""}
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === "") {
-                  onDimensionsChange(width ?? 0, undefined as any);
+                  onDimensionsChange(width, undefined); // ✅ allow clearing
                   return;
                 }
                 const num = parseInt(val, 10);
                 if (!isNaN(num)) {
-                  onDimensionsChange(width ?? 0, num);
+                  onDimensionsChange(width, num);
                 }
               }}
               onBlur={(e) => {
-                const num = parseInt(e.target.value, 10);
+                const val = e.target.value;
+                if (val === "") {
+                  onDimensionsChange(width, undefined); // ✅ allow clearing on blur too
+                  return;
+                }
+                const num = parseInt(val, 10);
                 if (!isNaN(num)) {
                   onDimensionsChange(
-                    width ?? 0,
-                    Math.min(Math.max(num, 0), 500)
+                    width,
+                    Math.min(Math.max(num, 0), 500) // ✅ clamp to 0–500 (removed minimum of 10)
                   );
                 }
               }}
@@ -507,6 +524,7 @@ type VideoUploadWithLinksProps = {
   onLinksChange: (links: VideoLink[]) => void;
   onDelete: () => void;
   uploadImageToSupabase?: (file: File, path: string) => Promise<string>;
+  onButtonFormsChange?: (forms: any) => void;
 };
 
 function VideoUploadWithLinksComponent({
@@ -516,6 +534,7 @@ function VideoUploadWithLinksComponent({
   onLinksChange,
   onDelete,
   uploadImageToSupabase,
+  onButtonFormsChange,
 }: VideoUploadWithLinksProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -616,8 +635,34 @@ function VideoUploadWithLinksComponent({
     },
     []
   );
+  const areFormsDifferentFromLinks = useCallback(
+    (forms: typeof buttonForms, links: VideoLink[]) => {
+      if (forms.length !== links.length) return true;
 
-  // Enhanced sync modal state with existing video.links when modal opens
+      return forms.some((form, index) => {
+        const link = links[index];
+        if (!link) return true;
+
+        return (
+          form.id !== link.id ||
+          form.label !== link.label ||
+          form.timestamp !== String(link.timestamp_seconds) ||
+          form.linkType !== link.link_type ||
+          form.url !== (link.url || "") ||
+          form.destinationVideoId !== (link.destination_video_id || "") ||
+          form.position_x !== (link.position_x || 20) ||
+          form.position_y !== (link.position_y || 20) ||
+          form.normal_image_width !== (link.normal_image_width || 100) ||
+          form.normal_image_height !== (link.normal_image_height || 100) ||
+          form.hover_image_width !== (link.hover_image_width || 100) ||
+          form.hover_image_height !== (link.hover_image_height || 100) ||
+          JSON.stringify(form.formData) !== JSON.stringify(link.form_data)
+        );
+      });
+    },
+    []
+  );
+
   useEffect(() => {
     if (isModalOpen) {
       if (unsavedChangesRef.current.length > 0) {
@@ -643,7 +688,7 @@ function VideoUploadWithLinksComponent({
 
         setButtonForms(formsWithRegeneratedBlobs);
       } else if (video.links && video.links.length > 0) {
-        // Initialize from saved video links
+        // Initialize from saved video links - ALWAYS sync from props when no unsaved changes
         setButtonForms(
           video.links.map((link) => ({
             id: link.id,
@@ -662,7 +707,6 @@ function VideoUploadWithLinksComponent({
             hover_image_height: link.hover_image_height || 100,
             normal_state_image: link.normal_state_image,
             hover_state_image: link.hover_state_image,
-            // Generate preview URLs for existing files
             normalImagePreview: link.normalImageFile
               ? URL.createObjectURL(link.normalImageFile)
               : link.normalImagePreview,
@@ -676,21 +720,32 @@ function VideoUploadWithLinksComponent({
         setButtonForms([]);
       }
     }
-  }, [isModalOpen, video.links]);
+  }, [isModalOpen, video.links]); // Keep video.links as dependency
 
-  // Cleanup blob URLs when component unmounts
   useEffect(() => {
-    return () => {
-      buttonForms.forEach((form) => {
-        if (form.normalImagePreview?.startsWith("blob:")) {
-          URL.revokeObjectURL(form.normalImagePreview);
-        }
-        if (form.hoverImagePreview?.startsWith("blob:")) {
-          URL.revokeObjectURL(form.hoverImagePreview);
-        }
-      });
-    };
-  }, []);
+    // Only sync when modal is closed and we have no unsaved changes
+    if (!isModalOpen && unsavedChangesRef.current.length === 0) {
+      // This ensures that when other videos update, this component stays in sync
+      if (video.links && video.links.length > 0) {
+        // Don't update buttonForms here, just clear unsaved changes
+        // The modal will sync from video.links when it opens
+      }
+    }
+  }, [video.links, isModalOpen]);
+  
+  // // Cleanup blob URLs when component unmounts
+  // useEffect(() => {
+  //   return () => {
+  //     buttonForms.forEach((form) => {
+  //       if (form.normalImagePreview?.startsWith("blob:")) {
+  //         URL.revokeObjectURL(form.normalImagePreview);
+  //       }
+  //       if (form.hoverImagePreview?.startsWith("blob:")) {
+  //         URL.revokeObjectURL(form.hoverImagePreview);
+  //       }
+  //     });
+  //   };
+  // }, []);
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -726,11 +781,14 @@ function VideoUploadWithLinksComponent({
 
           let updated = { ...form, [field]: value };
 
+          // Handle link type specific logic
           if (field === "url" && value) {
+            // If URL is set, ensure link type is URL and clear other fields
             updated.linkType = "url";
             updated.destinationVideoId = "";
             updated.formData = undefined;
           } else if (field === "destinationVideoId" && value) {
+            // If destination video is set, ensure proper link type
             updated.url = "";
             if (updated.linkType === "url") {
               updated.linkType = "video";
@@ -739,7 +797,9 @@ function VideoUploadWithLinksComponent({
               updated.formData = undefined;
             }
           } else if (field === "linkType") {
+            // Handle link type changes
             if (value === "form") {
+              // Initialize form data if switching to form type
               if (!updated.formData) {
                 updated.formData = {
                   title: "Contact Form",
@@ -760,20 +820,57 @@ function VideoUploadWithLinksComponent({
                 };
               }
               updated.url = "";
+              updated.destinationVideoId = "";
             } else if (value === "url") {
+              // Clear form and video data when switching to URL type
               updated.formData = undefined;
               updated.destinationVideoId = "";
             } else if (value === "video") {
+              // Clear form and URL data when switching to video type
               updated.formData = undefined;
               updated.url = "";
             }
+          } else if (field === "timestamp") {
+            // Ensure timestamp is within video bounds
+            const timestampValue = parseInt(value) || 0;
+            const maxTimestamp = video.duration || Infinity;
+            updated.timestamp = Math.max(
+              0,
+              Math.min(timestampValue, maxTimestamp)
+            ).toString();
+          } else if (field === "position_x") {
+            // Ensure position is within reasonable bounds (0-90%)
+            updated.position_x = Math.max(
+              0,
+              Math.min(90, parseInt(value) || 20)
+            );
+          } else if (field === "position_y") {
+            // Ensure position is within reasonable bounds (0-90%)
+            updated.position_y = Math.max(
+              0,
+              Math.min(90, parseInt(value) || 20)
+            );
+          } else if (
+            field === "normal_image_width" ||
+            field === "normal_image_height"
+          ) {
+            // Ensure image dimensions are reasonable
+            const dimensionValue = parseInt(value) || 0;
+            updated[field] = Math.max(0, Math.min(500, dimensionValue));
+          } else if (
+            field === "hover_image_width" ||
+            field === "hover_image_height"
+          ) {
+            // Ensure image dimensions are reasonable
+            const dimensionValue = parseInt(value) || 0;
+            updated[field] = Math.max(0, Math.min(500, dimensionValue));
           }
 
           return updated;
         })
       );
     },
-    []
+    [video.duration]
   );
 
   const handleImageMove = useCallback(
@@ -850,19 +947,29 @@ function VideoUploadWithLinksComponent({
   const handleSaveButton = useCallback(async () => {
     setIsUploading(true);
     try {
-      const updatedLinks: VideoLink[] = [];
-
+      // Validate all forms first
       for (const formData of buttonForms) {
-        const ts = parseInt(formData.timestamp);
-        if (!formData.label) {
+        if (!formData.label.trim()) {
           alert("Please provide a label for all buttons.");
           setIsUploading(false);
           return;
         }
+        if (!formData.timestamp || isNaN(parseInt(formData.timestamp))) {
+          alert("Please provide valid timestamps for all buttons.");
+          setIsUploading(false);
+          return;
+        }
+      }
+
+      const updatedLinks: VideoLink[] = [];
+
+      for (const formData of buttonForms) {
+        const ts = parseInt(formData.timestamp);
+
         const linkData: VideoLink = {
           id: formData.id ?? Math.random().toString(36).substr(2, 9),
           timestamp_seconds: ts,
-          label: formData.label,
+          label: formData.label.trim(),
           link_type: formData.linkType,
           position_x: formData.position_x,
           position_y: formData.position_y,
@@ -896,19 +1003,24 @@ function VideoUploadWithLinksComponent({
         updatedLinks.push(linkData);
       }
 
-      // Store current state for unsaved changes
-      unsavedChangesRef.current = buttonForms;
+      // Clear unsaved changes FIRST
+      unsavedChangesRef.current = [];
 
+      // Then update parent
       onLinksChange(updatedLinks);
+
+      // Close modal
       setIsModalOpen(false);
       setIsEditMode(false);
     } catch (error) {
       console.error("Error saving links:", error);
       alert("Error saving links. Please try again.");
+      // Restore unsaved changes on error
+      unsavedChangesRef.current = buttonForms;
     } finally {
       setIsUploading(false);
     }
-  }, [buttonForms, onLinksChange]);
+  }, [buttonForms, onLinksChange, areFormsDifferentFromLinks]);
 
   // Get video URL - works for both local files and remote URLs
   const videoUrl = useMemo(() => {
@@ -1037,8 +1149,17 @@ function VideoUploadWithLinksComponent({
         open={isModalOpen}
         onOpenChange={(open) => {
           if (!open) {
-            // Save current state to ref before closing
-            unsavedChangesRef.current = buttonForms;
+            // Use the better comparison function
+            const hasChanges = areFormsDifferentFromLinks(
+              buttonForms,
+              video.links || []
+            );
+
+            if (hasChanges && buttonForms.length > 0) {
+              unsavedChangesRef.current = buttonForms;
+            } else {
+              unsavedChangesRef.current = [];
+            }
           }
           setIsModalOpen(open);
           if (!open) {
@@ -1360,7 +1481,51 @@ function VideoUploadWithLinksComponent({
                           </div>
 
                           {formData.formData && (
-                            <div>
+                            <div className="space-y-4">
+                              {/* Add form title input field */}
+                              <div>
+                                <Label className="font-bold my-2">
+                                  Form Title
+                                </Label>
+                                <Input
+                                  placeholder="Enter form title"
+                                  value={
+                                    formData.formData.title || "Contact Form"
+                                  }
+                                  onChange={(e) => {
+                                    const newFormData = {
+                                      ...formData.formData,
+                                      title: e.target.value,
+                                    };
+                                    handleFormChange(
+                                      index,
+                                      "formData",
+                                      newFormData
+                                    );
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                <Label className="font-bold my-2">
+                                  Form Email
+                                </Label>
+                                <Input
+                                  placeholder="Enter email"
+                                  value={formData.formData.email || ""}
+                                  onChange={(e) => {
+                                    const newFormData = {
+                                      ...formData.formData,
+                                      email: e.target.value,
+                                    };
+                                    handleFormChange(
+                                      index,
+                                      "formData",
+                                      newFormData
+                                    );
+                                  }}
+                                />
+                              </div>
+
                               <EnhancedFormBuilder
                                 formData={formData.formData}
                                 onChange={(newFormData) =>

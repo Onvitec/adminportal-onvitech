@@ -137,5 +137,7 @@ export type FormElement = {
 
 export type FormSolutionData = {
   description?: string;
+  title: string;
+  email: string;
   elements: FormElement[];
 };

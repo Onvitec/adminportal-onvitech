@@ -5,7 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, GripVertical } from "lucide-react";
 
-export type FormElementType = "text" | "email" | "number" | "textarea" | "dropdown" | "checkbox" | "radio";
+export type FormElementType =
+  | "text"
+  | "email"
+  | "number"
+  | "textarea"
+  | "dropdown"
+  | "checkbox"
+  | "radio";
 
 export type FormOption = {
   id: string;
@@ -23,6 +30,7 @@ export type FormElement = {
 export type FormSolutionData = {
   title?: string;
   elements: FormElement[];
+  email?:string;
 };
 
 interface EnhancedFormBuilderProps {
@@ -37,78 +45,91 @@ const DEFAULT_FORM: FormSolutionData = {
       id: `elem-${Date.now()}`,
       type: "text",
       label: "Name",
-      placeholder: "Enter your name"
+      placeholder: "Enter your name",
     },
     {
       id: `elem-${Date.now() + 1}`,
       type: "email",
       label: "Email",
-      placeholder: "Enter your email"
-    }
-  ]
+      placeholder: "Enter your email",
+    },
+  ],
 };
 
-export function EnhancedFormBuilder({ formData = DEFAULT_FORM, onChange }: EnhancedFormBuilderProps) {
-  console.log("Rendering EnhancedFormBuilder with formData:", formData);
+export function EnhancedFormBuilder({
+  formData = DEFAULT_FORM,
+  onChange,
+}: EnhancedFormBuilderProps) {
   const addElement = (type: FormElementType) => {
+    const label =
+      type === "textarea"
+        ? "Text Area"
+        : type.charAt(0).toUpperCase() + type.slice(1);
+
+    const placeholder =
+      type === "textarea" ? "Enter your text here" : `Enter your ${type}`;
+
     const newElement: FormElement = {
       id: `elem-${Date.now()}`,
       type,
-      label: type.charAt(0).toUpperCase() + type.slice(1),
-      placeholder: `Enter your ${type}`
+      label,
+      placeholder,
     };
 
     if (type === "dropdown" || type === "checkbox" || type === "radio") {
       newElement.options = [
         { id: `opt-${Date.now()}-1`, label: "Option 1" },
-        { id: `opt-${Date.now()}-2`, label: "Option 2" }
+        { id: `opt-${Date.now()}-2`, label: "Option 2" },
       ];
     }
 
     onChange({
       ...formData,
-      elements: [...formData.elements, newElement]
+      elements: [...formData.elements, newElement],
     });
   };
 
   const updateElement = (id: string, updates: Partial<FormElement>) => {
     onChange({
       ...formData,
-      elements: formData.elements.map(el => 
+      elements: formData.elements.map((el) =>
         el.id === id ? { ...el, ...updates } : el
-      )
+      ),
     });
   };
 
   const removeElement = (id: string) => {
     onChange({
       ...formData,
-      elements: formData.elements.filter(el => el.id !== id)
+      elements: formData.elements.filter((el) => el.id !== id),
     });
   };
 
   const updateTitle = (title: string) => {
     onChange({
       ...formData,
-      title
+      title,
     });
   };
 
   const addOption = (elementId: string) => {
-    const element = formData.elements.find(el => el.id === elementId);
+    const element = formData.elements.find((el) => el.id === elementId);
     if (element && element.options) {
       const newOptions = [
-        ...element.options, 
-        { id: `opt-${Date.now()}`, label: `Option ${element.options.length + 1}` }
+        ...element.options,
+        {
+          id: `opt-${Date.now()}`,
+          label: `Option ${element.options.length + 1}`,
+        },
       ];
       updateElement(elementId, { options: newOptions });
     }
   };
 
   const updateOption = (elementId: string, optionId: string, label: string) => {
-    const element = formData.elements.find(el => el.id === elementId);
+    const element = formData.elements.find((el) => el.id === elementId);
     if (element && element.options) {
-      const newOptions = element.options.map(opt => 
+      const newOptions = element.options.map((opt) =>
         opt.id === optionId ? { ...opt, label } : opt
       );
       updateElement(elementId, { options: newOptions });
@@ -116,9 +137,9 @@ export function EnhancedFormBuilder({ formData = DEFAULT_FORM, onChange }: Enhan
   };
 
   const removeOption = (elementId: string, optionId: string) => {
-    const element = formData.elements.find(el => el.id === elementId);
+    const element = formData.elements.find((el) => el.id === elementId);
     if (element && element.options) {
-      const newOptions = element.options.filter(opt => opt.id !== optionId);
+      const newOptions = element.options.filter((opt) => opt.id !== optionId);
       updateElement(elementId, { options: newOptions });
     }
   };
@@ -161,13 +182,22 @@ export function EnhancedFormBuilder({ formData = DEFAULT_FORM, onChange }: Enhan
 
       <div className="space-y-4">
         {formData.elements.map((element) => (
-          <div key={element.id} className="border rounded-lg p-4 bg-gray-50 space-y-3">
+          <div
+            key={element.id}
+            className="border rounded-lg p-4 bg-gray-50 space-y-3"
+          >
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <GripVertical className="h-4 w-4 text-gray-400" />
-                <span className="text-sm font-medium capitalize">
-                  {element.type === "checkbox" ? "Checkbox Group" : 
-                   element.type === "radio" ? "Radio Group" : element.type}
+                <span className="text-sm font-medium">
+                  {element.type === "checkbox"
+                    ? "Checkbox Group"
+                    : element.type === "radio"
+                    ? "Radio Group"
+                    : element.type === "textarea"
+                    ? "Text Area"
+                    : element.type.charAt(0).toUpperCase() +
+                      element.type.slice(1)}
                 </span>
               </div>
               <Button
@@ -185,34 +215,47 @@ export function EnhancedFormBuilder({ formData = DEFAULT_FORM, onChange }: Enhan
               <Label>Question / Field Label</Label>
               <Input
                 value={element.label}
-                onChange={(e) => updateElement(element.id, { label: e.target.value })}
+                onChange={(e) =>
+                  updateElement(element.id, { label: e.target.value })
+                }
                 placeholder="Enter your question or field label"
               />
             </div>
 
-            {element.type !== "checkbox" && element.type !== "radio" && element.type !== "dropdown" && (
-              <div className="space-y-2">
-                <Label>Placeholder Text</Label>
-                <Input
-                  value={element.placeholder || ""}
-                  onChange={(e) => updateElement(element.id, { placeholder: e.target.value })}
-                  placeholder="Placeholder text"
-                />
-              </div>
-            )}
+            {element.type !== "checkbox" &&
+              element.type !== "radio" &&
+              element.type !== "dropdown" && (
+                <div className="space-y-2">
+                  <Label>Placeholder Text</Label>
+                  <Input
+                    value={element.placeholder || ""}
+                    onChange={(e) =>
+                      updateElement(element.id, { placeholder: e.target.value })
+                    }
+                    placeholder="Placeholder text"
+                  />
+                </div>
+              )}
 
-            {(element.type === "dropdown" || element.type === "checkbox" || element.type === "radio") && (
+            {(element.type === "dropdown" ||
+              element.type === "checkbox" ||
+              element.type === "radio") && (
               <div className="space-y-2">
                 <Label>
-                  {element.type === "dropdown" ? "Dropdown Options" : 
-                   element.type === "checkbox" ? "Checkbox Options" : "Radio Options"}
+                  {element.type === "dropdown"
+                    ? "Dropdown Options"
+                    : element.type === "checkbox"
+                    ? "Checkbox Options"
+                    : "Radio Options"}
                 </Label>
                 <div className="space-y-2">
                   {element.options?.map((option) => (
                     <div key={option.id} className="flex items-center gap-2">
                       <Input
                         value={option.label}
-                        onChange={(e) => updateOption(element.id, option.id, e.target.value)}
+                        onChange={(e) =>
+                          updateOption(element.id, option.id, e.target.value)
+                        }
                         placeholder="Option label"
                       />
                       <Button

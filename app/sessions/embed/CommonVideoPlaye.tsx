@@ -181,7 +181,7 @@ function FormDisplay({
     <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 z-50">
       <div className="bg-white/30 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-white/60">
         <div className="flex justify-between items-center mb-4">
-          {/* <h2 className="text-xl font-bold text-white">{formData. || "Form"}</h2> */}
+          <h2 className="text-xl font-bold text-white">{ "Form"}</h2>
           <Button
             type="button"
             variant="ghost"
@@ -195,7 +195,7 @@ function FormDisplay({
 
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 max-h-[380px] overflow-y-auto pr-2"
+          className="space-y-4 max-h-[310px] overflow-y-auto pr-2"
         >
           {formData.elements.map((element) => (
             <div key={element.id} className="space-y-2">
