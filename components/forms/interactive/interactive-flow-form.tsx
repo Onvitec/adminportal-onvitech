@@ -416,6 +416,7 @@ export default function InteractiveSessionForm() {
               hover_state_image: hoverImageUrl,
               normal_image_width: link.normal_image_width,
               normal_image_height: link.normal_image_height,
+              duration_ms:link.duration_ms,
               hover_image_width: link.hover_image_width,
               hover_image_height: link.hover_image_height,
               form_data: link.link_type === "form" ? link.form_data : null,

@@ -244,13 +244,13 @@ export function CommonVideoPlayer({
   onVideoRestart,
   isPaused = false,
   children,
-  hasQuestions = false, // Add this new prop
+  hasQuestions = false,
 }: CommonVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [mouseActive, setMouseActive] = useState(false);
   const [activeLinks, setActiveLinks] = useState<VideoLink[]>([]);
-  const [showFreezeControls, setShowFreezeControls] = useState(false); // New state for freeze mode
+  const [showFreezeControls, setShowFreezeControls] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const mouseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -261,15 +261,28 @@ export function CommonVideoPlayer({
 
     const handleTimeUpdate = () => {
       const links = videoLinks[currentVideo.id] || [];
-      const currentTime = Math.floor(videoEl.currentTime);
+      const currentTime = videoEl.currentTime;
 
-      // Show link if currentTime matches within window (3 seconds)
-      const visible = links.filter(
-        (l) =>
-          currentTime >= l.timestamp_seconds &&
-          currentTime <= l.timestamp_seconds + 3
-      );
-      setActiveLinks(visible);
+      // Calculate visible links based on timestamp and duration
+      const visibleLinks = links.filter((link) => {
+        const startTime = link.timestamp_seconds;
+        const durationSeconds = (link.duration_ms || 3000) / 1000;
+        const endTime = startTime + durationSeconds;
+
+        return currentTime >= startTime && currentTime <= endTime;
+      });
+
+      // Update active links only if there's a change
+      setActiveLinks((prev) => {
+        // Check if the visible links have changed
+        if (
+          prev.length !== visibleLinks.length ||
+          !prev.every((link, i) => link.id === visibleLinks[i]?.id)
+        ) {
+          return visibleLinks;
+        }
+        return prev;
+      });
     };
 
     videoEl.addEventListener("timeupdate", handleTimeUpdate);
@@ -422,11 +435,11 @@ export function CommonVideoPlayer({
         className="w-full h-auto object-contain rounded-xl cursor-pointer"
         controls={false}
         onClick={togglePlayPause}
-        onEnded={handleVideoEnd} // Use our custom handler
+        onEnded={handleVideoEnd}
         onPlay={() => {
           setIsPlaying(true);
           if (videoRef.current?.currentTime === 0) {
-            onVideoRestart?.(); // 👈 clear forms/questions on restart
+            onVideoRestart?.();
           }
         }}
         onPause={() => {
@@ -462,12 +475,6 @@ export function CommonVideoPlayer({
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Watch Again
               </Button>
-              {/* <Button
-                onClick={handleContinue}
-                className="bg-white/30 text-white hover:bg-white/40"
-              >
-                Continue to Next
-              </Button> */}
             </div>
           </div>
         </div>

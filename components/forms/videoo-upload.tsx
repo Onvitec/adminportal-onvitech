@@ -540,7 +540,6 @@ function VideoUploadWithLinksComponent({
   const [isEditMode, setIsEditMode] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  console.log("VIDEO LINKS", video.links);
   const [buttonForms, setButtonForms] = useState<
     {
       id?: string;
@@ -561,6 +560,7 @@ function VideoUploadWithLinksComponent({
       hover_state_image?: string;
       normalImagePreview?: string;
       hoverImagePreview?: string;
+      duration_ms?: number;
       formData?: FormSolutionData;
     }[]
   >([]);
@@ -652,6 +652,7 @@ function VideoUploadWithLinksComponent({
           form.destinationVideoId !== (link.destination_video_id || "") ||
           form.position_x !== (link.position_x || 20) ||
           form.position_y !== (link.position_y || 20) ||
+          form.duration_ms !== (link.duration_ms || "") ||
           form.normal_image_width !== (link.normal_image_width || 100) ||
           form.normal_image_height !== (link.normal_image_height || 100) ||
           form.hover_image_width !== (link.hover_image_width || 100) ||
@@ -699,6 +700,7 @@ function VideoUploadWithLinksComponent({
             destinationVideoId: link.destination_video_id || "",
             position_x: link.position_x || 20,
             position_y: link.position_y || 20,
+            duration_ms: link.duration_ms,
             normalImageFile: link.normalImageFile || null,
             hoverImageFile: link.hoverImageFile || null,
             normal_image_width: link.normal_image_width || 100,
@@ -732,7 +734,7 @@ function VideoUploadWithLinksComponent({
       }
     }
   }, [video.links, isModalOpen]);
-  
+
   // // Cleanup blob URLs when component unmounts
   // useEffect(() => {
   //   return () => {
@@ -910,6 +912,7 @@ function VideoUploadWithLinksComponent({
         normal_image_height: 0,
         hover_image_width: 0,
         hover_image_height: 0,
+        duration_ms: 0,
         formData: undefined,
       },
     ]);
@@ -973,6 +976,7 @@ function VideoUploadWithLinksComponent({
           link_type: formData.linkType,
           position_x: formData.position_x,
           position_y: formData.position_y,
+          duration_ms: formData.duration_ms,
           normal_state_image: formData.normal_state_image,
           hover_state_image: formData.hover_state_image,
           normal_image_width: formData.normal_image_width,
@@ -1070,6 +1074,7 @@ function VideoUploadWithLinksComponent({
             link_type: form.linkType,
             position_x: form.position_x,
             position_y: form.position_y,
+            duration_ms:form.duration_ms,
             form_data: form.formData as any,
             // Use preview URLs if available, otherwise use database URLs
             normal_state_image: form.normal_state_image,
@@ -1258,6 +1263,37 @@ function VideoUploadWithLinksComponent({
                             clampedValue = video.duration;
 
                           handleFormChange(index, "timestamp", clampedValue);
+                        }}
+                      />
+                    </div>
+
+                    {/* Duration */}
+                    <div className="flex flex-col gap-2">
+                      <Label className="font-bold">Duration (seconds)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        max={video.duration || undefined} // assuming video.duration is in seconds
+                        value={
+                          formData.duration_ms
+                            ? formData.duration_ms / 1000
+                            : ""
+                        } // show in seconds
+                        onChange={(e) => {
+                          const rawSeconds = Number(e.target.value);
+
+                          // Clamp between 0 and video.duration
+                          let clampedSeconds = rawSeconds;
+                          if (rawSeconds < 0) clampedSeconds = 0;
+                          if (video.duration && rawSeconds > video.duration)
+                            clampedSeconds = video.duration;
+
+                          // Save in ms
+                          handleFormChange(
+                            index,
+                            "duration_ms",
+                            clampedSeconds * 1000
+                          );
                         }}
                       />
                     </div>

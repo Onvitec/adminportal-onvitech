@@ -17,6 +17,7 @@ export type VideoLink = {
   timestamp_seconds: number;
   label: string;
   url?: string;
+  duration_ms?: number;
   video_id?: string;
   destination_video_id?: string | null; // Optional destination video ID
   destination_video?: VideoType;
