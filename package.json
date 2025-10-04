@@ -38,6 +38,7 @@
     "reactflow": "^11.11.4",
     "recharts": "^2.15.3",
     "sonner": "^2.0.3",
+    "supabase": "^2.48.3",
     "tailwind-merge": "^3.3.0",
     "uuid": "^11.1.0"
   },

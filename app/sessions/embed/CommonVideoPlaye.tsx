@@ -181,7 +181,7 @@ function FormDisplay({
     <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 z-50">
       <div className="bg-white/30 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-white/60">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-white">{ "Form"}</h2>
+          <h2 className="text-xl font-bold text-white">{"Form"}</h2>
           <Button
             type="button"
             variant="ghost"
@@ -309,6 +309,53 @@ export function CommonVideoPlayer({
     setShowFreezeControls(false);
   }, [currentVideo]);
 
+  const [videoRect, setVideoRect] = useState<{
+    width: number;
+    height: number;
+    left: number;
+    top: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const updateVideoRect = () => {
+      const videoElement = video;
+      const containerRect = videoElement.getBoundingClientRect();
+      const videoAspect = videoElement.videoWidth / videoElement.videoHeight;
+      const containerAspect = containerRect.width / containerRect.height;
+
+      let actualVideoWidth, actualVideoHeight, offsetLeft, offsetTop;
+
+      if (containerAspect > videoAspect) {
+        actualVideoHeight = containerRect.height;
+        actualVideoWidth = actualVideoHeight * videoAspect;
+        offsetLeft = (containerRect.width - actualVideoWidth) / 2;
+        offsetTop = 0;
+      } else {
+        actualVideoWidth = containerRect.width;
+        actualVideoHeight = actualVideoWidth / videoAspect;
+        offsetLeft = 0;
+        offsetTop = (containerRect.height - actualVideoHeight) / 2;
+      }
+
+      setVideoRect({
+        width: actualVideoWidth,
+        height: actualVideoHeight,
+        left: offsetLeft,
+        top: offsetTop,
+      });
+    };
+
+    video.addEventListener("loadedmetadata", updateVideoRect);
+    window.addEventListener("resize", updateVideoRect);
+
+    return () => {
+      video.removeEventListener("loadedmetadata", updateVideoRect);
+      window.removeEventListener("resize", updateVideoRect);
+    };
+  }, [currentVideo]);
   const togglePlayPause = () => {
     if (videoRef.current) {
       if (isPlaying) {
@@ -432,7 +479,7 @@ export function CommonVideoPlayer({
         autoPlay
         muted
         src={currentVideo.url}
-        className="w-full h-auto object-contain rounded-xl cursor-pointer"
+        className="w-full h-[500px] object-contain rounded-xl cursor-pointer"
         controls={false}
         onClick={togglePlayPause}
         onEnded={handleVideoEnd}
@@ -532,9 +579,19 @@ export function CommonVideoPlayer({
                 key={link.id}
                 className="absolute z-10 cursor-pointer transition-transform duration-200 hover:opacity-90 hover:scale-105 group"
                 style={{
-                  left: `${link.position_x}%`,
-                  top: `${link.position_y}%`,
-                  transform: "translate(-50%, -50%)",
+                  left: videoRect
+                    ? `${
+                        videoRect.left +
+                        (link.position_x / 100) * videoRect.width
+                      }px`
+                    : `${link.position_x}%`,
+                  top: videoRect
+                    ? `${
+                        videoRect.top +
+                        (link.position_y / 100) * videoRect.height 
+                      }px`
+                    : `${link.position_y}%`,
+                  transform: "translate(-50%, -50%)", // Ensure consistent centering
                 }}
                 onClick={() => onVideoLinkClick(link)}
                 title={

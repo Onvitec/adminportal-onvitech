@@ -1,10 +1,22 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  eslint:{
-    ignoreDuringBuilds: true, // Ignore ESLint errors during build
-  }
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**", // This allows all hostnames (Next.js 13.4+)
+      },
+      {
+        protocol: "http",
+        hostname: "**",
+      },
+    ],
+    unoptimized: false, // keep optimization on
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;

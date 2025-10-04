@@ -1,7 +1,7 @@
-'use client';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession } from '@/components/session-provider';
+"use client";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "@/components/session-provider";
 
 export default function HomePage() {
   const router = useRouter();
@@ -9,9 +9,11 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      if (window.location.pathname !== '/login') {
-        router.replace('/login');
+      if (window.location.pathname !== "/login") {
+        router.replace("/login");
       }
+    } else {
+      router.replace("/dashboard");
     }
   }, [isLoading, user, router]);
 

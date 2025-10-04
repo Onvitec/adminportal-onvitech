@@ -51,6 +51,12 @@ function VideoPlayerWithDraggableImages({
   const [isDragging, setIsDragging] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [hoveredImageId, setHoveredImageId] = useState<string | null>(null);
+  const [videoRect, setVideoRect] = useState<{
+    width: number;
+    height: number;
+    left: number;
+    top: number;
+  } | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -65,6 +71,61 @@ function VideoPlayerWithDraggableImages({
     return () => {
       video.removeEventListener("loadedmetadata", updateDuration);
       video.removeEventListener("timeupdate", updateTime);
+    };
+  }, [videoUrl]);
+
+  // Calculate actual video dimensions within container
+  useEffect(() => {
+    const video = videoRef.current;
+    const container = videoContainerRef.current;
+    if (!video || !container) return;
+
+    const updateVideoRect = () => {
+      const containerRect = container.getBoundingClientRect();
+      const videoAspect = video.videoWidth / video.videoHeight;
+      const containerAspect = containerRect.width / containerRect.height;
+
+      let actualVideoWidth, actualVideoHeight, offsetLeft, offsetTop;
+
+      if (containerAspect > videoAspect) {
+        // Container is wider, video height matches container
+        actualVideoHeight = containerRect.height;
+        actualVideoWidth = actualVideoHeight * videoAspect;
+        offsetLeft = (containerRect.width - actualVideoWidth) / 2;
+        offsetTop = 0;
+      } else {
+        // Container is taller, video width matches container
+        actualVideoWidth = containerRect.width;
+        actualVideoHeight = actualVideoWidth / videoAspect;
+        offsetLeft = 0;
+        offsetTop = (containerRect.height - actualVideoHeight) / 2;
+      }
+
+      setVideoRect({
+        width: actualVideoWidth,
+        height: actualVideoHeight,
+        left: offsetLeft,
+        top: offsetTop,
+      });
+    };
+
+    const handleLoadedMetadata = () => {
+      updateVideoRect();
+      setDuration(video.duration);
+    };
+
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+    video.addEventListener("timeupdate", () =>
+      setCurrentTime(video.currentTime)
+    );
+    window.addEventListener("resize", updateVideoRect);
+
+    return () => {
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      video.removeEventListener("timeupdate", () =>
+        setCurrentTime(video.currentTime)
+      );
+      window.removeEventListener("resize", updateVideoRect);
     };
   }, [videoUrl]);
 
@@ -100,25 +161,31 @@ function VideoPlayerWithDraggableImages({
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
-      if (!isDragging || !videoContainerRef.current || !onImageMove) return;
+      if (
+        !isDragging ||
+        !videoContainerRef.current ||
+        !videoRect ||
+        !onImageMove
+      )
+        return;
 
       const containerRect = videoContainerRef.current.getBoundingClientRect();
-      const x =
-        ((e.clientX - containerRect.left - dragOffset.x) /
-          containerRect.width) *
-        100;
-      const y =
-        ((e.clientY - containerRect.top - dragOffset.y) /
-          containerRect.height) *
-        100;
 
-      // Constrain to container bounds
-      const constrainedX = Math.max(0, Math.min(85, x));
-      const constrainedY = Math.max(0, Math.min(85, y));
+      // Calculate position relative to actual video area
+      const relativeX = e.clientX - containerRect.left - videoRect.left;
+      const relativeY = e.clientY - containerRect.top - videoRect.top;
+
+      // Convert to percentage of video dimensions
+      const x = (relativeX / videoRect.width) * 100;
+      const y = (relativeY / videoRect.height) * 100;
+
+      // Constrain to video bounds (0-100%)
+      const constrainedX = Math.max(0, Math.min(100, x));
+      const constrainedY = Math.max(0, Math.min(100, y));
 
       onImageMove(isDragging, constrainedX, constrainedY);
     },
-    [isDragging, dragOffset, onImageMove]
+    [isDragging, videoRect, onImageMove]
   );
 
   const handleMouseUp = useCallback(() => {
@@ -184,7 +251,7 @@ function VideoPlayerWithDraggableImages({
     []
   );
 
-  return (
+   return (
     <div className="relative">
       <div ref={videoContainerRef} className="relative inline-block w-full">
         <video
@@ -213,9 +280,14 @@ function VideoPlayerWithDraggableImages({
                 showPreview ? "opacity-90" : ""
               }`}
               style={{
-                left: `${link.position_x}%`,
-                top: `${link.position_y}%`,
-                transform: isDragging === link.id ? "scale(1.05)" : "none",
+                // Position relative to video area, not container
+                left: videoRect 
+                  ? `${videoRect.left + (link.position_x / 100) * videoRect.width}px`
+                  : `${link.position_x}%`,
+                top: videoRect 
+                  ? `${videoRect.top + (link.position_y / 100) * videoRect.height}px`
+                  : `${link.position_y}%`,
+                transform: "translate(-50%, -50%)", // Center the image on the position
                 pointerEvents: isEditMode ? "auto" : "auto",
               }}
               onMouseDown={(e) => handleMouseDown(e, link.id)}
@@ -237,7 +309,7 @@ function VideoPlayerWithDraggableImages({
                   width: `${dimensions.width}px`,
                   height: `${dimensions.height}px`,
                 }}
-                className=" rounded "
+                className="rounded"
                 draggable={false}
               />
               {showPreview && (
@@ -249,11 +321,19 @@ function VideoPlayerWithDraggableImages({
           ) : null;
         })}
 
-        {/* Edit mode overlay */}
-        {isEditMode && (
-          <div className="absolute inset-0 bg-blue-100 bg-opacity-20 rounded-lg pointer-events-none">
-            <div className="absolute top-2 left-2 bg-yellow-400 text-black px-2 py-1 text-xs rounded font-medium">
-              Edit Mode: Drag Buttons to reposition
+        {/* Edit mode overlay with video area indicator */}
+        {isEditMode && videoRect && (
+          <div 
+            className="absolute border-2 border-dashed border-yellow-400 pointer-events-none"
+            style={{
+              left: `${videoRect.left}px`,
+              top: `${videoRect.top}px`,
+              width: `${videoRect.width}px`,
+              height: `${videoRect.height}px`,
+            }}
+          >
+            <div className="absolute -top-8 left-0 bg-yellow-400 text-black px-2 py-1 text-xs rounded font-medium">
+              Video Area: Drag buttons within this area
             </div>
           </div>
         )}
@@ -1074,7 +1154,7 @@ function VideoUploadWithLinksComponent({
             link_type: form.linkType,
             position_x: form.position_x,
             position_y: form.position_y,
-            duration_ms:form.duration_ms,
+            duration_ms: form.duration_ms,
             form_data: form.formData as any,
             // Use preview URLs if available, otherwise use database URLs
             normal_state_image: form.normal_state_image,
@@ -1191,7 +1271,7 @@ function VideoUploadWithLinksComponent({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex gap-6 my-4">
+          <div className="flex flex-col gap-6 my-4">
             {/* Left side - Video Preview */}
             {hasVideoContent && (
               <div className="flex-1">

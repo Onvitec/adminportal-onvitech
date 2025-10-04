@@ -8,12 +8,20 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { Eye, EyeOff } from "lucide-react";
 import { showToast } from "@/components/toast";
+import { useSession } from "@/components/session-provider";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const { user } = useSession();
+  if (user) {
+    router.push("/dashboard");
+    return;
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
