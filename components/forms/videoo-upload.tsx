@@ -251,7 +251,7 @@ function VideoPlayerWithDraggableImages({
     []
   );
 
-   return (
+  return (
     <div className="relative">
       <div ref={videoContainerRef} className="relative inline-block w-full">
         <video
@@ -281,11 +281,15 @@ function VideoPlayerWithDraggableImages({
               }`}
               style={{
                 // Position relative to video area, not container
-                left: videoRect 
-                  ? `${videoRect.left + (link.position_x / 100) * videoRect.width}px`
+                left: videoRect
+                  ? `${
+                      videoRect.left + (link.position_x / 100) * videoRect.width
+                    }px`
                   : `${link.position_x}%`,
-                top: videoRect 
-                  ? `${videoRect.top + (link.position_y / 100) * videoRect.height}px`
+                top: videoRect
+                  ? `${
+                      videoRect.top + (link.position_y / 100) * videoRect.height
+                    }px`
                   : `${link.position_y}%`,
                 transform: "translate(-50%, -50%)", // Center the image on the position
                 pointerEvents: isEditMode ? "auto" : "auto",
@@ -323,7 +327,7 @@ function VideoPlayerWithDraggableImages({
 
         {/* Edit mode overlay with video area indicator */}
         {isEditMode && videoRect && (
-          <div 
+          <div
             className="absolute border-2 border-dashed border-yellow-400 pointer-events-none"
             style={{
               left: `${videoRect.left}px`,
@@ -834,11 +838,6 @@ function VideoUploadWithLinksComponent({
       if (e.target.files && e.target.files[0]) {
         const selectedFile = e.target.files[0];
         const sizeInMB = selectedFile.size / (1024 * 1024);
-
-        if (sizeInMB > 50) {
-          alert("File size exceeds 50mb. Please upload a smaller file.");
-          return;
-        }
 
         const videoElement = document.createElement("video");
         videoElement.preload = "metadata";

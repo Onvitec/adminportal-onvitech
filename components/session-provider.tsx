@@ -52,6 +52,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
         if (!session) {
           setIsLoading(false);
+          if (window.location.pathname !== "/login") {
+            window.location.href = "/login";
+          }
           return;
         }
 

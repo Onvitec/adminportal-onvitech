@@ -8,6 +8,7 @@ export default function HomePage() {
   const { isLoading, user } = useSession();
 
   useEffect(() => {
+
     if (!isLoading && !user) {
       if (window.location.pathname !== "/login") {
         router.replace("/login");
