@@ -614,7 +614,7 @@ export function CommonVideoPlayer({
             return imageUrl ? (
               <div
                 key={link.id}
-                className="absolute z-10 cursor-pointer transition-transform duration-200 hover:opacity-90 hover:scale-105 group"
+                className="absolute z-10 cursor-pointer transition-transform duration-200  group"
                 style={{
                   left: videoRect
                     ? `${
