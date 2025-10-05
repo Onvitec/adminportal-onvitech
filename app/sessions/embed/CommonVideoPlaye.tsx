@@ -22,7 +22,7 @@ interface CommonVideoPlayerProps {
   hoveredLinkId?: string | null;
   setHoveredLinkId?: (id: string | null) => void;
   currentForm?: FormSolutionData | null;
-  onFormSubmit?: (data: Record<string, any>) => void;
+  onFormSubmit?: any;
   currentFormLink?: VideoLink | null;
   onFormCancel?: () => void;
   isPaused?: boolean;
@@ -73,8 +73,46 @@ function FormDisplay({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted with data:", formValues);
-    onSubmit(formValues);
+
+    // keep raw values (ids/keys)
+    const rawValues = { ...formValues };
+
+    // build label-based values
+    const formattedValues: Record<string, any> = {};
+    formData.elements.forEach((element) => {
+      const rawValue = formValues[element.id];
+
+      if (rawValue !== undefined) {
+        if (element.type === "checkbox" && Array.isArray(rawValue)) {
+          formattedValues[element.label] = rawValue
+            .map(
+              (id: string) =>
+                element.options?.find((opt) => opt.id === id)?.label || id
+            )
+            .join(", ");
+        } else if (element.type === "radio" || element.type === "dropdown") {
+          formattedValues[element.label] =
+            element.options?.find((opt) => opt.id === rawValue)?.label ||
+            rawValue;
+        } else {
+          formattedValues[element.label] = rawValue;
+        }
+      }
+    });
+
+    // final payload matches FormSolutionData + values
+    const finalPayload = {
+      title: formData.title,
+      email: formData.email,
+      description: formData.description,
+      elements: formData.elements, // keep original structure if needed
+      values: {
+        raw: rawValues,
+        formatted: formattedValues,
+      },
+    };
+
+    onSubmit(finalPayload);
   };
 
   const renderFormElement = (element: FormElement) => {
@@ -236,7 +274,6 @@ export function CommonVideoPlayer({
   onBackNavigation,
   showBackButton = false,
   hoveredLinkId,
-  setHoveredLinkId,
   currentForm,
   onFormSubmit,
   onFormCancel,
@@ -588,7 +625,7 @@ export function CommonVideoPlayer({
                   top: videoRect
                     ? `${
                         videoRect.top +
-                        (link.position_y / 100) * videoRect.height 
+                        (link.position_y / 100) * videoRect.height
                       }px`
                     : `${link.position_y}%`,
                   transform: "translate(-50%, -50%)", // Ensure consistent centering

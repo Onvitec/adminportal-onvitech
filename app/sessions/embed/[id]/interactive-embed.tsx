@@ -10,11 +10,11 @@ import {
   Solution,
   FormSolutionData,
 } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Loader2, ChevronLeft, X } from "lucide-react";
 import { Questions } from "@/components/icons";
 import { CommonVideoPlayer } from "../CommonVideoPlaye";
 import { SolutionDisplay } from "../SolutionDisplay";
+import emailjs from "@emailjs/browser";
+import { buildEmailTemplate } from "@/lib/utils";
 
 export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [videos, setVideos] = useState<VideoType[]>([]);
@@ -31,7 +31,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null);
   const [currentForm, setCurrentForm] = useState<FormSolutionData | null>(null);
   const [isVideoPaused, setIsVideoPaused] = useState(false);
-  const [destinationVideos, setDestinationVideos] = useState<Record<string, VideoType>>({});
+  const [destinationVideos, setDestinationVideos] = useState<
+    Record<string, VideoType>
+  >({});
 
   // Modify the video link click handler to store the form link
   const [currentFormLink, setCurrentFormLink] = useState<VideoLink | null>(
@@ -62,10 +64,10 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
         // Create a mapping of destination videos
         const destVideos: Record<string, VideoType> = {};
-        
+
         // First, get all destination video IDs
         const destinationVideoIds = new Set<string>();
-        
+
         for (const video of videosData || []) {
           if (video.destination_video_id) {
             destinationVideoIds.add(video.destination_video_id);
@@ -74,13 +76,14 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
         // Fetch destination videos
         if (destinationVideoIds.size > 0) {
-          const { data: destVideosData, error: destVideosError } = await supabase
-            .from("videos")
-            .select("*")
-            .in("id", Array.from(destinationVideoIds));
+          const { data: destVideosData, error: destVideosError } =
+            await supabase
+              .from("videos")
+              .select("*")
+              .in("id", Array.from(destinationVideoIds));
 
           if (!destVideosError && destVideosData) {
-            destVideosData.forEach(video => {
+            destVideosData.forEach((video) => {
               destVideos[video.id] = video;
             });
           }
@@ -162,9 +165,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
               link.destination_video_id
             ) {
               // Find the destination video from our already loaded videos
-              const destinationVideo = videosData.find(
-                (v) => v.id === link.destination_video_id
-              ) || destVideos[link.destination_video_id];
+              const destinationVideo =
+                videosData.find((v) => v.id === link.destination_video_id) ||
+                destVideos[link.destination_video_id];
 
               const result = {
                 ...link,
@@ -262,9 +265,10 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     } else {
       // Check if current video has a destination video
       if (currentVideo?.destination_video_id && !currentVideo.freezeAtEnd) {
-        const destinationVideo = destinationVideos[currentVideo.destination_video_id] || 
-                                videos.find(v => v.id === currentVideo.destination_video_id);
-        
+        const destinationVideo =
+          destinationVideos[currentVideo.destination_video_id] ||
+          videos.find((v) => v.id === currentVideo.destination_video_id);
+
         if (destinationVideo) {
           // Go to destination video
           if (currentVideo && !isNavigatingBack) {
@@ -275,7 +279,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           return;
         }
       }
-      
+
       // If no destination video or freezeAtEnd is true, check for next video in order
       const currentIndex = videos.findIndex((v) => v.id === currentVideo?.id);
       if (currentIndex < videos.length - 1 && !currentVideo?.freezeAtEnd) {
@@ -314,8 +318,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       if (link.link_type === "url" && link.url) {
         window.open(link.url, "_blank", "noopener,noreferrer");
       } else if (link.link_type === "video" && link.destination_video_id) {
-        const destinationVideo = destinationVideos[link.destination_video_id] || 
-                                videos.find(v => v.id === link.destination_video_id);
+        const destinationVideo =
+          destinationVideos[link.destination_video_id] ||
+          videos.find((v) => v.id === link.destination_video_id);
 
         if (destinationVideo) {
           if (currentVideo && !isNavigatingBack) {
@@ -334,14 +339,40 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     [videos, currentVideo, isNavigatingBack, destinationVideos]
   );
 
-  // Handle form submission
   const handleFormSubmit = useCallback(
-    (data: Record<string, any>) => {
-      console.log("Form data submitted:", data);
+    async (
+      data: FormSolutionData & {
+        values: {
+          raw: Record<string, any>;
+          formatted: Record<string, any>;
+        };
+      }
+    ) => {
+      try {
+        console.log("FORMATTED", data.values);
+        const message_html = buildEmailTemplate(data.title, data.values.formatted);
 
+        const res = await fetch("/api/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: data.email,
+            title: data.title,
+            message_html,
+          }),
+        });
+
+        const result = await res.json();
+        console.log("Email result:", result);
+      } catch (err) {
+        console.error("❌ Failed to send email:", err);
+      }
+
+      // 🔹 your existing navigation logic remains untouched
       if (currentFormLink && currentFormLink.destination_video_id) {
-        const destinationVideo = destinationVideos[currentFormLink.destination_video_id] || 
-                                videos.find(v => v.id === currentFormLink.destination_video_id);
+        const destinationVideo =
+          destinationVideos[currentFormLink.destination_video_id] ||
+          videos.find((v) => v.id === currentFormLink.destination_video_id);
 
         if (destinationVideo) {
           if (currentVideo && !isNavigatingBack) {
@@ -351,7 +382,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         }
       }
 
-      // Always resume playback and close form
       setIsVideoPaused(false);
       setCurrentForm(null);
       setCurrentFormLink(null);

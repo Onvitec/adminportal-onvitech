@@ -1041,6 +1041,20 @@ function VideoUploadWithLinksComponent({
           setIsUploading(false);
           return;
         }
+        if (formData.linkType === "form") {
+          const email = formData.formData?.email;
+
+          if (!email) {
+            alert("Please provide an email for all form submissions");
+          } else {
+            // Basic email validation regex
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (!emailRegex.test(email)) {
+              alert("Please provide a valid email address");
+            }
+          }
+        }
       }
 
       const updatedLinks: VideoLink[] = [];
@@ -1604,9 +1618,7 @@ function VideoUploadWithLinksComponent({
                                 </Label>
                                 <Input
                                   placeholder="Enter form title"
-                                  value={
-                                    formData.formData.title || "Contact Form"
-                                  }
+                                  value={formData.formData.title || ""}
                                   onChange={(e) => {
                                     const newFormData = {
                                       ...formData.formData,

@@ -39,7 +39,7 @@ interface EnhancedFormBuilderProps {
 }
 
 const DEFAULT_FORM: FormSolutionData = {
-  title: "Contact Form",
+  title: "",
   elements: [
     {
       id: `elem-${Date.now()}`,
