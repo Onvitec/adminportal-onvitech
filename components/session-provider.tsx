@@ -54,7 +54,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           setIsLoading(false);
           const path = window.location.pathname;
 
-          if (path !== "/login" && !/^\/sessions\/embed\/[^/]+$/.test(path)) {
+          if (
+            path !== "/login" &&
+            path !== "/signup" &&
+            !/^\/sessions\/embed\/[^/]+$/.test(path)
+          ) {
             window.location.href = "/login";
           }
 
