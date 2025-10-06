@@ -58,6 +58,43 @@ function VideoPlayerWithDraggableImages({
     top: number;
   } | null>(null);
 
+  // Calculate actual video dimensions within container
+  const calculateVideoRect = useCallback(() => {
+    const video = videoRef.current;
+    const container = videoContainerRef.current;
+    if (!video || !container || video.videoWidth === 0) return null;
+
+    const containerRect = container.getBoundingClientRect();
+    const videoAspect = video.videoWidth / video.videoHeight;
+    const containerAspect = containerRect.width / containerRect.height;
+
+    let actualVideoWidth, actualVideoHeight, offsetLeft, offsetTop;
+
+    if (containerAspect > videoAspect) {
+      // Container is wider, video height matches container
+      actualVideoHeight = containerRect.height;
+      actualVideoWidth = actualVideoHeight * videoAspect;
+      offsetLeft = (containerRect.width - actualVideoWidth) / 2;
+      offsetTop = 0;
+    } else {
+      // Container is taller, video width matches container
+      actualVideoWidth = containerRect.width;
+      actualVideoHeight = actualVideoWidth / videoAspect;
+      offsetLeft = 0;
+      offsetTop = (containerRect.height - actualVideoHeight) / 2;
+    }
+
+    const rect = {
+      width: actualVideoWidth,
+      height: actualVideoHeight,
+      left: offsetLeft,
+      top: offsetTop,
+    };
+
+    setVideoRect(rect);
+    return rect;
+  }, []);
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -74,60 +111,41 @@ function VideoPlayerWithDraggableImages({
     };
   }, [videoUrl]);
 
-  // Calculate actual video dimensions within container
   useEffect(() => {
     const video = videoRef.current;
     const container = videoContainerRef.current;
     if (!video || !container) return;
 
-    const updateVideoRect = () => {
-      const containerRect = container.getBoundingClientRect();
-      const videoAspect = video.videoWidth / video.videoHeight;
-      const containerAspect = containerRect.width / containerRect.height;
-
-      let actualVideoWidth, actualVideoHeight, offsetLeft, offsetTop;
-
-      if (containerAspect > videoAspect) {
-        // Container is wider, video height matches container
-        actualVideoHeight = containerRect.height;
-        actualVideoWidth = actualVideoHeight * videoAspect;
-        offsetLeft = (containerRect.width - actualVideoWidth) / 2;
-        offsetTop = 0;
-      } else {
-        // Container is taller, video width matches container
-        actualVideoWidth = containerRect.width;
-        actualVideoHeight = actualVideoWidth / videoAspect;
-        offsetLeft = 0;
-        offsetTop = (containerRect.height - actualVideoHeight) / 2;
-      }
-
-      setVideoRect({
-        width: actualVideoWidth,
-        height: actualVideoHeight,
-        left: offsetLeft,
-        top: offsetTop,
-      });
-    };
-
     const handleLoadedMetadata = () => {
-      updateVideoRect();
+      calculateVideoRect();
       setDuration(video.duration);
     };
 
+    const handleResize = () => {
+      calculateVideoRect();
+    };
+
+    const handleTimeUpdate = () => setCurrentTime(video.currentTime);
+
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
-    video.addEventListener("timeupdate", () =>
-      setCurrentTime(video.currentTime)
-    );
-    window.addEventListener("resize", updateVideoRect);
+    video.addEventListener("timeupdate", handleTimeUpdate);
+    window.addEventListener("resize", handleResize);
+
+    // Also calculate when video dimensions become available
+    const checkVideoDimensions = setInterval(() => {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        calculateVideoRect();
+        clearInterval(checkVideoDimensions);
+      }
+    }, 100);
 
     return () => {
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      video.removeEventListener("timeupdate", () =>
-        setCurrentTime(video.currentTime)
-      );
-      window.removeEventListener("resize", updateVideoRect);
+      video.removeEventListener("timeupdate", handleTimeUpdate);
+      window.removeEventListener("resize", handleResize);
+      clearInterval(checkVideoDimensions);
     };
-  }, [videoUrl]);
+  }, [videoUrl, calculateVideoRect]);
 
   const seekToTime = useCallback((time: number) => {
     if (videoRef.current) {
@@ -143,7 +161,7 @@ function VideoPlayerWithDraggableImages({
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent, linkId: string) => {
-      if (!isEditMode) return;
+      if (!isEditMode || !videoRect) return;
 
       e.preventDefault();
       e.stopPropagation();
@@ -156,7 +174,7 @@ function VideoPlayerWithDraggableImages({
         y: e.clientY - rect.top,
       });
     },
-    [isEditMode]
+    [isEditMode, videoRect]
   );
 
   const handleMouseMove = useCallback(
@@ -251,9 +269,79 @@ function VideoPlayerWithDraggableImages({
     []
   );
 
+  // Convert percentage position to actual pixels based on videoRect
+  const getImagePosition = useCallback(
+    (link: VideoLink) => {
+      console.log("VIDEO RECT", videoRect);
+
+      if (!videoRect) {
+        // Fallback to percentages if videoRect not available
+        return { left: `${link.position_x}%`, top: `${link.position_y}%` };
+      }
+
+      // Convert percentage positions to actual pixels within video area
+      const left = videoRect.left + (link.position_x / 100) * videoRect.width;
+      const top = videoRect.top + (link.position_y / 100) * videoRect.height;
+
+      return { left: `${left}px`, top: `${top}px` };
+    },
+    [videoRect]
+  );
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const container = videoContainerRef.current;
+    if (!video || !container) return;
+
+    const calculateAndSetRect = () => {
+      // Small delay to ensure browser has rendered the video
+      setTimeout(() => {
+        calculateVideoRect();
+      }, 50);
+    };
+
+    // More comprehensive event listeners
+    video.addEventListener("loadedmetadata", calculateAndSetRect);
+    video.addEventListener("canplay", calculateAndSetRect);
+    video.addEventListener("resize", calculateAndSetRect);
+    video.addEventListener("loadeddata", calculateAndSetRect);
+
+    // CSS transitions might affect positioning
+    container.addEventListener("transitionend", calculateAndSetRect);
+
+    window.addEventListener("resize", calculateAndSetRect);
+
+    // Initial calculation
+    calculateAndSetRect();
+
+    // More aggressive checking for video dimensions
+    const videoCheckInterval = setInterval(() => {
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        calculateAndSetRect();
+        // Clear after we get valid dimensions
+        if (video.videoWidth > 0) {
+          clearInterval(videoCheckInterval);
+        }
+      }
+    }, 100);
+
+    return () => {
+      video.removeEventListener("loadedmetadata", calculateAndSetRect);
+      video.removeEventListener("canplay", calculateAndSetRect);
+      video.removeEventListener("resize", calculateAndSetRect);
+      video.removeEventListener("loadeddata", calculateAndSetRect);
+      container.removeEventListener("transitionend", calculateAndSetRect);
+      window.removeEventListener("resize", calculateAndSetRect);
+      clearInterval(videoCheckInterval);
+    };
+  }, [videoUrl, calculateVideoRect]);
   return (
     <div className="relative">
-      <div ref={videoContainerRef} className="relative inline-block w-full">
+      <div
+        ref={videoContainerRef}
+        className="relative inline-block w-full"
+        style={{ lineHeight: 0 }} // Remove extra spacing
+      >
         <video
           ref={videoRef}
           src={videoUrl}
@@ -261,6 +349,13 @@ function VideoPlayerWithDraggableImages({
           className="w-full h-auto max-h-96 rounded-lg"
           key={videoUrl}
           muted={isEditMode}
+          onLoadStart={() => calculateVideoRect()}
+          onCanPlay={() => calculateVideoRect()}
+          onResize={() => calculateVideoRect()}
+          style={{
+            display: "block", // Remove extra space
+            objectFit: "contain", // Ensure consistent sizing
+          }}
         />
 
         {/* Overlay images */}
@@ -268,6 +363,7 @@ function VideoPlayerWithDraggableImages({
           const isHovered = hoveredImageId === link.id;
           const imageUrl = getImageUrl(link, isHovered);
           const dimensions = getImageDimensions(link, isHovered);
+          const position = getImagePosition(link);
 
           return imageUrl ? (
             <div
@@ -280,17 +376,7 @@ function VideoPlayerWithDraggableImages({
                 showPreview ? "opacity-90" : ""
               }`}
               style={{
-                // Position relative to video area, not container
-                left: videoRect
-                  ? `${
-                      videoRect.left + (link.position_x / 100) * videoRect.width
-                    }px`
-                  : `${link.position_x}%`,
-                top: videoRect
-                  ? `${
-                      videoRect.top + (link.position_y / 100) * videoRect.height
-                    }px`
-                  : `${link.position_y}%`,
+                ...position,
                 transform: "translate(-50%, -50%)", // Center the image on the position
                 pointerEvents: isEditMode ? "auto" : "auto",
               }}
@@ -336,8 +422,9 @@ function VideoPlayerWithDraggableImages({
               height: `${videoRect.height}px`,
             }}
           >
-            <div className="absolute -top-8 left-0 bg-yellow-400 text-black px-2 py-1 text-xs rounded font-medium">
-              Video Area: Drag buttons within this area
+            <div className="absolute -top-8 left-0 bg-yellow-500 text-white px-2 py-1 text-xs rounded font-medium">
+              Video Area: {Math.round(videoRect.width)}×
+              {Math.round(videoRect.height)}px
             </div>
           </div>
         )}
@@ -356,7 +443,7 @@ function VideoPlayerWithDraggableImages({
             <div
               key={link.id}
               className="absolute top-0 h-full flex flex-col items-center z-10"
-              style={{ left: `${(link.timestamp_seconds / duration) * 100}%` }}
+              // style={{ left: `${(link.timestamp_seconds / duration) * 100}%` }}
             >
               <Clock
                 className={`w-3 h-3 ${

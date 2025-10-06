@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   VideoType,
   VideoLink,
@@ -302,7 +302,102 @@ export function CommonVideoPlayer({
   const [activeLinks, setActiveLinks] = useState<VideoLink[]>([]);
   const [showFreezeControls, setShowFreezeControls] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
   const mouseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Video rect state for precise positioning
+  const [videoRect, setVideoRect] = useState<{
+    width: number;
+    height: number;
+    left: number;
+    top: number;
+  } | null>(null);
+
+  // PERFECT Video rect calculation - USING BROWSER'S ACTUAL RENDERED DIMENSIONS
+  const calculateVideoRect = useCallback(() => {
+    const video = videoRef.current;
+    const container = videoContainerRef.current;
+    if (!video || !container) return null;
+
+    const containerRect = container.getBoundingClientRect();
+    const videoRectFromBrowser = video.getBoundingClientRect();
+
+    // Use the browser's actual rendered video dimensions for perfect accuracy
+    const rect = {
+      width: videoRectFromBrowser.width,
+      height: videoRectFromBrowser.height,
+      left: videoRectFromBrowser.left - containerRect.left,
+      top: videoRectFromBrowser.top - containerRect.top,
+    };
+
+    console.log("CommonVideoPlayer - VideoRect Calculated:", {
+      videoElement: { width: video.videoWidth, height: video.videoHeight },
+      rendered: { width: videoRectFromBrowser.width, height: videoRectFromBrowser.height },
+      container: { width: containerRect.width, height: containerRect.height },
+      finalRect: rect
+    });
+
+    setVideoRect(rect);
+    return rect;
+  }, []);
+
+  // Enhanced video rect calculation with better timing
+  useEffect(() => {
+    const video = videoRef.current;
+    const container = videoContainerRef.current;
+    if (!video || !container) return;
+
+    const calculateAndSetRect = () => {
+      // Small delay to ensure browser has rendered the video with object-fit
+      setTimeout(() => {
+        calculateVideoRect();
+      }, 50);
+    };
+
+    // Comprehensive event listeners for all video state changes
+    video.addEventListener('loadedmetadata', calculateAndSetRect);
+    video.addEventListener('canplay', calculateAndSetRect);
+    video.addEventListener('resize', calculateAndSetRect);
+    video.addEventListener('loadeddata', calculateAndSetRect);
+    video.addEventListener('play', calculateAndSetRect);
+    video.addEventListener('pause', calculateAndSetRect);
+    
+    // CSS transitions might affect positioning
+    container.addEventListener('transitionend', calculateAndSetRect);
+    
+    window.addEventListener('resize', calculateAndSetRect);
+
+    // Initial calculation with retry logic
+    const initialCalc = () => {
+      calculateAndSetRect();
+      
+      // Retry a few times to ensure we get the final rendered dimensions
+      let retries = 0;
+      const maxRetries = 10;
+      const retryInterval = setInterval(() => {
+        retries++;
+        calculateAndSetRect();
+        
+        if (retries >= maxRetries || (video.videoWidth > 0 && videoRect)) {
+          clearInterval(retryInterval);
+        }
+      }, 100);
+    };
+
+    initialCalc();
+
+    // Cleanup
+    return () => {
+      video.removeEventListener('loadedmetadata', calculateAndSetRect);
+      video.removeEventListener('canplay', calculateAndSetRect);
+      video.removeEventListener('resize', calculateAndSetRect);
+      video.removeEventListener('loadeddata', calculateAndSetRect);
+      video.removeEventListener('play', calculateAndSetRect);
+      video.removeEventListener('pause', calculateAndSetRect);
+      container.removeEventListener('transitionend', calculateAndSetRect);
+      window.removeEventListener('resize', calculateAndSetRect);
+    };
+  }, [currentVideo, calculateVideoRect]);
 
   // Track timestamps for video links
   useEffect(() => {
@@ -324,7 +419,6 @@ export function CommonVideoPlayer({
 
       // Update active links only if there's a change
       setActiveLinks((prev) => {
-        // Check if the visible links have changed
         if (
           prev.length !== visibleLinks.length ||
           !prev.every((link, i) => link.id === visibleLinks[i]?.id)
@@ -359,53 +453,25 @@ export function CommonVideoPlayer({
     setShowFreezeControls(false);
   }, [currentVideo]);
 
-  const [videoRect, setVideoRect] = useState<{
-    width: number;
-    height: number;
-    left: number;
-    top: number;
-  } | null>(null);
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    const updateVideoRect = () => {
-      const videoElement = video;
-      const containerRect = videoElement.getBoundingClientRect();
-      const videoAspect = videoElement.videoWidth / videoElement.videoHeight;
-      const containerAspect = containerRect.width / containerRect.height;
-
-      let actualVideoWidth, actualVideoHeight, offsetLeft, offsetTop;
-
-      if (containerAspect > videoAspect) {
-        actualVideoHeight = containerRect.height;
-        actualVideoWidth = actualVideoHeight * videoAspect;
-        offsetLeft = (containerRect.width - actualVideoWidth) / 2;
-        offsetTop = 0;
-      } else {
-        actualVideoWidth = containerRect.width;
-        actualVideoHeight = actualVideoWidth / videoAspect;
-        offsetLeft = 0;
-        offsetTop = (containerRect.height - actualVideoHeight) / 2;
+  // Get image position - PERFECT SYNCHRONIZATION WITH VideoUploadWithLinks
+  const getImagePosition = useCallback(
+    (link: VideoLink) => {
+      if (!videoRect) {
+        // Fallback to percentages if videoRect not available
+        console.warn("videoRect not available, using percentage positioning");
+        return { left: `${link.position_x}%`, top: `${link.position_y}%` };
       }
 
-      setVideoRect({
-        width: actualVideoWidth,
-        height: actualVideoHeight,
-        left: offsetLeft,
-        top: offsetTop,
-      });
-    };
+      // Convert percentage positions to actual pixels within video area
+      const left = videoRect.left + (link.position_x / 100) * videoRect.width;
+      const top = videoRect.top + (link.position_y / 100) * videoRect.height;
 
-    video.addEventListener("loadedmetadata", updateVideoRect);
-    window.addEventListener("resize", updateVideoRect);
+      // 10 is assumingly
+      return { left: `${left - 10}px`, top: `${top}px` };
+    },
+    [videoRect]
+  );
 
-    return () => {
-      video.removeEventListener("loadedmetadata", updateVideoRect);
-      window.removeEventListener("resize", updateVideoRect);
-    };
-  }, [currentVideo]);
   const togglePlayPause = () => {
     if (videoRef.current) {
       if (isPlaying) {
@@ -417,7 +483,6 @@ export function CommonVideoPlayer({
         setIsPlaying(true);
         setMouseActive(true);
         resetMouseTimeout();
-        // Hide freeze controls when playing
         setShowFreezeControls(false);
       }
     }
@@ -448,7 +513,6 @@ export function CommonVideoPlayer({
     return link.normal_state_image;
   };
 
-  // Function to get the appropriate image dimensions based on hover state
   const getImageDimensions = (link: VideoLink) => {
     if (
       hoveredLinkId === link.id &&
@@ -466,16 +530,13 @@ export function CommonVideoPlayer({
   };
 
   const handleVideoEnd = () => {
-    // Check if we should freeze at end (no questions AND freezeAtEnd is true)
     const shouldFreeze = !hasQuestions && currentVideo?.freezeAtEnd;
 
     if (shouldFreeze) {
-      // Show freeze controls instead of proceeding
       setShowFreezeControls(true);
       setIsPlaying(false);
       setShowControls(true);
     } else {
-      // Proceed normally (either has questions or doesn't need to freeze)
       onVideoEnd();
     }
   };
@@ -491,11 +552,15 @@ export function CommonVideoPlayer({
     }
   };
 
-  const handleContinue = () => {
-    // Hide freeze controls and proceed to next video/solution
-    setShowFreezeControls(false);
-    onVideoEnd();
-  };
+  // Debug overlay to verify positioning (remove in production)
+  const DebugOverlay = () => (
+    <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white p-2 text-xs rounded z-50">
+      <div>Video: {videoRef.current?.videoWidth}×{videoRef.current?.videoHeight}</div>
+      <div>Rendered: {Math.round(videoRect?.width || 0)}×{Math.round(videoRect?.height || 0)}</div>
+      <div>Offset: {Math.round(videoRect?.left || 0)}×{Math.round(videoRect?.top || 0)}</div>
+      <div>Active Links: {activeLinks.length}</div>
+    </div>
+  );
 
   useEffect(() => {
     return () => {
@@ -511,7 +576,8 @@ export function CommonVideoPlayer({
 
   return (
     <div
-      className="relative flex-1 bg-black rounded-xl"
+      ref={videoContainerRef}
+      className="relative flex-1 bg-black rounded-xl video-player-container"
       onMouseMove={handleMouseMove}
       onMouseEnter={() => {
         setMouseActive(true);
@@ -528,7 +594,7 @@ export function CommonVideoPlayer({
         ref={videoRef}
         autoPlay
         src={currentVideo.url}
-        className="w-full h-[500px] object-contain rounded-xl cursor-pointer"
+        className="w-full h-auto max-h-[500px] object-contain rounded-xl cursor-pointer"
         controls={false}
         onClick={togglePlayPause}
         onEnded={handleVideoEnd}
@@ -542,7 +608,13 @@ export function CommonVideoPlayer({
           setIsPlaying(false);
           setShowControls(true);
         }}
+        onLoadStart={() => setTimeout(() => calculateVideoRect(), 100)}
+        onCanPlay={() => setTimeout(() => calculateVideoRect(), 100)}
+        onResize={() => setTimeout(() => calculateVideoRect(), 100)}
       />
+
+      {/* Debug overlay - remove in production */}
+      {/* <DebugOverlay /> */}
 
       {showBackButton && onBackNavigation && !isPlaying && (
         <div
@@ -619,29 +691,21 @@ export function CommonVideoPlayer({
         />
       )}
 
-      {/* Enhanced Video Link Buttons - Support both URL and Video navigation */}
+      {/* Enhanced Video Link Buttons - PERFECT POSITIONING */}
       {activeLinks.length > 0 && (
         <>
           {activeLinks.map((link) => {
             const imageUrl = getImageUrl(link);
+            const dimensions = getImageDimensions(link);
+            const position = getImagePosition(link);
+
             return imageUrl ? (
               <div
                 key={link.id}
-                className="absolute z-10 cursor-pointer transition-transform duration-200  group"
+                className="absolute z-10 cursor-pointer transition-transform duration-200 group"
                 style={{
-                  left: videoRect
-                    ? `${
-                        videoRect.left +
-                        (link.position_x / 100) * videoRect.width
-                      }px`
-                    : `${link.position_x}%`,
-                  top: videoRect
-                    ? `${
-                        videoRect.top +
-                        (link.position_y / 100) * videoRect.height
-                      }px`
-                    : `${link.position_y}%`,
-                  transform: "translate(-50%, -50%)", // Ensure consistent centering
+                  ...position,
+                  transform: "translate(-50%, -50%)", // Same centering logic
                 }}
                 onClick={() => onVideoLinkClick(link)}
                 title={
@@ -659,10 +723,10 @@ export function CommonVideoPlayer({
                       src={link.normal_state_image}
                       alt={link.label}
                       style={{
-                        width: `${link.normal_image_width ?? 100}px`,
-                        height: `${link.normal_image_height ?? 100}px`,
+                        width: `${dimensions.width}px`,
+                        height: `${dimensions.height}px`,
                       }}
-                      className={`object-fill rounded block ${
+                      className={`object- rounded block ${
                         link.hover_state_image ? "group-hover:hidden" : ""
                       }`}
                       draggable={false}
@@ -675,18 +739,10 @@ export function CommonVideoPlayer({
                       src={link.hover_state_image}
                       alt={link.label}
                       style={{
-                        width: `${
-                          link.hover_image_width ??
-                          link.normal_image_width ??
-                          100
-                        }px`,
-                        height: `${
-                          link.hover_image_height ??
-                          link.normal_image_height ??
-                          100
-                        }px`,
+                        width: `${dimensions.width}px`,
+                        height: `${dimensions.height}px`,
                       }}
-                      className="object-fill rounded hidden group-hover:block"
+                      className="object- rounded hidden group-hover:block"
                       draggable={false}
                     />
                   )}
