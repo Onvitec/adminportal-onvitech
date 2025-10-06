@@ -30,6 +30,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [currentSolution, setCurrentSolution] = useState<Solution | null>(null);
   const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null);
   const [currentForm, setCurrentForm] = useState<FormSolutionData | null>(null);
+  const [isFormSubmitting, setIsFormSubmitting] = useState(false);
   const [isVideoPaused, setIsVideoPaused] = useState(false);
   const [destinationVideos, setDestinationVideos] = useState<
     Record<string, VideoType>
@@ -350,7 +351,11 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     ) => {
       try {
         console.log("FORMATTED", data.values);
-        const message_html = buildEmailTemplate(data.title, data.values.formatted);
+        setIsFormSubmitting(true);
+        const message_html = buildEmailTemplate(
+          data.title,
+          data.values.formatted
+        );
 
         const res = await fetch("/api/send-email", {
           method: "POST",
@@ -363,9 +368,13 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         });
 
         const result = await res.json();
+        setIsFormSubmitting(false);
         console.log("Email result:", result);
       } catch (err) {
         console.error("❌ Failed to send email:", err);
+        setIsFormSubmitting(false);
+      } finally {
+        setIsFormSubmitting(false);
       }
 
       // 🔹 your existing navigation logic remains untouched
@@ -445,6 +454,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         setHoveredLinkId={setHoveredLinkId}
         currentForm={currentForm}
         onFormSubmit={handleFormSubmit}
+        onFormLoading={isFormSubmitting}
         onFormCancel={handleFormCancel}
         isPaused={isVideoPaused}
         currentFormLink={currentFormLink}

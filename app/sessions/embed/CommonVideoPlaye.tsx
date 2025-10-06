@@ -7,7 +7,7 @@ import {
   FormSolutionData,
   FormElement,
 } from "@/lib/types";
-import { ChevronLeft, RefreshCw, X } from "lucide-react";
+import { ChevronLeft, Loader2, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,7 @@ interface CommonVideoPlayerProps {
   setHoveredLinkId?: (id: string | null) => void;
   currentForm?: FormSolutionData | null;
   onFormSubmit?: any;
+  onFormLoading?: boolean;
   currentFormLink?: VideoLink | null;
   onFormCancel?: () => void;
   isPaused?: boolean;
@@ -35,11 +36,13 @@ interface CommonVideoPlayerProps {
 function FormDisplay({
   formData,
   onSubmit,
+  onFormLoading = false,
   formLink,
   onCancel,
 }: {
   formData: FormSolutionData;
   onSubmit: (data: Record<string, any>) => void;
+  onFormLoading?: boolean;
   formLink?: VideoLink | null;
   onCancel: () => void;
 }) {
@@ -248,6 +251,7 @@ function FormDisplay({
             <Button
               type="button"
               variant="outline"
+              disabled={onFormLoading}
               onClick={onCancel}
               className="flex-1 bg-white/20 text-black hover:bg-white/30"
             >
@@ -255,9 +259,17 @@ function FormDisplay({
             </Button>
             <Button
               type="submit"
-              className="flex-1 bg-white/30 text-black hover:bg-white/40"
+              disabled={onFormLoading}
+              className="flex-1 bg-white/30 text-black hover:bg-white/40 flex items-center justify-center gap-2"
             >
-              Submit
+              {onFormLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Submitting...</span>
+                </>
+              ) : (
+                "Submit"
+              )}
             </Button>
           </div>
         </form>
@@ -277,6 +289,7 @@ export function CommonVideoPlayer({
   currentForm,
   onFormSubmit,
   onFormCancel,
+  onFormLoading = false,
   currentFormLink,
   onVideoRestart,
   isPaused = false,
@@ -514,7 +527,6 @@ export function CommonVideoPlayer({
       <video
         ref={videoRef}
         autoPlay
-        muted
         src={currentVideo.url}
         className="w-full h-[500px] object-contain rounded-xl cursor-pointer"
         controls={false}
@@ -600,6 +612,7 @@ export function CommonVideoPlayer({
       {currentForm && onFormSubmit && onFormCancel && (
         <FormDisplay
           formLink={currentFormLink}
+          onFormLoading={onFormLoading}
           formData={currentForm}
           onSubmit={onFormSubmit}
           onCancel={onFormCancel}

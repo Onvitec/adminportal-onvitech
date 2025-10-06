@@ -1046,12 +1046,16 @@ function VideoUploadWithLinksComponent({
 
           if (!email) {
             alert("Please provide an email for all form submissions");
+            setIsUploading(false);
+            return;
           } else {
             // Basic email validation regex
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
             if (!emailRegex.test(email)) {
               alert("Please provide a valid email address");
+              setIsUploading(false);
+              return;
             }
           }
         }
