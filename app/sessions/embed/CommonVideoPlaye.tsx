@@ -320,27 +320,43 @@ export function CommonVideoPlayer({
     if (!video || !container) return null;
 
     const containerRect = container.getBoundingClientRect();
-    const videoRectFromBrowser = video.getBoundingClientRect();
 
-    // Use the browser's actual rendered video dimensions for perfect accuracy
+    // Get ACTUAL video dimensions from video element
+    const videoAspect = video.videoWidth / video.videoHeight;
+    const containerAspect = containerRect.width / containerRect.height;
+
+    let actualVideoWidth, actualVideoHeight, offsetLeft, offsetTop;
+
+    if (containerAspect > videoAspect) {
+      // Container is wider, video height matches container (letterbox)
+      actualVideoHeight = containerRect.height;
+      actualVideoWidth = actualVideoHeight * videoAspect;
+      offsetLeft = (containerRect.width - actualVideoWidth) / 2;
+      offsetTop = 0;
+    } else {
+      // Container is taller, video width matches container (pillarbox)
+      actualVideoWidth = containerRect.width;
+      actualVideoHeight = actualVideoWidth / videoAspect;
+      offsetLeft = 0;
+      offsetTop = (containerRect.height - actualVideoHeight) / 2;
+    }
+
     const rect = {
-      width: videoRectFromBrowser.width,
-      height: videoRectFromBrowser.height,
-      left: videoRectFromBrowser.left - containerRect.left,
-      top: videoRectFromBrowser.top - containerRect.top,
+      width: actualVideoWidth,
+      height: actualVideoHeight,
+      left: offsetLeft,
+      top: offsetTop,
     };
 
-    console.log("CommonVideoPlayer - VideoRect Calculated:", {
-      videoElement: { width: video.videoWidth, height: video.videoHeight },
-      rendered: { width: videoRectFromBrowser.width, height: videoRectFromBrowser.height },
+    console.log("CommonVideoPlayer - VideoRect:", {
       container: { width: containerRect.width, height: containerRect.height },
-      finalRect: rect
+      video: { width: video.videoWidth, height: video.videoHeight },
+      calculated: rect,
     });
 
     setVideoRect(rect);
     return rect;
   }, []);
-
   // Enhanced video rect calculation with better timing
   useEffect(() => {
     const video = videoRef.current;
@@ -348,57 +364,44 @@ export function CommonVideoPlayer({
     if (!video || !container) return;
 
     const calculateAndSetRect = () => {
-      // Small delay to ensure browser has rendered the video with object-fit
       setTimeout(() => {
         calculateVideoRect();
-      }, 50);
-    };
-
-    // Comprehensive event listeners for all video state changes
-    video.addEventListener('loadedmetadata', calculateAndSetRect);
-    video.addEventListener('canplay', calculateAndSetRect);
-    video.addEventListener('resize', calculateAndSetRect);
-    video.addEventListener('loadeddata', calculateAndSetRect);
-    video.addEventListener('play', calculateAndSetRect);
-    video.addEventListener('pause', calculateAndSetRect);
-    
-    // CSS transitions might affect positioning
-    container.addEventListener('transitionend', calculateAndSetRect);
-    
-    window.addEventListener('resize', calculateAndSetRect);
-
-    // Initial calculation with retry logic
-    const initialCalc = () => {
-      calculateAndSetRect();
-      
-      // Retry a few times to ensure we get the final rendered dimensions
-      let retries = 0;
-      const maxRetries = 10;
-      const retryInterval = setInterval(() => {
-        retries++;
-        calculateAndSetRect();
-        
-        if (retries >= maxRetries || (video.videoWidth > 0 && videoRect)) {
-          clearInterval(retryInterval);
-        }
       }, 100);
     };
 
-    initialCalc();
+    // Monitor container size changes
+    const resizeObserver = new ResizeObserver(calculateAndSetRect);
+    resizeObserver.observe(container);
 
-    // Cleanup
+    // Video events
+    video.addEventListener("loadedmetadata", calculateAndSetRect);
+    video.addEventListener("canplay", calculateAndSetRect);
+    video.addEventListener("loadeddata", calculateAndSetRect);
+    video.addEventListener("resize", calculateAndSetRect);
+
+    window.addEventListener("resize", calculateAndSetRect);
+
+    // Initial calculation with container size check
+    const checkContainerSize = () => {
+      if (container.getBoundingClientRect().width > 0) {
+        calculateAndSetRect();
+      } else {
+        // Container not rendered yet, try again
+        setTimeout(checkContainerSize, 50);
+      }
+    };
+
+    checkContainerSize();
+
     return () => {
-      video.removeEventListener('loadedmetadata', calculateAndSetRect);
-      video.removeEventListener('canplay', calculateAndSetRect);
-      video.removeEventListener('resize', calculateAndSetRect);
-      video.removeEventListener('loadeddata', calculateAndSetRect);
-      video.removeEventListener('play', calculateAndSetRect);
-      video.removeEventListener('pause', calculateAndSetRect);
-      container.removeEventListener('transitionend', calculateAndSetRect);
-      window.removeEventListener('resize', calculateAndSetRect);
+      resizeObserver.disconnect();
+      video.removeEventListener("loadedmetadata", calculateAndSetRect);
+      video.removeEventListener("canplay", calculateAndSetRect);
+      video.removeEventListener("loadeddata", calculateAndSetRect);
+      video.removeEventListener("resize", calculateAndSetRect);
+      window.removeEventListener("resize", calculateAndSetRect);
     };
   }, [currentVideo, calculateVideoRect]);
-
   // Track timestamps for video links
   useEffect(() => {
     const videoEl = videoRef.current;
@@ -457,17 +460,13 @@ export function CommonVideoPlayer({
   const getImagePosition = useCallback(
     (link: VideoLink) => {
       if (!videoRect) {
-        // Fallback to percentages if videoRect not available
-        console.warn("videoRect not available, using percentage positioning");
         return { left: `${link.position_x}%`, top: `${link.position_y}%` };
       }
 
-      // Convert percentage positions to actual pixels within video area
       const left = videoRect.left + (link.position_x / 100) * videoRect.width;
       const top = videoRect.top + (link.position_y / 100) * videoRect.height;
 
-      // 10 is assumingly
-      return { left: `${left - 10}px`, top: `${top}px` };
+      return { left: `${left}px`, top: `${top}px` };
     },
     [videoRect]
   );
@@ -555,9 +554,17 @@ export function CommonVideoPlayer({
   // Debug overlay to verify positioning (remove in production)
   const DebugOverlay = () => (
     <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white p-2 text-xs rounded z-50">
-      <div>Video: {videoRef.current?.videoWidth}×{videoRef.current?.videoHeight}</div>
-      <div>Rendered: {Math.round(videoRect?.width || 0)}×{Math.round(videoRect?.height || 0)}</div>
-      <div>Offset: {Math.round(videoRect?.left || 0)}×{Math.round(videoRect?.top || 0)}</div>
+      <div>
+        Video: {videoRef.current?.videoWidth}×{videoRef.current?.videoHeight}
+      </div>
+      <div>
+        Rendered: {Math.round(videoRect?.width || 0)}×
+        {Math.round(videoRect?.height || 0)}
+      </div>
+      <div>
+        Offset: {Math.round(videoRect?.left || 0)}×
+        {Math.round(videoRect?.top || 0)}
+      </div>
       <div>Active Links: {activeLinks.length}</div>
     </div>
   );
@@ -697,6 +704,7 @@ export function CommonVideoPlayer({
           {activeLinks.map((link) => {
             const imageUrl = getImageUrl(link);
             const dimensions = getImageDimensions(link);
+            console.log("DIMENSIONS", dimensions);
             const position = getImagePosition(link);
 
             return imageUrl ? (
@@ -705,7 +713,6 @@ export function CommonVideoPlayer({
                 className="absolute z-10 cursor-pointer transition-transform duration-200 group"
                 style={{
                   ...position,
-                  transform: "translate(-50%, -50%)", // Same centering logic
                 }}
                 onClick={() => onVideoLinkClick(link)}
                 title={

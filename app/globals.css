@@ -159,4 +159,31 @@ html, body {
   display: inline-block;
   width: 100%;
   line-height: 0; /* Remove extra spacing */
+}/* Consistent video player styling for both components */
+.video-player-container {
+  position: relative;
+  width: 100%;
+  background: black;
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.video-player-container video {
+  width: 100%;
+  height: auto;
+  max-height: 500px;
+  object-fit: contain;
+  display: block;
+}
+
+/* Ensure both components have the same max width */
+.video-upload-card .video-player-container,
+.common-video-player .video-player-container {
+  max-width: 100%;
+}
+
+/* Remove any padding/margin differences */
+.video-player-container > div {
+  margin: 0 !important;
+  padding: 0 !important;
 }
