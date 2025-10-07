@@ -54,7 +54,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   // For embed routes, just render the children without any layout
   if (isEmbedRoute) {
-    return <>{children}</>;
+    return <div className="w-full">{children}</div>;
   }
 
   // Don't render anything if user is not authenticated (except for embed routes)
@@ -135,11 +135,17 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {/* <DropdownMenuItem>Profile</DropdownMenuItem> */}
-                  <DropdownMenuItem onClick={() => router.push("/settings")} className="cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={() => router.push("/settings")}
+                    className="cursor-pointer"
+                  >
                     Settings
                   </DropdownMenuItem>{" "}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={signOut} className="cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={signOut}
+                    className="cursor-pointer"
+                  >
                     <LogOut className=" h-4 w-4 cursor-pointer" />
                     <span>Sign out</span>
                   </DropdownMenuItem>

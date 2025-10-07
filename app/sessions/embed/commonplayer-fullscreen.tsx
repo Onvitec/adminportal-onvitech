@@ -29,10 +29,10 @@ interface CommonVideoPlayerProps {
   isPaused?: boolean;
   children?: React.ReactNode;
   onVideoRestart?: () => void;
-  hasQuestions?: boolean; // New prop to indicate if there are questions
+  hasQuestions?: boolean;
 }
 
-// Form Display Component
+// Form Display Component (unchanged)
 function FormDisplay({
   formData,
   onSubmit,
@@ -77,10 +77,7 @@ function FormDisplay({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // keep raw values (ids/keys)
     const rawValues = { ...formValues };
-
-    // build label-based values
     const formattedValues: Record<string, any> = {};
     formData.elements.forEach((element) => {
       const rawValue = formValues[element.id];
@@ -103,12 +100,11 @@ function FormDisplay({
       }
     });
 
-    // final payload matches FormSolutionData + values
     const finalPayload = {
       title: formData.title,
       email: formData.email,
       description: formData.description,
-      elements: formData.elements, // keep original structure if needed
+      elements: formData.elements,
       values: {
         raw: rawValues,
         formatted: formattedValues,
@@ -220,8 +216,7 @@ function FormDisplay({
 
   return (
     <div className="absolute inset-0 flex items-center justify-center z-50">
-      <div className="w-[90%] max-w-2xl overflow-y-auto h-[90%] bg-white/30 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-white/60 flex flex-col hide-scrollbar">
-        {/* Header */}
+      <div className="w-[90%] max-w-2xl overflow-y-auto h-[90%] bg-white/30 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-white/60 flex flex-col max-h-[80vh] hide-scrollbar">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-white">
             {formData.title || "Form"}
@@ -237,13 +232,11 @@ function FormDisplay({
           </Button>
         </div>
 
-        {/* Form */}
         <form
           onSubmit={handleSubmit}
           className="flex-1 flex flex-col overflow-hidden"
         >
-          {/* Scrollable fields */}
-          <div className="flex-1 overflow-y-auto pr-2 space-y-4 hide-scrollbar">
+          <div className="flex-1 overflow-y-auto pr-2 space-y-4">
             {formData.elements.map((element) => (
               <div key={element.id} className="space-y-2">
                 <Label htmlFor={element.id} className="text-white">
@@ -254,7 +247,6 @@ function FormDisplay({
             ))}
           </div>
 
-          {/* Buttons (outside scroll area) */}
           <div className="flex gap-2 pt-4 mt-4 border-t border-white/20">
             <Button
               type="button"
@@ -313,15 +305,16 @@ export function CommonVideoPlayer({
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const mouseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Video rect state for precise positioning
+  // Video rect state for fullscreen positioning
   const [videoRect, setVideoRect] = useState<{
     width: number;
     height: number;
     left: number;
     top: number;
+    scale: number;
   } | null>(null);
 
-  // PERFECT Video rect calculation - USING BROWSER'S ACTUAL RENDERED DIMENSIONS
+  // FULLSCREEN Video rect calculation - NO BLACK BARS
   const calculateVideoRect = useCallback(() => {
     const video = videoRef.current;
     const container = videoContainerRef.current;
@@ -329,34 +322,17 @@ export function CommonVideoPlayer({
 
     const containerRect = container.getBoundingClientRect();
 
-    // Get ACTUAL video dimensions from video element
-    const videoAspect = video.videoWidth / video.videoHeight;
-    const containerAspect = containerRect.width / containerRect.height;
-
-    let actualVideoWidth, actualVideoHeight, offsetLeft, offsetTop;
-
-    if (containerAspect > videoAspect) {
-      // Container is wider, video height matches container (letterbox)
-      actualVideoHeight = containerRect.height;
-      actualVideoWidth = actualVideoHeight * videoAspect;
-      offsetLeft = (containerRect.width - actualVideoWidth) / 2;
-      offsetTop = 0;
-    } else {
-      // Container is taller, video width matches container (pillarbox)
-      actualVideoWidth = containerRect.width;
-      actualVideoHeight = actualVideoWidth / videoAspect;
-      offsetLeft = 0;
-      offsetTop = (containerRect.height - actualVideoHeight) / 2;
-    }
-
+    // For true fullscreen - always fill the entire container
+    // This will crop the video if aspect ratios don't match
     const rect = {
-      width: actualVideoWidth,
-      height: actualVideoHeight,
-      left: offsetLeft,
-      top: offsetTop,
+      width: containerRect.width,
+      height: containerRect.height,
+      left: 0,
+      top: 0,
+      scale: containerRect.width / video.videoWidth, // Scale based on width
     };
 
-    console.log("CommonVideoPlayer - VideoRect:", {
+    console.log("True Fullscreen VideoRect:", {
       container: { width: containerRect.width, height: containerRect.height },
       video: { width: video.videoWidth, height: video.videoHeight },
       calculated: rect,
@@ -365,7 +341,8 @@ export function CommonVideoPlayer({
     setVideoRect(rect);
     return rect;
   }, []);
-  // Enhanced video rect calculation with better timing
+
+  // Enhanced video rect calculation for true fullscreen
   useEffect(() => {
     const video = videoRef.current;
     const container = videoContainerRef.current;
@@ -377,24 +354,19 @@ export function CommonVideoPlayer({
       }, 100);
     };
 
-    // Monitor container size changes
     const resizeObserver = new ResizeObserver(calculateAndSetRect);
     resizeObserver.observe(container);
 
-    // Video events
     video.addEventListener("loadedmetadata", calculateAndSetRect);
     video.addEventListener("canplay", calculateAndSetRect);
     video.addEventListener("loadeddata", calculateAndSetRect);
     video.addEventListener("resize", calculateAndSetRect);
-
     window.addEventListener("resize", calculateAndSetRect);
 
-    // Initial calculation with container size check
     const checkContainerSize = () => {
       if (container.getBoundingClientRect().width > 0) {
         calculateAndSetRect();
       } else {
-        // Container not rendered yet, try again
         setTimeout(checkContainerSize, 50);
       }
     };
@@ -410,6 +382,7 @@ export function CommonVideoPlayer({
       window.removeEventListener("resize", calculateAndSetRect);
     };
   }, [currentVideo, calculateVideoRect]);
+
   // Track timestamps for video links
   useEffect(() => {
     const videoEl = videoRef.current;
@@ -419,7 +392,6 @@ export function CommonVideoPlayer({
       const links = videoLinks[currentVideo.id] || [];
       const currentTime = videoEl.currentTime;
 
-      // Calculate visible links based on timestamp and duration
       const visibleLinks = links.filter((link) => {
         const startTime = link.timestamp_seconds;
         const durationSeconds = (link.duration_ms || 3000) / 1000;
@@ -428,7 +400,6 @@ export function CommonVideoPlayer({
         return currentTime >= startTime && currentTime <= endTime;
       });
 
-      // Update active links only if there's a change
       setActiveLinks((prev) => {
         if (
           prev.length !== visibleLinks.length ||
@@ -464,19 +435,58 @@ export function CommonVideoPlayer({
     setShowFreezeControls(false);
   }, [currentVideo]);
 
-  // Get image position - PERFECT SYNCHRONIZATION WITH VideoUploadWithLinks
+  // Get image position - UPDATED FOR TRUE FULLSCREEN
   const getImagePosition = useCallback(
     (link: VideoLink) => {
       if (!videoRect) {
         return { left: `${link.position_x}%`, top: `${link.position_y}%` };
       }
 
-      const left = videoRect.left + (link.position_x / 100) * videoRect.width;
-      const top = videoRect.top + (link.position_y / 100) * videoRect.height;
+      // Calculate position based on full container dimensions
+      const left = (link.position_x / 100) * videoRect.width;
+      const top = (link.position_y / 100) * videoRect.height;
 
       return { left: `${left}px`, top: `${top}px` };
     },
     [videoRect]
+  );
+
+  // Get scaled image dimensions for fullscreen
+  const getScaledImageDimensions = useCallback(
+    (link: VideoLink) => {
+      if (!videoRect) {
+        return {
+          width: link.normal_image_width || 100,
+          height: link.normal_image_height || 100,
+        };
+      }
+
+      const baseWidth = link.normal_image_width || 100;
+      const baseHeight = link.normal_image_height || 100;
+
+      // Scale dimensions according to video scaling
+      const scaledWidth = baseWidth * videoRect.scale;
+      const scaledHeight = baseHeight * videoRect.scale;
+
+      // For hover state
+      if (
+        hoveredLinkId === link.id &&
+        (link.hover_image_width || link.hover_image_height)
+      ) {
+        const hoverBaseWidth = link.hover_image_width || baseWidth;
+        const hoverBaseHeight = link.hover_image_height || baseHeight;
+        return {
+          width: hoverBaseWidth * videoRect.scale,
+          height: hoverBaseHeight * videoRect.scale,
+        };
+      }
+
+      return {
+        width: scaledWidth,
+        height: scaledHeight,
+      };
+    },
+    [videoRect, hoveredLinkId]
   );
 
   const togglePlayPause = () => {
@@ -520,22 +530,6 @@ export function CommonVideoPlayer({
     return link.normal_state_image;
   };
 
-  const getImageDimensions = (link: VideoLink) => {
-    if (
-      hoveredLinkId === link.id &&
-      (link.hover_image_width || link.hover_image_height)
-    ) {
-      return {
-        width: link.hover_image_width || 100,
-        height: link.hover_image_height || 100,
-      };
-    }
-    return {
-      width: link.normal_image_width || 100,
-      height: link.normal_image_height || 100,
-    };
-  };
-
   const handleVideoEnd = () => {
     const shouldFreeze = !hasQuestions && currentVideo?.freezeAtEnd;
 
@@ -559,24 +553,6 @@ export function CommonVideoPlayer({
     }
   };
 
-  // Debug overlay to verify positioning (remove in production)
-  const DebugOverlay = () => (
-    <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white p-2 text-xs rounded z-50">
-      <div>
-        Video: {videoRef.current?.videoWidth}×{videoRef.current?.videoHeight}
-      </div>
-      <div>
-        Rendered: {Math.round(videoRect?.width || 0)}×
-        {Math.round(videoRect?.height || 0)}
-      </div>
-      <div>
-        Offset: {Math.round(videoRect?.left || 0)}×
-        {Math.round(videoRect?.top || 0)}
-      </div>
-      <div>Active Links: {activeLinks.length}</div>
-    </div>
-  );
-
   useEffect(() => {
     return () => {
       if (mouseTimeoutRef.current) {
@@ -592,7 +568,7 @@ export function CommonVideoPlayer({
   return (
     <div
       ref={videoContainerRef}
-      className="relative flex-1 bg-black rounded-xl video-player-container"
+      className="fixed inset-0 bg-black" // Changed to fixed inset-0 for true fullscreen
       onMouseMove={handleMouseMove}
       onMouseEnter={() => {
         setMouseActive(true);
@@ -605,11 +581,12 @@ export function CommonVideoPlayer({
         }
       }}
     >
+      {/* True Fullscreen video - NO BLACK BARS */}
       <video
         ref={videoRef}
         autoPlay
         src={currentVideo.url}
-        className="w-full h-auto max-h-[500px] object-contain rounded-xl cursor-pointer"
+        className="w-[100vw] min-h-screen object-cover cursor-pointer" // object-cover will crop to fill
         controls={false}
         onClick={togglePlayPause}
         onEnded={handleVideoEnd}
@@ -627,9 +604,6 @@ export function CommonVideoPlayer({
         onCanPlay={() => setTimeout(() => calculateVideoRect(), 100)}
         onResize={() => setTimeout(() => calculateVideoRect(), 100)}
       />
-
-      {/* Debug overlay - remove in production */}
-      {/* <DebugOverlay /> */}
 
       {showBackButton && onBackNavigation && !isPlaying && (
         <div
@@ -663,6 +637,7 @@ export function CommonVideoPlayer({
         </div>
       )}
 
+      {/* Play/Pause overlay */}
       {!isPlaying && !showFreezeControls && (
         <div
           className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${
@@ -706,13 +681,12 @@ export function CommonVideoPlayer({
         />
       )}
 
-      {/* Enhanced Video Link Buttons - PERFECT POSITIONING */}
+      {/* Video Link Buttons - UPDATED FOR TRUE FULLSCREEN */}
       {activeLinks.length > 0 && (
         <>
           {activeLinks.map((link) => {
             const imageUrl = getImageUrl(link);
-            const dimensions = getImageDimensions(link);
-            console.log("DIMENSIONS", dimensions);
+            const dimensions = getScaledImageDimensions(link);
             const position = getImagePosition(link);
 
             return imageUrl ? (
@@ -721,6 +695,7 @@ export function CommonVideoPlayer({
                 className="absolute z-10 cursor-pointer transition-transform duration-200 group"
                 style={{
                   ...position,
+                  transform: "translate(-50%, -50%)", // Center the image
                 }}
                 onClick={() => onVideoLinkClick(link)}
                 title={
@@ -732,7 +707,7 @@ export function CommonVideoPlayer({
                 }
               >
                 <div className="relative">
-                  {/* Normal image (always shown) */}
+                  {/* Normal image */}
                   {link.normal_state_image && (
                     <img
                       src={link.normal_state_image}
@@ -741,14 +716,14 @@ export function CommonVideoPlayer({
                         width: `${dimensions.width}px`,
                         height: `${dimensions.height}px`,
                       }}
-                      className={`object- rounded block ${
+                      className={`object-contain rounded block ${
                         link.hover_state_image ? "group-hover:hidden" : ""
                       }`}
                       draggable={false}
                     />
                   )}
 
-                  {/* Hover image (optional, only rendered if available) */}
+                  {/* Hover image */}
                   {link.hover_state_image && (
                     <img
                       src={link.hover_state_image}
@@ -757,7 +732,7 @@ export function CommonVideoPlayer({
                         width: `${dimensions.width}px`,
                         height: `${dimensions.height}px`,
                       }}
-                      className="object- rounded hidden group-hover:block"
+                      className="object-contain rounded hidden group-hover:block"
                       draggable={false}
                     />
                   )}

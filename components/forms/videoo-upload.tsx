@@ -1269,25 +1269,33 @@ function VideoUploadWithLinksComponent({
       );
   }, [buttonForms]);
 
-// In VideoUploadWithLinksComponent render method
-const videoPlayerSection = useMemo(
-  () => (
-    <div className="common-video-player">
-      <VideoPlayerWithDraggableImages
-        videoUrl={videoUrl}
-        links={
-          isModalOpen && (isEditMode || showPreview)
-            ? previewLinks
-            : video.links || []
-        }
-        isEditMode={isModalOpen && isEditMode}
-        onImageMove={handleImageMove}
-        showPreview={showPreview || (isModalOpen && !isEditMode)}
-      />
-    </div>
-  ),
-  [videoUrl, video.links, isModalOpen, isEditMode, previewLinks, handleImageMove, showPreview]
-);
+  // In VideoUploadWithLinksComponent render method
+  const videoPlayerSection = useMemo(
+    () => (
+      <div className="common-video-player">
+        <VideoPlayerWithDraggableImages
+          videoUrl={videoUrl}
+          links={
+            isModalOpen && (isEditMode || showPreview)
+              ? previewLinks
+              : video.links || []
+          }
+          isEditMode={isModalOpen && isEditMode}
+          onImageMove={handleImageMove}
+          showPreview={showPreview || (isModalOpen && !isEditMode)}
+        />
+      </div>
+    ),
+    [
+      videoUrl,
+      video.links,
+      isModalOpen,
+      isEditMode,
+      previewLinks,
+      handleImageMove,
+      showPreview,
+    ]
+  );
 
   const hasVideoContent = video.file || video.url;
   return (
