@@ -32,6 +32,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [currentForm, setCurrentForm] = useState<FormSolutionData | null>(null);
   const [isFormSubmitting, setIsFormSubmitting] = useState(false);
   const [isVideoPaused, setIsVideoPaused] = useState(false);
+  const [showPlayButton, setIsShowPlayButton] = useState(true);
   const [destinationVideos, setDestinationVideos] = useState<
     Record<string, VideoType>
   >({});
@@ -46,6 +47,16 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       try {
         setLoading(true);
         setError(null);
+
+        // Fetch session detail
+        const { data: sessionData, error: sessionError } = await supabase
+          .from("sessions")
+          .select("*")
+          .eq("id", sessionId)
+          .single();
+
+        if (sessionError) throw sessionError;
+        setIsShowPlayButton(sessionData.showPlayButton)
 
         // Fetch videos
         const { data: videosData, error: videosError } = await supabase
@@ -459,6 +470,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         isPaused={isVideoPaused}
         currentFormLink={currentFormLink}
         hasQuestions={currentQuestions.length > 0}
+        sessionShowPlayButton={showPlayButton}
         onVideoRestart={() => {
           setShowQuestions(false);
           setCurrentForm(null);

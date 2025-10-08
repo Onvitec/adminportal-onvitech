@@ -43,6 +43,7 @@ import Link from "next/link";
 import Heading from "@/components/Heading";
 import { Loader } from "@/components/Loader";
 import { VideoUploadWithLinks } from "@/components/forms/videoo-upload";
+import { Switch } from "@/components/ui/switch";
 
 type Answer = {
   id: string;
@@ -88,6 +89,7 @@ export default function EditInteractiveSession({
   const [videos, setVideos] = useState<Video[]>([]);
   // In parent component (EditInteractiveSession)
   const [videoButtonForms, setVideoButtonForms] = useState({});
+  const [showPlayButton, setShowPlayButton] = useState(true);
 
   // Generate available videos list for video link destinations
   const availableVideos = videos.map((video) => ({
@@ -110,6 +112,7 @@ export default function EditInteractiveSession({
           throw sessionError || new Error("Session not found");
 
         setSessionName(sessionData.title);
+        setShowPlayButton(sessionData.showPlayButton);
 
         setUserId(sessionData.created_by);
 
@@ -506,6 +509,7 @@ export default function EditInteractiveSession({
         .from("sessions")
         .update({
           title: sessionName,
+          showPlayButton: showPlayButton,
         })
         .eq("id", sessionId);
 
@@ -1359,6 +1363,17 @@ export default function EditInteractiveSession({
                   Add Video
                 </Button>
               </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={showPlayButton}
+                onCheckedChange={setShowPlayButton}
+                id="airplane-mode"
+              />
+              <Label htmlFor="airplane-mode">
+                Show play/pause button (iFrame)
+              </Label>
             </div>
 
             {/* Solution */}

@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import { showToast } from "@/components/toast";
 import Link from "next/link";
 import Heading from "@/components/Heading";
+import { Switch } from "@/components/ui/switch";
 
 type Answer = {
   id: string;
@@ -76,6 +77,7 @@ export default function InteractiveSessionForm() {
   const [solution, setSolution] = useState<Solution | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(false);
+  const [showPlayButton, setShowPlayButton] = useState(true);
   const [videos, setVideos] = useState<Video[]>([
     {
       id: uuidv4(),
@@ -308,6 +310,7 @@ export default function InteractiveSessionForm() {
         .insert({
           title: sessionName,
           session_type: "interactive",
+          showPlayButton: showPlayButton,
           created_by: userId,
         })
         .select()
@@ -990,6 +993,15 @@ export default function InteractiveSessionForm() {
                   Add Video
                 </Button>
               </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={showPlayButton}
+                onCheckedChange={setShowPlayButton}
+                id="airplane-mode"
+              />
+              <Label htmlFor="airplane-mode">Show play/pause button (iFrame)</Label>
             </div>
 
             {/* Solution */}

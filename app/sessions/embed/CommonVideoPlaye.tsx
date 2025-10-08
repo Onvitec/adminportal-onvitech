@@ -28,6 +28,7 @@ interface CommonVideoPlayerProps {
   onFormCancel?: () => void;
   isPaused?: boolean;
   children?: React.ReactNode;
+  sessionShowPlayButton?: boolean;
   onVideoRestart?: () => void;
   hasQuestions?: boolean; // New prop to indicate if there are questions
 }
@@ -303,6 +304,7 @@ export function CommonVideoPlayer({
   isPaused = false,
   children,
   hasQuestions = false,
+  sessionShowPlayButton = true,
 }: CommonVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -670,8 +672,11 @@ export function CommonVideoPlayer({
           }`}
           onClick={togglePlayPause}
         >
+          {/* session Show buttonis when we want to display or hide button */}
           <div
-            className={`bg-white/30 backdrop-blur-sm rounded-full p-4 shadow-lg border border-white/60 flex items-center justify-center transform transition-all duration-300 hover:scale-110`}
+            className={`bg-white/30 ${
+              !sessionShowPlayButton && "opacity-0"
+            } backdrop-blur-sm rounded-full p-4 shadow-lg border border-white/60 flex items-center justify-center transform transition-all duration-300 hover:scale-110`}
           >
             {isPlaying ? (
               <div className="w-10 h-10 flex items-center justify-center">
@@ -679,17 +684,19 @@ export function CommonVideoPlayer({
                 <div className="w-2 h-8 bg-white mx-1"></div>
               </div>
             ) : (
-              <svg
-                className="w-10 h-10 text-white"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                  clipRule="evenodd"
-                />
-              </svg>
+              <div className="">
+                <svg
+                  className="w-10 h-10 text-white"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
             )}
           </div>
         </div>
