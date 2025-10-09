@@ -23,7 +23,7 @@ export interface UserJourneyStep {
   clickedElement?: {
     id: string;
     label: string;
-    type: "button" | "form";
+    type: "button" | "form" | "restart"; // Add "restart" type
   };
   timestamp: number;
 }
@@ -77,7 +77,11 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const addClickToJourney = useCallback(
     (
       video: VideoType,
-      clickedElement: { id: string; label: string; type: "button" | "form" }
+      clickedElement: {
+        id: string;
+        label: string;
+        type: "button" | "form" | "restart";
+      } // Add "restart" type
     ) => {
       setUserJourney((prev) => {
         // Only add if this is a new video or we have a click action
@@ -141,9 +145,12 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       .map((step) => {
         if (step.clickedElement) {
           if (step.clickedElement.label.startsWith("Submitted form:")) {
-            return step.clickedElement.label; // "Submitted form: Form Title"
+            return step.clickedElement.label;
           }
-          return ` clicked: ${step.clickedElement.label}`;
+          if (step.clickedElement.type === "restart") {
+            return `${step.videoTitle} (${step.clickedElement.label})`;
+          }
+          return `clicked: ${step.clickedElement.label}`;
         }
         return step.videoTitle;
       })
@@ -540,6 +547,10 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
               if (step.clickedElement.label.startsWith("Submitted form:")) {
                 return step.clickedElement.label;
               }
+              if (step.clickedElement.type === "restart") {
+                console.log("type restart");
+                return `${step.videoTitle} (${step.clickedElement.label})`;
+              }
               return `clicked: ${step.clickedElement.label}`;
             }
             return step.videoTitle;
@@ -645,7 +656,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   if (!currentVideo) {
     return <div className="text-center p-4">No video content available</div>;
   }
-
+  console.log("joruney", getJourneySummary());
   return (
     <div className="flex flex-col h-full rounded-xl overflow-hidden">
       <CommonVideoPlayer
@@ -665,6 +676,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         currentFormLink={currentFormLink}
         hasQuestions={currentQuestions.length > 0}
         sessionShowPlayButton={showPlayButton}
+        addClickToJourney={addClickToJourney}
         onVideoRestart={() => {
           setShowQuestions(false);
           setCurrentForm(null);

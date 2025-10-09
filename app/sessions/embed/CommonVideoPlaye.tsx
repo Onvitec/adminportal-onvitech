@@ -32,6 +32,7 @@ interface CommonVideoPlayerProps {
   sessionShowPlayButton?: boolean;
   onVideoRestart?: () => void;
   hasQuestions?: boolean; // New prop to indicate if there are questions
+  addClickToJourney?: any;
 }
 
 // Form Display Component
@@ -51,7 +52,6 @@ function FormDisplay({
   const [formValues, setFormValues] = useState<Record<string, any>>({});
 
   const handleInputChange = (elementId: string, value: any) => {
-    console.log("INPUT CHANGED", elementId, value);
     // Convert null/undefined to empty string
     const sanitizedValue = value === null || value === undefined ? "" : value;
     setFormValues((prev) => ({ ...prev, [elementId]: sanitizedValue }));
@@ -124,7 +124,6 @@ function FormDisplay({
   };
 
   const renderFormElement = (element: FormElement) => {
-    console.log("ELEMENT -> ", element.type);
     switch (element.type) {
       case "text":
       case "email":
@@ -140,7 +139,6 @@ function FormDisplay({
           />
         );
       case "textarea":
-        console.log("COMINGGG", element.type);
         return (
           <Textarea
             id={element.id}
@@ -307,6 +305,7 @@ export function CommonVideoPlayer({
   children,
   hasQuestions = false,
   sessionShowPlayButton = true,
+  addClickToJourney,
 }: CommonVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -483,21 +482,33 @@ export function CommonVideoPlayer({
     [videoRect]
   );
 
-  const togglePlayPause = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-        setShowControls(true);
-      } else {
-        videoRef.current.play();
-        setIsPlaying(true);
-        setMouseActive(true);
-        resetMouseTimeout();
-        setShowFreezeControls(false);
+ const togglePlayPause = () => {
+  if (videoRef.current && currentVideo) {
+    // Check if video is ended and we're restarting it
+    const isRestartingFromEnd = videoRef.current.ended || showFreezeControls;
+    
+    if (isPlaying) {
+      videoRef.current.pause();
+      setIsPlaying(false);
+      setShowControls(true);
+    } else {
+      videoRef.current.play();
+      setIsPlaying(true);
+      setMouseActive(true);
+      resetMouseTimeout();
+      setShowFreezeControls(false);
+      
+      // Track restart if video was ended/frozen
+      if (isRestartingFromEnd && addClickToJourney) {
+        addClickToJourney(currentVideo, {
+          id: `restart-${currentVideo.id}-${Date.now()}`,
+          label: "Watch Again", 
+          type: "restart",
+        });
       }
     }
-  };
+  }
+};
 
   const handleMouseMove = () => {
     setMouseActive(true);
@@ -540,26 +551,37 @@ export function CommonVideoPlayer({
     };
   };
 
-  const handleVideoEnd = () => {
-    const shouldFreeze = !hasQuestions && currentVideo?.freezeAtEnd;
+const handleVideoEnd = () => {
+  const shouldFreeze = !hasQuestions && currentVideo?.freezeAtEnd;
 
-    if (shouldFreeze) {
-      setShowFreezeControls(true);
-      setIsPlaying(false);
-      setShowControls(true);
-    } else {
-      onVideoEnd();
-    }
-  };
-
+  if (shouldFreeze) {
+    setShowFreezeControls(true);
+    setIsPlaying(false);
+    setShowControls(true);
+  } else {
+    // Mark video as ended for normal videos too
+    setIsPlaying(false);
+    setShowControls(true);
+    onVideoEnd();
+  }
+};
   const handleRestartVideo = () => {
-    if (videoRef.current) {
+    if (videoRef.current && currentVideo) {
       videoRef.current.currentTime = 0;
       videoRef.current.play();
       setIsPlaying(true);
       setShowFreezeControls(false);
       setMouseActive(true);
       resetMouseTimeout();
+
+      // Add restart action to journey - only if video was actually ended/frozen
+      if (addClickToJourney && (showFreezeControls || videoRef.current.ended)) {
+        addClickToJourney(currentVideo, {
+          id: `restart-${currentVideo.id}-${Date.now()}`,
+          label: "Watch Again",
+          type: "restart",
+        });
+      }
     }
   };
 
