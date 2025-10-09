@@ -11,6 +11,7 @@ import { ChevronLeft, Loader2, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 interface CommonVideoPlayerProps {
   currentVideo: VideoType | null;
@@ -50,7 +51,10 @@ function FormDisplay({
   const [formValues, setFormValues] = useState<Record<string, any>>({});
 
   const handleInputChange = (elementId: string, value: any) => {
-    setFormValues((prev) => ({ ...prev, [elementId]: value }));
+    console.log("INPUT CHANGED", elementId, value);
+    // Convert null/undefined to empty string
+    const sanitizedValue = value === null || value === undefined ? "" : value;
+    setFormValues((prev) => ({ ...prev, [elementId]: sanitizedValue }));
   };
 
   const handleCheckboxChange = (
@@ -120,6 +124,7 @@ function FormDisplay({
   };
 
   const renderFormElement = (element: FormElement) => {
+    console.log("ELEMENT -> ", element.type);
     switch (element.type) {
       case "text":
       case "email":
@@ -134,16 +139,16 @@ function FormDisplay({
             className="w-full bg-white/80 backdrop-blur-sm"
           />
         );
-
       case "textarea":
+        console.log("COMINGGG", element.type);
         return (
-          <textarea
+          <Textarea
             id={element.id}
             placeholder={element.placeholder}
+            rows={8}
             value={formValues[element.id] || ""}
             onChange={(e) => handleInputChange(element.id, e.target.value)}
-            className="w-full p-2 border rounded-md bg-white/80 backdrop-blur-sm"
-            rows={4}
+            className="w-full  bg-white/80 backdrop-blur-sm"
           />
         );
 
@@ -239,10 +244,7 @@ function FormDisplay({
         </div>
 
         {/* Form */}
-        <form
-          onSubmit={handleSubmit}
-          className="flex-1 flex flex-col overflow-hidden"
-        >
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
           {/* Scrollable fields */}
           <div className="flex-1 overflow-y-auto pr-2 space-y-4 hide-scrollbar">
             {formData.elements.map((element) => (
@@ -358,11 +360,11 @@ export function CommonVideoPlayer({
       top: offsetTop,
     };
 
-    console.log("CommonVideoPlayer - VideoRect:", {
-      container: { width: containerRect.width, height: containerRect.height },
-      video: { width: video.videoWidth, height: video.videoHeight },
-      calculated: rect,
-    });
+    // console.log("CommonVideoPlayer - VideoRect:", {
+    //   container: { width: containerRect.width, height: containerRect.height },
+    //   video: { width: video.videoWidth, height: video.videoHeight },
+    //   calculated: rect,
+    // });
 
     setVideoRect(rect);
     return rect;
@@ -719,7 +721,6 @@ export function CommonVideoPlayer({
           {activeLinks.map((link) => {
             const imageUrl = getImageUrl(link);
             const dimensions = getImageDimensions(link);
-            console.log("DIMENSIONS", dimensions);
             const position = getImagePosition(link);
 
             return imageUrl ? (

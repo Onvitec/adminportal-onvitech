@@ -16,8 +16,26 @@ import { SolutionDisplay } from "../SolutionDisplay";
 import emailjs from "@emailjs/browser";
 import { buildEmailTemplate } from "@/lib/utils";
 
+// Add to your existing types in lib/types.ts
+export interface UserJourneyStep {
+  videoId: string;
+  videoTitle: string;
+  clickedElement?: {
+    id: string;
+    label: string;
+    type: "button" | "form";
+  };
+  timestamp: number;
+}
+
+export interface UserJourney {
+  sessionId: string;
+  steps: UserJourneyStep[];
+}
+
 export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [videos, setVideos] = useState<VideoType[]>([]);
+  const [sessionName, setSessionName] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentVideo, setCurrentVideo] = useState<VideoType | null>(null);
   const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
@@ -37,10 +55,100 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     Record<string, VideoType>
   >({});
 
+  // Journey tracking state
+  const [userJourney, setUserJourney] = useState<UserJourney>({
+    sessionId,
+    steps: [],
+  });
+  const userJourneyRef = useRef<UserJourney>(userJourney);
+  // Track last video ID to prevent duplicates
+  const lastVideoIdRef = useRef<string | null>(null);
+
   // Modify the video link click handler to store the form link
   const [currentFormLink, setCurrentFormLink] = useState<VideoLink | null>(
     null
   );
+  // Update the ref whenever userJourney changes
+  useEffect(() => {
+    userJourneyRef.current = userJourney;
+  }, [userJourney]);
+
+  // Function to add a clicked element to journey
+  const addClickToJourney = useCallback(
+    (
+      video: VideoType,
+      clickedElement: { id: string; label: string; type: "button" | "form" }
+    ) => {
+      setUserJourney((prev) => {
+        // Only add if this is a new video or we have a click action
+        const lastStep = prev.steps[prev.steps.length - 1];
+        const isNewVideo = !lastStep || lastStep.videoId !== video.id;
+
+        const newSteps = [...prev.steps];
+
+        // If this is a new video, add it first
+        if (isNewVideo) {
+          newSteps.push({
+            videoId: video.id,
+            videoTitle: video.title || "Untitled Video",
+            timestamp: Date.now(),
+          });
+        }
+
+        // Then add the click action
+        newSteps.push({
+          videoId: video.id,
+          videoTitle: video.title || "Untitled Video",
+          clickedElement,
+          timestamp: Date.now(),
+        });
+
+        return {
+          ...prev,
+          steps: newSteps,
+        };
+      });
+    },
+    []
+  );
+
+  // Function to add a video to journey (without click) - only if it's new
+  const addVideoToJourney = useCallback((video: VideoType) => {
+    setUserJourney((prev) => {
+      const lastStep = prev.steps[prev.steps.length - 1];
+
+      // Only add if this is a different video than the last one
+      if (!lastStep || lastStep.videoId !== video.id) {
+        return {
+          ...prev,
+          steps: [
+            ...prev.steps,
+            {
+              videoId: video.id,
+              videoTitle: video.title || "Untitled Video",
+              timestamp: Date.now(),
+            },
+          ],
+        };
+      }
+      return prev;
+    });
+  }, []);
+
+  // Function to get journey summary
+  const getJourneySummary = useCallback(() => {
+    return userJourney.steps
+      .map((step) => {
+        if (step.clickedElement) {
+          if (step.clickedElement.label.startsWith("Submitted form:")) {
+            return step.clickedElement.label; // "Submitted form: Form Title"
+          }
+          return ` clicked: ${step.clickedElement.label}`;
+        }
+        return step.videoTitle;
+      })
+      .join(" -> ");
+  }, [userJourney]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -56,7 +164,8 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           .single();
 
         if (sessionError) throw sessionError;
-        setIsShowPlayButton(sessionData.showPlayButton)
+        setIsShowPlayButton(sessionData.showPlayButton);
+        setSessionName(sessionData.title);
 
         // Fetch videos
         const { data: videosData, error: videosError } = await supabase
@@ -73,6 +182,10 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
         setVideos(videosData);
         setCurrentVideo(videosData[0]);
+        lastVideoIdRef.current = videosData[0].id;
+
+        // Initialize journey with first video
+        addVideoToJourney(videosData[0]);
 
         // Create a mapping of destination videos
         const destVideos: Record<string, VideoType> = {};
@@ -252,7 +365,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     };
 
     fetchData();
-  }, [sessionId]);
+  }, [sessionId, addVideoToJourney]);
 
   useEffect(() => {
     if (currentVideo && questions.length > 0) {
@@ -263,6 +376,15 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       setShowQuestions(false);
     }
   }, [currentVideo, questions]);
+
+  // Add destination videos to journey when they load - FIXED DUPLICATION
+  useEffect(() => {
+    if (currentVideo && currentVideo.id !== lastVideoIdRef.current) {
+      // Only add to journey if this is a new video
+      addVideoToJourney(currentVideo);
+      lastVideoIdRef.current = currentVideo.id;
+    }
+  }, [currentVideo, addVideoToJourney]);
 
   const showSolution = () => {
     if (currentSolution) {
@@ -310,6 +432,8 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const handleAnswerSelect = (
     answer: Answer & { destination_video?: VideoType }
   ) => {
+    // REMOVED journey tracking for answers since we don't need questions
+
     if (answer.destination_video) {
       // go to destination video
       if (currentVideo && !isNavigatingBack) {
@@ -322,10 +446,19 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     }
   };
 
-  // Handle video link clicks
+  // Handle video link clicks - FIXED to properly track navigation
   const handleVideoLinkClick = useCallback(
     (link: VideoLink) => {
       console.log("Link clicked:", link);
+
+      // Track the click in journey FIRST
+      if (currentVideo) {
+        addClickToJourney(currentVideo, {
+          id: link.id,
+          label: link.label,
+          type: link.link_type === "form" ? "form" : "button",
+        });
+      }
 
       if (link.link_type === "url" && link.url) {
         window.open(link.url, "_blank", "noopener,noreferrer");
@@ -340,15 +473,27 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           }
           setCurrentVideo(destinationVideo);
           setShowQuestions(false);
+
+          // The destination video will be automatically added via useEffect
         }
       } else if (link.link_type === "form" && link.form_data) {
         console.log("Form link clicked, pausing video");
         setIsVideoPaused(true);
         setCurrentForm(link.form_data);
         setCurrentFormLink(link);
+
+        // Log journey before form
+        console.log("User journey before form:", getJourneySummary());
       }
     },
-    [videos, currentVideo, isNavigatingBack, destinationVideos]
+    [
+      videos,
+      currentVideo,
+      isNavigatingBack,
+      destinationVideos,
+      addClickToJourney,
+      getJourneySummary,
+    ]
   );
 
   const handleFormSubmit = useCallback(
@@ -361,12 +506,56 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       }
     ) => {
       try {
-        console.log("FORMATTED", data.values);
+        // First, create the updated journey with form submission
+        let finalJourney: UserJourney;
+
+        if (currentVideo && currentFormLink) {
+          finalJourney = {
+            ...userJourneyRef.current,
+            steps: [
+              ...userJourneyRef.current.steps,
+              {
+                videoId: currentVideo.id,
+                videoTitle: currentVideo.title || "Untitled Video",
+                clickedElement: {
+                  id: `form-submitted-${currentFormLink.id}`,
+                  label: `Submitted form: ${data.title}`,
+                  type: "form" as const,
+                },
+                timestamp: Date.now(),
+              },
+            ],
+          };
+
+          // Update the state
+          setUserJourney(finalJourney);
+        } else {
+          finalJourney = userJourneyRef.current;
+        }
+
+        // Get the journey summary from the FINAL journey
+        const journeySummary = finalJourney.steps
+          .map((step) => {
+            if (step.clickedElement) {
+              if (step.clickedElement.label.startsWith("Submitted form:")) {
+                return step.clickedElement.label;
+              }
+              return `clicked: ${step.clickedElement.label}`;
+            }
+            return step.videoTitle;
+          })
+          .join(" -> ");
+
+        console.log("🎯 FINAL USER JOURNEY:", journeySummary);
+
         setIsFormSubmitting(true);
-        const message_html = buildEmailTemplate(
-          data.title,
-          data.values.formatted
-        );
+
+        const message_html = buildEmailTemplate(data.title, {
+          ...data.values.formatted,
+          userJourney: journeySummary,
+          sessionName: sessionName,
+          completedAt: new Date().toLocaleString(),
+        });
 
         const res = await fetch("/api/send-email", {
           method: "POST",
@@ -375,20 +564,18 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
             email: data.email,
             title: data.title,
             message_html,
+            user_journey: journeySummary,
+            journey_data: finalJourney,
           }),
         });
 
-        const result = await res.json();
         setIsFormSubmitting(false);
-        console.log("Email result:", result);
       } catch (err) {
         console.error("❌ Failed to send email:", err);
         setIsFormSubmitting(false);
-      } finally {
-        setIsFormSubmitting(false);
       }
 
-      // 🔹 your existing navigation logic remains untouched
+      // Navigation logic
       if (currentFormLink && currentFormLink.destination_video_id) {
         const destinationVideo =
           destinationVideos[currentFormLink.destination_video_id] ||
@@ -406,7 +593,14 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       setCurrentForm(null);
       setCurrentFormLink(null);
     },
-    [currentFormLink, videos, currentVideo, isNavigatingBack, destinationVideos]
+    [
+      currentFormLink,
+      videos,
+      currentVideo,
+      isNavigatingBack,
+      destinationVideos,
+      sessionId,
+    ]
   );
 
   // Handle form cancellation
