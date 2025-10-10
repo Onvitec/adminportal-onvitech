@@ -22,6 +22,7 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null);
   const [currentTimes, setCurrentTimes] = useState<Record<string, number>>({});
+  const [sessionData, setSessionData] = useState();
   const [destinationVideos, setDestinationVideos] = useState<
     Record<string, VideoType>
   >({});
@@ -29,6 +30,7 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
+
         // Fetch videos
         const { data: videosData, error: videosError } = await supabase
           .from("videos")
@@ -374,7 +376,7 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                         </span>
                       </div>
                     ) : (
-                      <div>  No video</div>
+                      <div> No video</div>
                     )}
                   </div>
                 </div>

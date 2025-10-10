@@ -26,21 +26,21 @@ interface UserManModalProps {
   onUserUpdated?: (user: UserType) => void;
 }
 
-export default function UserManModal({ 
-  open, 
+export default function UserManModal({
+  open,
   setOpen,
   mode = "create",
   user = null,
   defaultRole = "User",
   onUserCreated,
-  onUserUpdated
+  onUserUpdated,
 }: UserManModalProps) {
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
     role: defaultRole,
-    status: "Active"
+    status: "Active",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -52,8 +52,8 @@ export default function UserManModal({
           firstName: user.first_name || "",
           lastName: user.last_name || "",
           email: user.email || "",
-          role: user.role as any || defaultRole,
-          status: user.status || "Active"
+          role: (user.role as any) || defaultRole,
+          status: user.status || "Active",
         });
       } else {
         setForm({
@@ -61,14 +61,16 @@ export default function UserManModal({
           lastName: "",
           email: "",
           role: defaultRole,
-          status: "Active"
+          status: "Active",
         });
       }
       setError("");
     }
   }, [open, mode, user, defaultRole]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -81,6 +83,9 @@ export default function UserManModal({
         throw new Error("First name, last name, and email are required");
       }
 
+      // Automatically set is_company based on role
+      const isCompany = form.role === "User";
+
       if (mode === "create") {
         // Check if email exists first
         const { data: existingUser } = await supabase
@@ -91,13 +96,13 @@ export default function UserManModal({
 
         if (existingUser) throw new Error("Email already registered");
 
-        // Create user directly in your users table without auth
         const newUser = {
           first_name: form.firstName,
           last_name: form.lastName,
           email: form.email,
           role: form.role,
           status: form.status,
+          is_company: isCompany, // ✅ added this
           created_at: new Date().toISOString(),
         };
 
@@ -110,21 +115,24 @@ export default function UserManModal({
         if (dbError) throw dbError;
 
         // Optionally send an invite email
-        const { error: inviteError } = await supabase.auth.admin.inviteUserByEmail(form.email, {
-          redirectTo: `${window.location.origin}/set-password`,
-          data: {
-            first_name: form.firstName,
-            last_name: form.lastName
-          }
-        });
+        const { error: inviteError } =
+          await supabase.auth.admin.inviteUserByEmail(form.email, {
+            redirectTo: `${window.location.origin}/set-password`,
+            data: {
+              first_name: form.firstName,
+              last_name: form.lastName,
+            },
+          });
 
         if (inviteError) {
           console.warn("Invite email failed to send:", inviteError.message);
-          // Don't fail the operation - just log it
         }
 
         onUserCreated?.(data);
-        showToast("success", "User created successfully! Invitation email sent.");
+        showToast(
+          "success",
+          "User created successfully! Invitation email sent."
+        );
       } else {
         if (!user) throw new Error("No user selected for editing");
 
@@ -133,6 +141,7 @@ export default function UserManModal({
           last_name: form.lastName,
           role: form.role,
           status: form.status,
+          is_company: isCompany, // ✅ added this too
           updated_at: new Date().toISOString(),
         };
 
@@ -152,7 +161,10 @@ export default function UserManModal({
       setOpen(false);
     } catch (err: any) {
       setError(err.message);
-      console.error(`Error ${mode === 'create' ? 'creating' : 'updating'} user:`, err);
+      console.error(
+        `Error ${mode === "create" ? "creating" : "updating"} user:`,
+        err
+      );
       toast.error(err.message);
     } finally {
       setLoading(false);
@@ -166,7 +178,7 @@ export default function UserManModal({
         lastName: "",
         email: "",
         role: defaultRole,
-        status: "Active"
+        status: "Active",
       });
     }
     setOpen(open);
@@ -174,7 +186,7 @@ export default function UserManModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent 
+      <DialogContent
         className="max-w-md rounded-lg p-0"
         onInteractOutside={(e) => e.preventDefault()}
       >
@@ -185,7 +197,9 @@ export default function UserManModal({
         </DialogHeader>
 
         <div className="space-y-4 px-6 py-4">
-          {error && <div className="text-red-500 text-sm py-2 text-center">{error}</div>}
+          {error && (
+            <div className="text-red-500 text-sm py-2 text-center">{error}</div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -240,19 +254,6 @@ export default function UserManModal({
                 <option value="Admin">Admin</option>
               </select>
             </div>
-            {/* <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <select
-                id="status"
-                name="status"
-                value={form.status}
-                onChange={handleChange}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-            </div> */}
           </div>
         </div>
 
@@ -269,9 +270,13 @@ export default function UserManModal({
             disabled={loading}
             className="bg-[#2E3545] text-[14px] font-medium text-white px-3 py-2 rounded-md"
           >
-            {loading 
-              ? mode === "create" ? "Creating..." : "Updating..."
-              : mode === "create" ? "Create New Company" : "Update Company"}
+            {loading
+              ? mode === "create"
+                ? "Creating..."
+                : "Updating..."
+              : mode === "create"
+              ? "Create New Company"
+              : "Update Company"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +36,7 @@ import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { cn, solutionCategories } from "@/lib/utils";
 import { VideoUploadWithLinks } from "../videoo-upload";
-import { Solution, SolutionCategory, VideoLink } from "@/lib/types";
+import { Solution, SolutionCategory, UserType, VideoLink } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
 import { toast } from "sonner";
 import { showToast } from "@/components/toast";
@@ -78,6 +78,8 @@ export default function InteractiveSessionForm() {
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(false);
   const [showPlayButton, setShowPlayButton] = useState(true);
+  const [comapnies, setCompanies] = useState<UserType[] | []>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [videos, setVideos] = useState<Video[]>([
     {
       id: uuidv4(),
@@ -92,6 +94,24 @@ export default function InteractiveSessionForm() {
       destination_video_id: null,
     },
   ]);
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      const { data, error } = await supabase
+        .from("users")
+
+        .select("*")
+        .eq("is_company", true);
+
+      if (error) {
+        console.error("Error fetching companies:", error);
+        return;
+      }
+      setCompanies(data || []);
+    };
+
+    fetchCompanies();
+  }, []);
 
   // Generate available videos list for video link destinations
   const availableVideos = videos.map((video) => ({
@@ -292,6 +312,10 @@ export default function InteractiveSessionForm() {
       showToast("error", "session name is missing");
       return;
     }
+    if (!selectedCompanyId) {
+      showToast("error", "Select a company");
+      return;
+    }
     setIsLoading(true);
 
     try {
@@ -311,6 +335,7 @@ export default function InteractiveSessionForm() {
           title: sessionName,
           session_type: "interactive",
           showPlayButton: showPlayButton,
+          associated_with: selectedCompanyId,
           created_by: userId,
         })
         .select()
@@ -658,7 +683,6 @@ export default function InteractiveSessionForm() {
     );
   };
   const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
-
   return (
     <div className="container mx-auto">
       <div>
@@ -698,6 +722,30 @@ export default function InteractiveSessionForm() {
                   className="h-10"
                   required
                 />
+              </div>
+
+              <div className="space-y-1">
+                <Label
+                  htmlFor="company"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Associated Company
+                </Label>
+                <Select
+                  value={selectedCompanyId}
+                  onValueChange={(id) => setSelectedCompanyId(id)}
+                >
+                  <SelectTrigger className="h-10 w-1/2">
+                    <SelectValue placeholder="Select a company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {comapnies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.first_name || company.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -1001,7 +1049,9 @@ export default function InteractiveSessionForm() {
                 onCheckedChange={setShowPlayButton}
                 id="airplane-mode"
               />
-              <Label htmlFor="airplane-mode">Show play/pause button (iFrame)</Label>
+              <Label htmlFor="airplane-mode">
+                Show play/pause button (iFrame)
+              </Label>
             </div>
 
             {/* Solution */}

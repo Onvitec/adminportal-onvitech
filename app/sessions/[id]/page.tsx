@@ -39,7 +39,15 @@ export default function SessionViewPage() {
       // Fetch session
       const { data: sessionData, error: sessionError } = await supabase
         .from("sessions")
-        .select("*")
+        .select(
+          `
+    *,
+    users:associated_with (
+      id,
+      first_name
+    )
+  `
+        )
         .eq("id", id)
         .single();
 
@@ -123,7 +131,7 @@ export default function SessionViewPage() {
         <TreeViewSession
           videos={videos}
           // questions={questions}
-          
+
           sessionId={session?.id || ""}
         />
       );
@@ -252,6 +260,17 @@ export default function SessionViewPage() {
                 {session.session_type}
               </p>
             </div>
+
+            {session.users && (
+              <div>
+                <h3 className="text-sm font-medium text-[#242B42]">
+                  Associated Company
+                </h3>
+                <p className="text-base font-medium mt-1 capitalize ">
+                  {session.users.first_name || ""}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Content Section */}

@@ -82,6 +82,8 @@ export type SessionType = {
   id: string;
   title: string;
   session_type: string;
+  users?: UserType;
+  associated_with?: string;
   created_by: string;
   created_at: string;
 };
@@ -93,6 +95,7 @@ export type UserType = {
   email: string;
   role: string;
   status: string;
+
   created_at: string;
   updated_at?: string;
 };
