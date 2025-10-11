@@ -29,7 +29,9 @@ export default function SessionsTable() {
   const [loading, setLoading] = useState(true);
   const [selectedSessions, setSelectedSessions] = useState<SessionType[]>([]);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
-  const [sessionToShare, setSessionToShare] = useState<SessionType | null>(null);
+  const [sessionToShare, setSessionToShare] = useState<SessionType | null>(
+    null
+  );
   const [isConfirmModalOpen, setIsconfirmModalOpen] = useState(false);
   const [isBulkDeleteModalOpen, setIsBulkDeleteModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -58,11 +60,15 @@ export default function SessionsTable() {
   // Clean up selected sessions that no longer exist in filtered data
   useEffect(() => {
     if (selectedSessions.length > 0 && filtered.length > 0) {
-      const existingIds = new Set(filtered.map(s => s.id));
-      const hasInvalidSelections = selectedSessions.some(s => !existingIds.has(s.id));
-      
+      const existingIds = new Set(filtered.map((s) => s.id));
+      const hasInvalidSelections = selectedSessions.some(
+        (s) => !existingIds.has(s.id)
+      );
+
       if (hasInvalidSelections) {
-        setSelectedSessions(prev => prev.filter(s => existingIds.has(s.id)));
+        setSelectedSessions((prev) =>
+          prev.filter((s) => existingIds.has(s.id))
+        );
       }
     }
   }, [filtered]); // Only depend on filtered data
@@ -87,11 +93,11 @@ export default function SessionsTable() {
         .delete()
         .eq("id", sessionId);
       if (error) throw error;
-      
+
       // Update both sessions and selectedSessions
-      setSessions(prev => prev.filter(x => x.id !== sessionId));
-      setSelectedSessions(prev => prev.filter(x => x.id !== sessionId));
-      
+      setSessions((prev) => prev.filter((x) => x.id !== sessionId));
+      setSelectedSessions((prev) => prev.filter((x) => x.id !== sessionId));
+
       showToast("success", "Session deleted");
     } catch {
       showToast("error", "Failed to delete");
@@ -103,14 +109,14 @@ export default function SessionsTable() {
 
   const handleBulkDelete = async () => {
     setBulkDeleting(true);
-    const ids = selectedSessions.map(s => s.id);
+    const ids = selectedSessions.map((s) => s.id);
     try {
       await supabase.from("sessions").delete().in("id", ids);
-      
+
       // Update both sessions and selectedSessions
-      setSessions(prev => prev.filter(s => !ids.includes(s.id)));
+      setSessions((prev) => prev.filter((s) => !ids.includes(s.id)));
       setSelectedSessions([]);
-      
+
       setIsBulkDeleteModalOpen(false);
       showToast("success", `${ids.length} session(s) deleted`);
     } catch {
@@ -120,103 +126,128 @@ export default function SessionsTable() {
     }
   };
 
-  const handleSelectionChange = useCallback((selected: SessionType[]) => {
-    const existingIds = new Set(filtered.map(s => s.id));
-    const validSelections = selected.filter(s => existingIds.has(s.id));
-    
-    // Only update if the selection actually changed
-    if (validSelections.length !== selectedSessions.length || 
-        !validSelections.every((s, i) => s.id === selectedSessions[i]?.id)) {
-      setSelectedSessions(validSelections);
-    }
-  }, [filtered, selectedSessions]);
+  const handleSelectionChange = useCallback(
+    (selected: SessionType[]) => {
+      const existingIds = new Set(filtered.map((s) => s.id));
+      const validSelections = selected.filter((s) => existingIds.has(s.id));
 
-  const sessionActions = useMemo(() => [
-    {
-      label: "View Session",
-      icon: <EyeIcon className="h-4 w-4" />,
-      action: (s: SessionType) => router.push(`sessions/${s.id}`),
+      // Only update if the selection actually changed
+      if (
+        validSelections.length !== selectedSessions.length ||
+        !validSelections.every((s, i) => s.id === selectedSessions[i]?.id)
+      ) {
+        setSelectedSessions(validSelections);
+      }
     },
-    {
-      label: "Edit",
-      icon: <EditIcon className="h-4 w-4" />,
-      action: (s: SessionType) => router.push(`sessions/edit/${s.id}`),
-    },
-    {
-      label: "Delete",
-      icon: <DeleteIcon className="h-4 w-4 text-[#505568]" />,
-      action: (s: SessionType) => {
-        setSessionToDelete(s.id);
-        setIsconfirmModalOpen(true);
-      },
-      variant: "outline" as const,
-    },
-    {
-      label: "Share Session",
-      icon: <EditIcon className="h-4 w-4" />,
-      action: (s: SessionType) => {
-        setSessionToShare(s);
-        setIsShareModalOpen(true);
-      },
-      variant: "outline" as const,
-    },
-  ], [router]);
+    [filtered, selectedSessions]
+  );
 
-  const columns = useMemo(() => [
-    {
-      accessorKey: "title" as keyof SessionType,
-      header: "Session Name",
-      enableSorting: true,
-    },
-    {
-      accessorKey: "session_type" as keyof SessionType,
-      header: "Type",
-      cell: ({ getValue }: { getValue: () => any }) => {
-        const value = getValue();
-        return (
-          <span className="capitalize">
-            {value === "linear"
-              ? "Linear Flow"
-              : value === "interactive"
-              ? "Interactive Video"
-              : value}
-          </span>
-        );
+  const sessionActions = useMemo(
+    () => [
+      {
+        label: "View Session",
+        icon: <EyeIcon className="h-4 w-4" />,
+        action: (s: SessionType) => router.push(`sessions/${s.id}`),
       },
-    },
-    {
-      accessorKey: "is_active" as keyof SessionType,
-      header: "Status",
-      enableSorting: true,
-      cell: ({ getValue }: { getValue: () => any }) => {
-        const isActive = getValue();
-        return (
-          <span
-            className={
-              isActive
-                ? "text-green-600 font-semibold"
-                : "text-red-600 font-semibold"
-            }
-          >
-            {isActive ? "Completed" : "In Progress"}
-          </span>
-        );
+      {
+        label: "Edit",
+        icon: <EditIcon className="h-4 w-4" />,
+        action: (s: SessionType) => router.push(`sessions/edit/${s.id}`),
       },
-    },
-    {
-      accessorKey: "created_at" as keyof SessionType,
-      header: "Published Date",
-      enableSorting: true,
-      cell: ({ getValue }: { getValue: () => any }) => {
-        const rawDate = getValue();
-        const date = new Date(rawDate);
-        const formatted = `${date.getFullYear()}/${(date.getMonth() + 1)
-          .toString()
-          .padStart(2, "0")}/${date.getDate().toString().padStart(2, "0")}`;
-        return <span>{formatted}</span>;
+      {
+        label: "Delete",
+        icon: <DeleteIcon className="h-4 w-4 text-[#505568]" />,
+        action: (s: SessionType) => {
+          setSessionToDelete(s.id);
+          setIsconfirmModalOpen(true);
+        },
+        variant: "outline" as const,
       },
-    },
-  ], []);
+      {
+        label: "Share Session",
+        icon: <EditIcon className="h-4 w-4" />,
+        action: (s: SessionType) => {
+          setSessionToShare(s);
+          setIsShareModalOpen(true);
+        },
+        variant: "outline" as const,
+      },
+    ],
+    [router]
+  );
+
+  const columns = useMemo(
+    () => [
+      {
+        accessorKey: "title" as keyof SessionType,
+        header: "Session Name",
+        enableSorting: true,
+      },
+      {
+        accessorKey: "company_name",
+        header: "Company",
+        cell: ({ row }: { row: any }) => (
+          <span className="capitalize">{row?.company_name || "—"}</span>
+        ),
+      },
+      {
+        accessorKey: "total_views",
+        header: "Views",
+        cell: ({ getValue }: { getValue: () => any }) => {
+          const views = getValue() || 0;
+          return <span>{views.toLocaleString()}</span>;
+        },
+      },
+      {
+        accessorKey: "avg_watch_time",
+        header: "Average Watch Time",
+        cell: ({ getValue }: { getValue: () => any }) => {
+          const seconds = getValue() || 0;
+          const minutes = Math.floor(seconds / 60);
+          const remainingSeconds = seconds % 60;
+          return (
+            <span>
+              {minutes > 0 ? `${minutes}m ` : ""}
+              {remainingSeconds.toFixed(1)}s
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "is_active" as keyof SessionType,
+        header: "Status",
+        enableSorting: true,
+        cell: ({ getValue }: { getValue: () => any }) => {
+          const isActive = getValue();
+          return (
+            <span
+              className={
+                isActive
+                  ? "text-green-600 font-semibold"
+                  : "text-red-600 font-semibold"
+              }
+            >
+              {isActive ? "Completed" : "In Progress"}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "created_at" as keyof SessionType,
+        header: "Published Date",
+        enableSorting: true,
+        cell: ({ getValue }: { getValue: () => any }) => {
+          const rawDate = getValue();
+          const date = new Date(rawDate);
+          const formatted = `${date.getFullYear()}/${(date.getMonth() + 1)
+            .toString()
+            .padStart(2, "0")}/${date.getDate().toString().padStart(2, "0")}`;
+          return <span>{formatted}</span>;
+        },
+      },
+    ],
+    []
+  );
 
   return (
     <>
@@ -269,7 +300,7 @@ export default function SessionsTable() {
 
       <Table<SessionType>
         data={filtered}
-        columns={columns}
+        columns={columns as any}
         onSelectionChange={handleSelectionChange}
         pageSize={10}
         showCheckbox

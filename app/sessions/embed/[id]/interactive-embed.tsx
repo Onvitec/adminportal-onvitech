@@ -23,7 +23,7 @@ export interface UserJourneyStep {
   clickedElement?: {
     id: string;
     label: string;
-    type: "button" | "form" | "restart"; // Add "restart" type
+    type: "button" | "form" | "restart";
   };
   timestamp: number;
 }
@@ -68,10 +68,197 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [currentFormLink, setCurrentFormLink] = useState<VideoLink | null>(
     null
   );
+
+  // Watch time tracking - track actual video watching time
+  const watchTimeRef = useRef(0);
+  const startTimeRef = useRef<number>(0);
+  const hasSavedRef = useRef<boolean>(false);
+  const isVideoPlayingRef = useRef<boolean>(true);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Update the ref whenever userJourney changes
   useEffect(() => {
     userJourneyRef.current = userJourney;
   }, [userJourney]);
+  const saveLeadData = useCallback(async () => {
+    // if (hasSavedRef.current) return;
+    hasSavedRef.current = true;
+
+    try {
+      // Always calculate fresh elapsed time for accuracy
+      const elapsedSeconds = Math.floor(
+        (Date.now() - startTimeRef.current) / 1000
+      );
+      const finalWatchTime = Math.max(elapsedSeconds, watchTimeRef.current);
+
+      // Only save if they watched for more than a minimal time (e.g., 3 seconds)
+      // This filters out accidental clicks or immediate bounces
+      if (finalWatchTime < 3) {
+        console.log("⏰ Watch time too short, skipping save:", finalWatchTime);
+        return;
+      }
+
+      console.log("💾 Final watch time to save:", finalWatchTime);
+
+      const { data: sessionData } = await supabase
+        .from("sessions")
+        .select("associated_with")
+        .eq("id", sessionId)
+        .single();
+
+      const companyId = sessionData?.associated_with;
+      const payload = {
+        session_id: sessionId,
+        company_id: companyId,
+        watch_time: finalWatchTime,
+        form_data: currentFormLink?.form_data || null,
+        user_journey: userJourneyRef.current,
+      };
+
+      const apiUrl = "/api/save-lead";
+      const jsonBlob = new Blob([JSON.stringify(payload)], {
+        type: "application/json",
+      });
+
+      localStorage.setItem("watch item 2", String(finalWatchTime));
+      if (navigator.sendBeacon) {
+        console.log("📡 Sending with sendBeacon");
+        const success = navigator.sendBeacon(apiUrl, jsonBlob);
+        if (!success) {
+          throw new Error("sendBeacon failed");
+        }
+      } else {
+        console.log("🧭 Using fetch with keepalive");
+        await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          keepalive: true,
+        });
+      }
+
+      console.log("✅ Lead saved with watch_time:", finalWatchTime);
+    } catch (err) {
+      console.error("❌ Error in saveLeadData:", err);
+      hasSavedRef.current = false; // Allow retry on error
+    }
+  }, [sessionId, currentFormLink?.form_data]);
+  // Watch time tracking system
+  useEffect(() => {
+    const startTime = Date.now();
+    startTimeRef.current = startTime;
+
+    const updateWatchTime = () => {
+      watchTimeRef.current = Math.floor((Date.now() - startTime) / 1000);
+    };
+
+    // Start timer
+    timerRef.current = setInterval(updateWatchTime, 1000);
+
+    // ✅ Single, centralized save function with proper locking
+    const performFinalSave = () => {
+      // Double-check lock pattern to prevent duplicates
+      if (hasSavedRef.current) {
+        console.log("⏩ Save already completed, skipping");
+        return false;
+      }
+
+      console.log("🧾 Final save triggered");
+      clearInterval(timerRef.current!);
+
+      const finalWatchTime = Math.floor((Date.now() - startTime) / 1000);
+      watchTimeRef.current = finalWatchTime;
+
+      if (finalWatchTime < 3) {
+        console.log("⏰ Watch time too short, skipping save");
+        return false;
+      }
+
+      // Set the lock immediately
+      hasSavedRef.current = true;
+      console.log("💾 Final watch time to save:", finalWatchTime);
+
+      return finalWatchTime;
+    };
+
+    // ✅ Unified sync save for page unload (tab close/refresh)
+    const handleUnloadSave = () => {
+      const finalWatchTime = performFinalSave();
+      if (!finalWatchTime) return;
+
+      try {
+        const payload = {
+          session_id: sessionId,
+          watch_time: finalWatchTime,
+          form_data: currentFormLink?.form_data || null,
+          user_journey: userJourneyRef.current,
+        };
+
+        // Use sendBeacon first (designed for unload)
+        const blob = new Blob([JSON.stringify(payload)], {
+          type: "application/json",
+        });
+        if (navigator.sendBeacon("/api/save-lead", blob)) {
+          console.log("✅ sendBeacon save completed");
+          return;
+        }
+
+        // Fallback to sync XHR
+        console.log("🔄 sendBeacon failed, trying sync XHR");
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", "/api/save-lead", false);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        xhr.send(JSON.stringify(payload));
+        console.log("✅ Sync XHR save completed");
+      } catch (err) {
+        console.error("❌ Unload save failed:", err);
+      }
+    };
+
+    // ✅ Async save for normal navigation (SPA)
+    const handleAsyncSave = () => {
+      const finalWatchTime = performFinalSave();
+      if (!finalWatchTime) return;
+
+      // Use the existing async saveLeadData for SPA navigation
+      saveLeadData();
+    };
+
+    // ✅ Debounced visibility change handler
+    let visibilityTimeout: NodeJS.Timeout;
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        // Small delay to catch quick tab switches vs actual closes
+        visibilityTimeout = setTimeout(() => {
+          handleUnloadSave();
+        }, 100);
+      } else {
+        // Tab became visible again - cancel the save
+        clearTimeout(visibilityTimeout);
+      }
+    };
+
+    // Attach event listeners
+    window.addEventListener("beforeunload", handleUnloadSave);
+    window.addEventListener("pagehide", handleUnloadSave);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(timerRef.current!);
+      clearTimeout(visibilityTimeout);
+
+      window.removeEventListener("beforeunload", handleUnloadSave);
+      window.removeEventListener("pagehide", handleUnloadSave);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+
+      // Only save on unmount if we're in SPA navigation (not page unload)
+      // The page unload events should have already handled this
+      if (!hasSavedRef.current) {
+        console.log("🔚 Component unmounting (likely SPA navigation)");
+        handleAsyncSave();
+      }
+    };
+  }, [saveLeadData, sessionId, currentFormLink?.form_data]);
 
   // Function to add a clicked element to journey
   const addClickToJourney = useCallback(
@@ -81,16 +268,14 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         id: string;
         label: string;
         type: "button" | "form" | "restart";
-      } // Add "restart" type
+      }
     ) => {
       setUserJourney((prev) => {
-        // Only add if this is a new video or we have a click action
         const lastStep = prev.steps[prev.steps.length - 1];
         const isNewVideo = !lastStep || lastStep.videoId !== video.id;
 
         const newSteps = [...prev.steps];
 
-        // If this is a new video, add it first
         if (isNewVideo) {
           newSteps.push({
             videoId: video.id,
@@ -99,7 +284,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           });
         }
 
-        // Then add the click action
         newSteps.push({
           videoId: video.id,
           videoTitle: video.title || "Untitled Video",
@@ -121,7 +305,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     setUserJourney((prev) => {
       const lastStep = prev.steps[prev.steps.length - 1];
 
-      // Only add if this is a different video than the last one
       if (!lastStep || lastStep.videoId !== video.id) {
         return {
           ...prev,
@@ -173,6 +356,14 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         if (sessionError) throw sessionError;
         setIsShowPlayButton(sessionData.showPlayButton);
         setSessionName(sessionData.title);
+
+        // Increment total_views by 1
+        if (sessionData) {
+          await supabase
+            .from("sessions")
+            .update({ total_views: (sessionData.total_views || 0) + 1 })
+            .eq("id", sessionId);
+        }
 
         // Fetch videos
         const { data: videosData, error: videosError } = await supabase
@@ -486,6 +677,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       } else if (link.link_type === "form" && link.form_data) {
         console.log("Form link clicked, pausing video");
         setIsVideoPaused(true);
+        isVideoPlayingRef.current = false; // Pause timer
         setCurrentForm(link.form_data);
         setCurrentFormLink(link);
 
@@ -601,6 +793,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       }
 
       setIsVideoPaused(false);
+      isVideoPlayingRef.current = true; // Resume timer
       setCurrentForm(null);
       setCurrentFormLink(null);
     },
@@ -610,7 +803,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       currentVideo,
       isNavigatingBack,
       destinationVideos,
-      sessionId,
+      sessionName,
     ]
   );
 
@@ -618,6 +811,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const handleFormCancel = () => {
     // Resume video playback
     setIsVideoPaused(false);
+    isVideoPlayingRef.current = true; // Resume timer
     setCurrentForm(null);
     setCurrentFormLink(null);
   };
@@ -656,9 +850,15 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   if (!currentVideo) {
     return <div className="text-center p-4">No video content available</div>;
   }
-  console.log("joruney", getJourneySummary());
+
+  console.log("WATCH TIME", watchTimeRef.current);
   return (
     <div className="flex flex-col h-full rounded-xl overflow-hidden">
+      {/* Debug display - remove in production */}
+      <div className="absolute top-2 left-2 bg-black/70 text-white p-2 rounded text-xs z-50">
+        Watch Time: {watchTimeRef.current}s
+      </div>
+
       <CommonVideoPlayer
         currentVideo={currentVideo}
         videoLinks={videoLinks}

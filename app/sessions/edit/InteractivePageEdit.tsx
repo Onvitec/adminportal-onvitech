@@ -35,7 +35,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { cn, solutionCategories } from "@/lib/utils";
-import { Solution, SolutionCategory, VideoLink } from "@/lib/types";
+import { Solution, SolutionCategory, UserType, VideoLink } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
 import { toast } from "sonner";
 import { showToast } from "@/components/toast";
@@ -91,6 +91,9 @@ export default function EditInteractiveSession({
   const [videoButtonForms, setVideoButtonForms] = useState({});
   const [showPlayButton, setShowPlayButton] = useState(true);
 
+  const [comapnies, setCompanies] = useState<UserType[] | []>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
+
   // Generate available videos list for video link destinations
   const availableVideos = videos.map((video) => ({
     id: video.id,
@@ -113,6 +116,7 @@ export default function EditInteractiveSession({
 
         setSessionName(sessionData.title);
         setShowPlayButton(sessionData.showPlayButton);
+        setSelectedCompanyId(sessionData.associated_with);
 
         setUserId(sessionData.created_by);
 
@@ -301,6 +305,22 @@ export default function EditInteractiveSession({
         setIsFetching(false);
       }
     };
+
+    const fetchCompanies = async () => {
+      const { data, error } = await supabase
+        .from("users")
+
+        .select("*")
+        .eq("is_company", true);
+
+      if (error) {
+        console.error("Error fetching companies:", error);
+        return;
+      }
+      setCompanies(data || []);
+    };
+
+    fetchCompanies();
 
     fetchSessionData();
   }, [sessionId, router]);
@@ -510,6 +530,7 @@ export default function EditInteractiveSession({
         .update({
           title: sessionName,
           showPlayButton: showPlayButton,
+          associated_with: selectedCompanyId,
         })
         .eq("id", sessionId);
 
@@ -1061,6 +1082,30 @@ export default function EditInteractiveSession({
                   className="h-10"
                   required
                 />
+              </div>
+
+              <div className="space-y-1">
+                <Label
+                  htmlFor="company"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Associated Company
+                </Label>
+                <Select
+                  value={selectedCompanyId}
+                  onValueChange={(id) => setSelectedCompanyId(id)}
+                >
+                  <SelectTrigger className="h-10 w-1/2">
+                    <SelectValue placeholder="Select a company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {comapnies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.first_name || company.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
