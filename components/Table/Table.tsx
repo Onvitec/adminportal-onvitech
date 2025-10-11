@@ -57,6 +57,7 @@ function TableInner<T extends { id: string | number }>(
           <div className="overflow-hidden">
             <table className="min-w-full divide-y divide-[#C5D2E799]">
               <TableHeader
+              
                 columns={columns}
                 showCheckbox={showCheckbox}
                 onSelectAll={handleSelectAll}
@@ -82,7 +83,7 @@ function TableInner<T extends { id: string | number }>(
                     >
                       <div className="flex justify-center">
                         <div className="">
-                          <Loader size="sm"/>
+                          <Loader size="sm" />
                         </div>
                       </div>
                     </td>
@@ -102,23 +103,24 @@ function TableInner<T extends { id: string | number }>(
                   </tr>
                 ) : (
                   // Inside the TableInner component's return statement:
-paginatedData.map((row, rowIndex) => (
-  <TableRow
-    key={row.id ?? rowIndex}
-    row={row}
-    rowIndex={rowIndex}
-    columns={columns}
-    showCheckbox={showCheckbox}
-    isSelected={selectedRows.includes(row)}
-    onSelect={(isSelected: boolean) => {
-      handleSelectRow(row, isSelected);
-      onRowSelect?.(row as any);
-    }}
-    isSelectable={isSelectable}
-    showActions={showActions}
-    actions={actions}
-  />
-))
+                  paginatedData.map((row, rowIndex) => (
+                    <TableRow
+                      key={row.id ?? rowIndex}
+                              onClick={() => onRowClick?.(row as any)}
+                      row={row}
+                      rowIndex={rowIndex}
+                      columns={columns}
+                      showCheckbox={showCheckbox}
+                      isSelected={selectedRows.includes(row)}
+                      onSelect={(isSelected: boolean) => {
+                        handleSelectRow(row, isSelected);
+                        onRowSelect?.(row as any);
+                      }}
+                      isSelectable={isSelectable}
+                      showActions={showActions}
+                      actions={actions}
+                    />
+                  ))
                 )}
               </tbody>
             </table>

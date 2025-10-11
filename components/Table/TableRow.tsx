@@ -48,7 +48,6 @@ export default function TableRow({
     }
     
     onClick?.(); // Call the original onClick if it exists
-    router.push(`/sessions/${row.id}`); // Navigate to session view page
   };
 
   return (

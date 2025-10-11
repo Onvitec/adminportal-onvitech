@@ -55,7 +55,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     Record<string, VideoType>
   >({});
 
-  // Journey tracking state
   const [userJourney, setUserJourney] = useState<UserJourney>({
     sessionId,
     steps: [],
@@ -630,8 +629,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const handleAnswerSelect = (
     answer: Answer & { destination_video?: VideoType }
   ) => {
-    // REMOVED journey tracking for answers since we don't need questions
-
     if (answer.destination_video) {
       // go to destination video
       if (currentVideo && !isNavigatingBack) {
@@ -647,8 +644,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   // Handle video link clicks - FIXED to properly track navigation
   const handleVideoLinkClick = useCallback(
     (link: VideoLink) => {
-      console.log("Link clicked:", link);
-
       // Track the click in journey FIRST
       if (currentVideo) {
         addClickToJourney(currentVideo, {
@@ -740,7 +735,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
                 return step.clickedElement.label;
               }
               if (step.clickedElement.type === "restart") {
-                console.log("type restart");
                 return `${step.videoTitle} (${step.clickedElement.label})`;
               }
               return `clicked: ${step.clickedElement.label}`;
@@ -753,6 +747,39 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
         setIsFormSubmitting(true);
 
+        // ✅ NEW: Save form data and user journey to database
+        try {
+          const { data: sessionData } = await supabase
+            .from("sessions")
+            .select("associated_with")
+            .eq("id", sessionId)
+            .single();
+
+          const companyId = sessionData?.associated_with;
+
+          // Save form submission data
+          const { error: saveError } = await supabase
+            .from("leads") // You'll need to create this table
+            .insert({
+              session_id: sessionId,
+              company_id: companyId,
+              form_title: data.title,
+              form_data: data.values.formatted, // Store the raw form values as JSONB
+              user_journey: finalJourney, // Store the complete journey as JSONB
+              journey_summary: journeySummary,
+              created_at: new Date().toISOString(),
+            });
+
+          if (saveError) {
+            console.error("❌ Error saving form data:", saveError);
+          } else {
+            console.log("✅ Form data and user journey saved successfully");
+          }
+        } catch (dbError) {
+          console.error("❌ Database save error:", dbError);
+        }
+
+        // Send email (your existing code)
         const message_html = buildEmailTemplate(data.title, {
           ...data.values.formatted,
           userJourney: journeySummary,
@@ -778,7 +805,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         setIsFormSubmitting(false);
       }
 
-      // Navigation logic
+      // Navigation logic (your existing code)
       if (currentFormLink && currentFormLink.destination_video_id) {
         const destinationVideo =
           destinationVideos[currentFormLink.destination_video_id] ||
@@ -804,6 +831,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       isNavigatingBack,
       destinationVideos,
       sessionName,
+      sessionId, // Added sessionId dependency
     ]
   );
 
@@ -851,14 +879,8 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     return <div className="text-center p-4">No video content available</div>;
   }
 
-  console.log("WATCH TIME", watchTimeRef.current);
   return (
     <div className="flex flex-col h-full rounded-xl overflow-hidden">
-      {/* Debug display - remove in production */}
-      <div className="absolute top-2 left-2 bg-black/70 text-white p-2 rounded text-xs z-50">
-        Watch Time: {watchTimeRef.current}s
-      </div>
-
       <CommonVideoPlayer
         currentVideo={currentVideo}
         videoLinks={videoLinks}

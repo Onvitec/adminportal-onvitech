@@ -66,15 +66,12 @@ const UsersTable = () => {
 
   const handleDeleteUser = async (user: UserType) => {
     try {
-      const { error } = await supabase
-        .from("users")
-        .delete()
-        .eq("id", user.id);
-      
+      const { error } = await supabase.from("users").delete().eq("id", user.id);
+
       if (error) throw error;
-      
-      setUsers(prevUsers => prevUsers.filter((u) => u.id !== user.id));
-      setSelectedRows(prev => prev.filter(u => u.id !== user.id));
+
+      setUsers((prevUsers) => prevUsers.filter((u) => u.id !== user.id));
+      setSelectedRows((prev) => prev.filter((u) => u.id !== user.id));
       showToast("success", "User deleted successfully!");
     } catch (error) {
       showToast("error", "Error deleting user");
@@ -96,15 +93,23 @@ const UsersTable = () => {
       const { error } = await supabase
         .from("users")
         .delete()
-        .in("id", selectedRows.map(user => user.id));
-      
+        .in(
+          "id",
+          selectedRows.map((user) => user.id)
+        );
+
       if (error) throw error;
-      
-      const deletedIds = new Set(selectedRows.map(user => user.id));
-      setUsers(prevUsers => prevUsers.filter(user => !deletedIds.has(user.id)));
+
+      const deletedIds = new Set(selectedRows.map((user) => user.id));
+      setUsers((prevUsers) =>
+        prevUsers.filter((user) => !deletedIds.has(user.id))
+      );
       setSelectedRows([]);
       setIsBulkDeleteModalOpen(false);
-      showToast("success", `${selectedRows.length} user(s) deleted successfully!`);
+      showToast(
+        "success",
+        `${selectedRows.length} user(s) deleted successfully!`
+      );
     } catch (error) {
       showToast("error", "Error deleting selected users");
       console.error("Error deleting users:", error);
@@ -123,42 +128,55 @@ const UsersTable = () => {
     setEditingUser(null);
   };
 
-  const handleRowSelect = useCallback((selected: UserType[]) => {
-    const existingIds = new Set(users.map(user => user.id));
-    const validSelections = selected.filter(user => existingIds.has(user.id));
-    setSelectedRows(validSelections);
-  }, [users]);
+  const handleRowSelect = useCallback(
+    (selected: UserType[]) => {
+      const existingIds = new Set(users.map((user) => user.id));
+      const validSelections = selected.filter((user) =>
+        existingIds.has(user.id)
+      );
+      setSelectedRows(validSelections);
+    },
+    [users]
+  );
 
   const handleRowClick = (row: UserType) => {
-    console.log("Row clicked:", row);
+    console.log("Ckucjed");
+    
+    router.push(`/company-management/${row.id}`);
   };
 
-  const userActions = useMemo(() => [
-    {
-      label: "Delete",
-      icon: <DeleteIcon className="h-4 w-4 text-[#505568]" />,
-      action: handleDeleteUser,
-      variant: "destructive" as const,
-    },
-  ], []);
+  const userActions = useMemo(
+    () => [
+      {
+        label: "Delete",
+        icon: <DeleteIcon className="h-4 w-4 text-[#505568]" />,
+        action: handleDeleteUser,
+        variant: "destructive" as const,
+      },
+    ],
+    []
+  );
 
-  const columns: ColumnDef<UserType>[] = useMemo(() => [
-    {
-      accessorKey: "first_name",
-      header: "First Name",
-      enableSorting: true,
-    },
-    {
-      accessorKey: "last_name",
-      header: "Last Name",
-      enableSorting: true,
-    },
-    {
-      accessorKey: "email",
-      header: "Email",
-      enableSorting: true,
-    },
-  ], []);
+  const columns: ColumnDef<UserType>[] = useMemo(
+    () => [
+      {
+        accessorKey: "first_name",
+        header: "First Name",
+        enableSorting: true,
+      },
+      {
+        accessorKey: "last_name",
+        header: "Last Name",
+        enableSorting: true,
+      },
+      {
+        accessorKey: "email",
+        header: "Email",
+        enableSorting: true,
+      },
+    ],
+    []
+  );
 
   return (
     <>
