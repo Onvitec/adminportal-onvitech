@@ -1,11 +1,11 @@
 import React from "react";
 import CompanyLeadsPage from "./company-lead-page";
 
-// Next.js automatically injects params into this function
-const Page = ({ params }: { params: { id: string } }) => {
+const Page = async ({ params }: { params: Promise<{ id: string }> }) => {
+  const { id } = await params;
   return (
     <div>
-      <CompanyLeadsPage companyId={params.id} />
+      <CompanyLeadsPage companyId={id} />
     </div>
   );
 };
