@@ -1322,7 +1322,7 @@ function VideoUploadWithLinksComponent({
             <Button
               type="button"
               onClick={() => setIsModalOpen(true)}
-              className="bg-white text-black hover:bg-gray-100"
+              className="bg-white text-black hover:bg-gray-100 mr-4 mt-2"
             >
               {video.links && video.links.length > 0
                 ? "Edit Buttons"

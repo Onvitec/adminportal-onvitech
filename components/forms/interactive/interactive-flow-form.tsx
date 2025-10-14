@@ -1120,164 +1120,133 @@ export default function InteractiveSessionForm() {
             </div>
 
             {/* Navigation Button Section */}
-            <div className="mt-8 rounded-xl border bg-gray-50 p-6">
-              <h3 className="text-lg font-semibold mb-2">Navigation Button</h3>
-              <p className="text-sm text-gray-600 mb-6">
-                Upload a button image and a navigation video. This button will
-                appear persistently when embedded and play the selected video on
-                click.
-              </p>
+      <div className="mt-10 rounded-2xl border border-neutral-200 bg-white p-8">
+  <div className="mb-6">
+    <h3 className="text-lg font-semibold text-neutral-900">Navigation Button</h3>
+    <p className="text-sm text-neutral-500 mt-1">
+      Upload a button image and a navigation video. The button will stay visible and play the selected video when clicked.
+    </p>
+  </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Image Upload */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Button Image *</Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-white">
-                    {navigationButtonImage ? (
-                      <div className="flex flex-col items-center space-y-3">
-                        <img
-                          src={URL.createObjectURL(navigationButtonImage)}
-                          alt="Navigation button"
-                          className="max-h-24 object-contain rounded"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setNavigationButtonImage(null)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" /> Remove
-                        </Button>
-                      </div>
-                    ) : (
-                      <Label
-                        htmlFor="navigation-image"
-                        className="cursor-pointer"
-                      >
-                        <Upload className="mx-auto h-8 w-8 text-gray-400" />
-                        <p className="mt-2 text-sm text-blue-600">
-                          Upload Button Image
-                        </p>
-                        <input
-                          id="navigation-image"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) setNavigationButtonImage(file);
-                          }}
-                        />
-                        <p className="text-xs text-gray-400 mt-1">
-                          PNG, JPG, GIF up to 10MB
-                        </p>
-                      </Label>
-                    )}
-                  </div>
-                </div>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    {/* Image Upload */}
+    <div className="space-y-3">
+      <Label className="text-sm text-neutral-700 font-medium">Button Image *</Label>
+      <div className="border border-dashed border-neutral-300 rounded-xl p-6 text-center bg-neutral-50 hover:bg-neutral-100/60 transition">
+        {navigationButtonImage ? (
+          <div className="space-y-4 flex flex-col items-center">
+            <img
+              src={URL.createObjectURL(navigationButtonImage)}
+              alt="Navigation button"
+              className="max-h-28 object-contain rounded-md"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setNavigationButtonImage(null)}
+              className="text-red-500 hover:text-red-600 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4 mr-1" /> Remove
+            </Button>
+          </div>
+        ) : (
+          <Label htmlFor="navigation-image" className="cursor-pointer block">
+            <Upload className="mx-auto h-7 w-7 text-neutral-400" />
+            <p className="mt-2 text-sm font-medium text-blue-600">Upload Image</p>
+            <input
+              id="navigation-image"
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) setNavigationButtonImage(file);
+              }}
+            />
+            <p className="text-xs text-neutral-400 mt-1">PNG, JPG up to 10MB</p>
+          </Label>
+        )}
+      </div>
+    </div>
 
-                {/* Video Upload */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">
-                    Navigation Video *
-                  </Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-white">
-                    {navigationButtonVideo ? (
-                      <div className="flex flex-col items-center space-y-3">
-                        {/* Video Preview */}
-                        <video
-                          controls
-                          className="w-full max-h-32 object-contain bg-black rounded"
-                          src={URL.createObjectURL(navigationButtonVideo)}
-                        >
-                          Your browser does not support the video tag.
-                        </video>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setNavigationButtonVideo(null)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" /> Remove
-                        </Button>
-                      </div>
-                    ) : (
-                      <Label
-                        htmlFor="navigation-video"
-                        className="cursor-pointer"
-                      >
-                        <Video className="mx-auto h-8 w-8 text-gray-400" />
-                        <p className="mt-2 text-sm text-blue-600">
-                          Upload Navigation Video
-                        </p>
-                        <input
-                          id="navigation-video"
-                          type="file"
-                          accept="video/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              setNavigationButtonVideo(file);
-                              setNavigationButtonVideoTitle(
-                                file.name.split(".")[0] || "Navigation Video"
-                              );
-                            }
-                          }}
-                        />
-                        <p className="text-xs text-gray-400 mt-1">
-                          MP4, MOV, AVI up to 100MB
-                        </p>
-                      </Label>
-                    )}
-                  </div>
+    {/* Video Upload */}
+    <div className="space-y-3">
+      <Label className="text-sm text-neutral-700 font-medium">Navigation Video *</Label>
+      <div className="border border-dashed border-neutral-300 rounded-xl p-6 text-center bg-neutral-50 hover:bg-neutral-100/60 transition">
+        {navigationButtonVideo ? (
+          <div className="space-y-4 flex flex-col items-center">
+            <video
+              controls
+              className="w-full max-h-32 rounded-lg bg-black object-contain"
+              src={URL.createObjectURL(navigationButtonVideo)}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setNavigationButtonVideo(null)}
+              className="text-red-500 hover:text-red-600 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4 mr-1" /> Remove
+            </Button>
+          </div>
+        ) : (
+          <Label htmlFor="navigation-video" className="cursor-pointer block">
+            <Video className="mx-auto h-7 w-7 text-neutral-400" />
+            <p className="mt-2 text-sm font-medium text-blue-600">Upload Video</p>
+            <input
+              id="navigation-video"
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setNavigationButtonVideo(file);
+                  setNavigationButtonVideoTitle(file.name.split(".")[0]);
+                }
+              }}
+            />
+            <p className="text-xs text-neutral-400 mt-1">MP4, MOV up to 100MB</p>
+          </Label>
+        )}
+      </div>
 
-                  {navigationButtonVideoTitle && (
-                    <Input
-                      placeholder="Enter video title"
-                      value={navigationButtonVideoTitle}
-                      onChange={(e) =>
-                        setNavigationButtonVideoTitle(e.target.value)
-                      }
-                      className="h-9 text-sm"
-                    />
-                  )}
-                </div>
-              </div>
+      {navigationButtonVideoTitle && (
+        <Input
+          placeholder="Video title"
+          value={navigationButtonVideoTitle}
+          onChange={(e) => setNavigationButtonVideoTitle(e.target.value)}
+          className="h-9 text-sm"
+        />
+      )}
+    </div>
+  </div>
 
-              {/* Preview */}
-              {navigationButtonImage && navigationButtonVideo && (
-                <div className="mt-6 border rounded-lg bg-white p-4">
-                  <Label className="text-sm font-medium mb-2 block">
-                    Preview
-                  </Label>
-                  <div className="flex items-center gap-4 bg-gray-100 rounded-lg p-3">
-                    <div className="w-14 h-14 flex items-center justify-center bg-white border rounded-md shadow-sm">
-                      <img
-                        src={URL.createObjectURL(navigationButtonImage)}
-                        alt="Preview"
-                        className="max-h-10 object-contain"
-                      />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Navigation Button</p>
-                      <p className="text-xs text-gray-500">
-                        Click to play:{" "}
-                        {navigationButtonVideoTitle || "Untitled"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+  {/* Preview */}
+  {navigationButtonImage && navigationButtonVideo && (
+    <div className="mt-8 border border-neutral-200 rounded-xl bg-neutral-50 p-6">
+      <Label className="text-sm text-neutral-700 font-medium mb-3 block">Preview</Label>
+      <div className="flex items-center gap-4">
+        <div className="w-14 h-14 flex items-center justify-center bg-white border border-neutral-200 rounded-lg shadow-sm">
+          <img
+            src={URL.createObjectURL(navigationButtonImage)}
+            alt="Preview"
+            className="max-h-10 object-contain"
+          />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-neutral-800">Navigation Button</p>
+          <p className="text-xs text-neutral-500">
+            Click to play: {navigationButtonVideoTitle || "Untitled"}
+          </p>
+        </div>
+      </div>
+    </div>
+  )}
+</div>
 
-              {/* Note */}
-              <div className="mt-4 p-3 border border-blue-100 bg-blue-50 rounded-md text-xs text-blue-700">
-                <strong>Note:</strong> Both image and video are required. The
-                button will stay visible in embedded mode.
-              </div>
-            </div>
 
             <div className="flex items-center space-x-2">
               <Switch

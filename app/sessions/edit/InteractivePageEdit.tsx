@@ -1531,21 +1531,27 @@ export default function EditInteractiveSession({
             </div>
 
             {/* Navigation Button Section */}
-            <div className="mt-8 rounded-xl border bg-gray-50 p-6">
-              <h3 className="text-lg font-semibold mb-2">Navigation Button</h3>
-              <p className="text-sm text-gray-600 mb-6">
-                Upload a button image and a navigation video. This button will
-                appear persistently when embedded and play the selected video on
-                click.
-              </p>
+            <div className="mt-10 rounded-2xl border border-neutral-200 bg-white p-8">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-neutral-900">
+                  Edit Navigation Button
+                </h3>
+                <p className="text-sm text-neutral-500 mt-1">
+                  Update your navigation button image or video. The button will
+                  stay visible in embedded mode and play the selected video on
+                  click.
+                </p>
+              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Image Upload */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Button Image *</Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-white">
+                <div className="space-y-3">
+                  <Label className="text-sm text-neutral-700 font-medium">
+                    Button Image *
+                  </Label>
+                  <div className="border border-dashed border-neutral-300 rounded-xl p-6 text-center bg-neutral-50 hover:bg-neutral-100/60 transition">
                     {navigationButtonImage || existingNavigationImageUrl ? (
-                      <div className="flex flex-col items-center space-y-3">
+                      <div className="space-y-4 flex flex-col items-center">
                         <img
                           src={
                             navigationButtonImage
@@ -1553,18 +1559,18 @@ export default function EditInteractiveSession({
                               : existingNavigationImageUrl
                           }
                           alt="Navigation button"
-                          className="max-h-24 object-contain rounded"
+                          className="max-h-28 object-contain rounded-md"
                         />
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           onClick={() => {
                             setNavigationButtonImage(null);
                             setExistingNavigationImageUrl("");
                             setNavigationButtonImageUrl("");
                           }}
-                          className="text-red-600"
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4 mr-1" /> Remove
                         </Button>
@@ -1572,11 +1578,11 @@ export default function EditInteractiveSession({
                     ) : (
                       <Label
                         htmlFor="navigation-image"
-                        className="cursor-pointer"
+                        className="cursor-pointer block"
                       >
-                        <Upload className="mx-auto h-8 w-8 text-gray-400" />
-                        <p className="mt-2 text-sm text-blue-600">
-                          Upload Button Image
+                        <Upload className="mx-auto h-7 w-7 text-neutral-400" />
+                        <p className="mt-2 text-sm font-medium text-blue-600">
+                          Upload Image
                         </p>
                         <input
                           id="navigation-image"
@@ -1588,8 +1594,8 @@ export default function EditInteractiveSession({
                             if (file) setNavigationButtonImage(file);
                           }}
                         />
-                        <p className="text-xs text-gray-400 mt-1">
-                          PNG, JPG, GIF up to 10MB
+                        <p className="text-xs text-neutral-400 mt-1">
+                          PNG, JPG up to 10MB
                         </p>
                       </Label>
                     )}
@@ -1597,33 +1603,30 @@ export default function EditInteractiveSession({
                 </div>
 
                 {/* Video Upload */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">
+                <div className="space-y-3">
+                  <Label className="text-sm text-neutral-700 font-medium">
                     Navigation Video *
                   </Label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-white">
+                  <div className="border border-dashed border-neutral-300 rounded-xl p-6 text-center bg-neutral-50 hover:bg-neutral-100/60 transition">
                     {navigationButtonVideo || existingNavigationVideoUrl ? (
-                      <div className="flex flex-col items-center space-y-3">
-                        {/* Video Preview */}
+                      <div className="space-y-4 flex flex-col items-center">
                         <video
                           controls
-                          className="w-full max-h-32 object-contain bg-black rounded"
+                          className="w-full max-h-32 rounded-lg bg-black object-contain"
                           src={
                             navigationButtonVideo
                               ? URL.createObjectURL(navigationButtonVideo)
                               : existingNavigationVideoUrl
                           }
-                        >
-                          Your browser does not support the video tag.
-                        </video>
-                        <p className="text-sm font-medium">
+                        />
+                        <p className="text-sm font-medium text-neutral-700">
                           {navigationButtonVideo
                             ? navigationButtonVideo.name
                             : "Existing Navigation Video"}
                         </p>
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="ghost"
                           size="sm"
                           onClick={() => {
                             setNavigationButtonVideo(null);
@@ -1631,7 +1634,7 @@ export default function EditInteractiveSession({
                             setNavigationButtonVideoUrl("");
                             setNavigationButtonVideoTitle("");
                           }}
-                          className="text-red-600"
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
                         >
                           <Trash2 className="h-4 w-4 mr-1" /> Remove
                         </Button>
@@ -1639,11 +1642,11 @@ export default function EditInteractiveSession({
                     ) : (
                       <Label
                         htmlFor="navigation-video"
-                        className="cursor-pointer"
+                        className="cursor-pointer block"
                       >
-                        <Video className="mx-auto h-8 w-8 text-gray-400" />
-                        <p className="mt-2 text-sm text-blue-600">
-                          Upload Navigation Video
+                        <Video className="mx-auto h-7 w-7 text-neutral-400" />
+                        <p className="mt-2 text-sm font-medium text-blue-600">
+                          Upload Video
                         </p>
                         <input
                           id="navigation-video"
@@ -1655,13 +1658,13 @@ export default function EditInteractiveSession({
                             if (file) {
                               setNavigationButtonVideo(file);
                               setNavigationButtonVideoTitle(
-                                file.name.split(".")[0] || "Navigation Video"
+                                file.name.split(".")[0]
                               );
                             }
                           }}
                         />
-                        <p className="text-xs text-gray-400 mt-1">
-                          MP4, MOV, AVI up to 100MB
+                        <p className="text-xs text-neutral-400 mt-1">
+                          MP4, MOV up to 100MB
                         </p>
                       </Label>
                     )}
@@ -1670,12 +1673,12 @@ export default function EditInteractiveSession({
                   {(navigationButtonVideoTitle ||
                     existingNavigationVideoUrl) && (
                     <Input
-                      placeholder="Enter video title"
+                      placeholder="Video title"
                       value={navigationButtonVideoTitle}
                       onChange={(e) =>
                         setNavigationButtonVideoTitle(e.target.value)
                       }
-                      className="h-9 text-sm mt-2"
+                      className="h-9 text-sm"
                     />
                   )}
                 </div>
@@ -1684,42 +1687,34 @@ export default function EditInteractiveSession({
               {/* Preview */}
               {(navigationButtonImage || existingNavigationImageUrl) &&
                 (navigationButtonVideo || existingNavigationVideoUrl) && (
-                  <div className="mt-6 border rounded-lg bg-white p-4">
-                    <Label className="text-sm font-medium mb-2 block">
+                  <div className="mt-8 border border-neutral-200 rounded-xl bg-neutral-50 p-6">
+                    <Label className="text-sm text-neutral-700 font-medium mb-3 block">
                       Preview
                     </Label>
-                    <div className="flex flex-col gap-4">
-                      <div className="flex items-center gap-4 bg-gray-100 rounded-lg p-3">
-                        <div className="w-14 h-14 flex items-center justify-center bg-white border rounded-md shadow-sm">
-                          <img
-                            src={
-                              navigationButtonImage
-                                ? URL.createObjectURL(navigationButtonImage)
-                                : existingNavigationImageUrl
-                            }
-                            alt="Preview"
-                            className="max-h-10 object-contain"
-                          />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">
-                            Navigation Button
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Click to play:{" "}
-                            {navigationButtonVideoTitle || "Untitled"}
-                          </p>
-                        </div>
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 flex items-center justify-center bg-white border border-neutral-200 rounded-lg shadow-sm">
+                        <img
+                          src={
+                            navigationButtonImage
+                              ? URL.createObjectURL(navigationButtonImage)
+                              : existingNavigationImageUrl
+                          }
+                          alt="Preview"
+                          className="max-h-10 object-contain"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-neutral-800">
+                          Navigation Button
+                        </p>
+                        <p className="text-xs text-neutral-500">
+                          Click to play:{" "}
+                          {navigationButtonVideoTitle || "Untitled"}
+                        </p>
                       </div>
                     </div>
                   </div>
                 )}
-
-              {/* Note */}
-              <div className="mt-4 p-3 border border-blue-100 bg-blue-50 rounded-md text-xs text-blue-700">
-                <strong>Note:</strong> Both image and video are required. The
-                button will stay visible in embedded mode.
-              </div>
             </div>
 
             <div className="flex items-center space-x-2">

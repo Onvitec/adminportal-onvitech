@@ -17,7 +17,7 @@ export default function TableCell<T>({
   const value = row[column.accessorKey];
   return (
     <td
-      className={`whitespace-nowrap px-3 py-4 text-sm text-gray-500 ${
+      className={`whitespace-nowrap px-6 py-4 text-sm text-gray-500 ${
         isFirstColumn ? "pl-6" : ""
       }`}
     >

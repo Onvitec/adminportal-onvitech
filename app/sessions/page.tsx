@@ -13,6 +13,7 @@ import { ConfirmModal } from "@/components/Modal/confirmDelete";
 import { IframeModal } from "@/components/Modal/IframeModal";
 import { showToast } from "@/components/toast";
 import CreateSessionModal from "@/components/Modal/CreateSessionModal";
+import { Session } from "inspector/promises";
 
 const FILTERS = [
   { label: "All", key: "all" },
@@ -249,6 +250,10 @@ export default function SessionsTable() {
     []
   );
 
+
+    const handleRowClick = (row:any) => {
+      router.push(`/sessions/${row.id}`);
+    };
   return (
     <>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
@@ -302,6 +307,7 @@ export default function SessionsTable() {
         data={filtered}
         columns={columns as any}
         onSelectionChange={handleSelectionChange}
+        onRowClick={handleRowClick}
         pageSize={10}
         showCheckbox
         showActions
