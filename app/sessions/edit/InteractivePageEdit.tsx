@@ -23,6 +23,7 @@ import {
   ChevronUp,
   Pencil,
   Plus,
+  Video,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -91,6 +92,20 @@ export default function EditInteractiveSession({
   const [videoButtonForms, setVideoButtonForms] = useState({});
   const [showPlayButton, setShowPlayButton] = useState(true);
 
+  //// Navigation button states
+  const [navigationButtonImage, setNavigationButtonImage] =
+    useState<File | null>(null);
+  const [navigationButtonImageUrl, setNavigationButtonImageUrl] = useState("");
+  const [navigationButtonVideo, setNavigationButtonVideo] =
+    useState<File | null>(null);
+  const [navigationButtonVideoUrl, setNavigationButtonVideoUrl] = useState("");
+  const [navigationButtonVideoTitle, setNavigationButtonVideoTitle] =
+    useState("");
+  const [existingNavigationImageUrl, setExistingNavigationImageUrl] =
+    useState("");
+  const [existingNavigationVideoUrl, setExistingNavigationVideoUrl] =
+    useState("");
+
   const [comapnies, setCompanies] = useState<UserType[] | []>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
 
@@ -119,6 +134,24 @@ export default function EditInteractiveSession({
         setSelectedCompanyId(sessionData.associated_with);
 
         setUserId(sessionData.created_by);
+        // Set navigation button data if exists
+        if (sessionData.navigation_button_image_url) {
+          setExistingNavigationImageUrl(
+            sessionData.navigation_button_image_url
+          );
+          setNavigationButtonImageUrl(sessionData.navigation_button_image_url);
+        }
+        if (sessionData.navigation_button_video_url) {
+          setExistingNavigationVideoUrl(
+            sessionData.navigation_button_video_url
+          );
+          setNavigationButtonVideoUrl(sessionData.navigation_button_video_url);
+        }
+        if (sessionData.navigation_button_video_title) {
+          setNavigationButtonVideoTitle(
+            sessionData.navigation_button_video_title
+          );
+        }
 
         // Get videos for this session
         const { data: videosData, error: videosError } = await supabase
@@ -793,6 +826,93 @@ export default function EditInteractiveSession({
         }
       }
 
+      // handle navigation buttons
+      // Handle navigation button updates
+      let finalNavigationImageUrl = existingNavigationImageUrl;
+      let finalNavigationVideoUrl = existingNavigationVideoUrl;
+
+      // Upload new navigation button image if provided
+      if (navigationButtonImage) {
+        const imageFileExt = navigationButtonImage.name.split(".").pop();
+        const imageFilePath = `${user.id}/${sessionId}/navigation-button.${imageFileExt}`;
+
+        // Delete old image if exists
+        if (existingNavigationImageUrl) {
+          const oldImagePath = existingNavigationImageUrl
+            .split("/")
+            .slice(3)
+            .join("/");
+          await supabase.storage
+            .from("navigation-images")
+            .remove([oldImagePath]);
+        }
+
+        const { data: imageUploadData, error: imageUploadError } =
+          await supabase.storage
+            .from("navigation-images")
+            .upload(imageFilePath, navigationButtonImage);
+
+        if (imageUploadError) throw imageUploadError;
+
+        const { data: imageUrlData } = supabase.storage
+          .from("navigation-images")
+          .getPublicUrl(imageFilePath);
+
+        finalNavigationImageUrl = imageUrlData.publicUrl;
+      }
+
+      // Upload new navigation video if provided
+      if (navigationButtonVideo) {
+        const videoFileExt = navigationButtonVideo.name.split(".").pop();
+        const videoFilePath = `${user.id}/${sessionId}/navigation-video.${videoFileExt}`;
+
+        // Delete old video if exists
+        if (existingNavigationVideoUrl) {
+          const oldVideoPath = existingNavigationVideoUrl
+            .split("/")
+            .slice(3)
+            .join("/");
+          await supabase.storage
+            .from("navigation-videos")
+            .remove([oldVideoPath]);
+        }
+
+        const { data: videoUploadData, error: videoUploadError } =
+          await supabase.storage
+            .from("navigation-videos")
+            .upload(videoFilePath, navigationButtonVideo);
+
+        if (videoUploadError) throw videoUploadError;
+
+        const { data: videoUrlData } = supabase.storage
+          .from("navigation-videos")
+          .getPublicUrl(videoFilePath);
+
+        finalNavigationVideoUrl = videoUrlData.publicUrl;
+      }
+
+      // Remove navigation data if both were deleted
+      if (
+        !navigationButtonImage &&
+        !existingNavigationImageUrl &&
+        !navigationButtonVideo &&
+        !existingNavigationVideoUrl
+      ) {
+        finalNavigationImageUrl = "";
+        finalNavigationVideoUrl = "";
+        setNavigationButtonVideoTitle("");
+      }
+
+      // Update session with navigation button data
+      await supabase
+        .from("sessions")
+        .update({
+          navigation_button_image_url: finalNavigationImageUrl,
+          navigation_button_video_url: finalNavigationVideoUrl,
+          navigation_button_video_title: navigationButtonVideoTitle,
+        })
+        .eq("id", sessionId);
+
       // Third pass: Handle questions and answers
       for (const video of videos) {
         const videoDbId = uploadedVideos[video.id];
@@ -1407,6 +1527,198 @@ export default function EditInteractiveSession({
                   <Plus className="h-4 w-4 mr-2" />
                   Add Video
                 </Button>
+              </div>
+            </div>
+
+            {/* Navigation Button Section */}
+            <div className="mt-8 rounded-xl border bg-gray-50 p-6">
+              <h3 className="text-lg font-semibold mb-2">Navigation Button</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Upload a button image and a navigation video. This button will
+                appear persistently when embedded and play the selected video on
+                click.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Image Upload */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Button Image *</Label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-white">
+                    {navigationButtonImage || existingNavigationImageUrl ? (
+                      <div className="flex flex-col items-center space-y-3">
+                        <img
+                          src={
+                            navigationButtonImage
+                              ? URL.createObjectURL(navigationButtonImage)
+                              : existingNavigationImageUrl
+                          }
+                          alt="Navigation button"
+                          className="max-h-24 object-contain rounded"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setNavigationButtonImage(null);
+                            setExistingNavigationImageUrl("");
+                            setNavigationButtonImageUrl("");
+                          }}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" /> Remove
+                        </Button>
+                      </div>
+                    ) : (
+                      <Label
+                        htmlFor="navigation-image"
+                        className="cursor-pointer"
+                      >
+                        <Upload className="mx-auto h-8 w-8 text-gray-400" />
+                        <p className="mt-2 text-sm text-blue-600">
+                          Upload Button Image
+                        </p>
+                        <input
+                          id="navigation-image"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) setNavigationButtonImage(file);
+                          }}
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                          PNG, JPG, GIF up to 10MB
+                        </p>
+                      </Label>
+                    )}
+                  </div>
+                </div>
+
+                {/* Video Upload */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">
+                    Navigation Video *
+                  </Label>
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center bg-white">
+                    {navigationButtonVideo || existingNavigationVideoUrl ? (
+                      <div className="flex flex-col items-center space-y-3">
+                        {/* Video Preview */}
+                        <video
+                          controls
+                          className="w-full max-h-32 object-contain bg-black rounded"
+                          src={
+                            navigationButtonVideo
+                              ? URL.createObjectURL(navigationButtonVideo)
+                              : existingNavigationVideoUrl
+                          }
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                        <p className="text-sm font-medium">
+                          {navigationButtonVideo
+                            ? navigationButtonVideo.name
+                            : "Existing Navigation Video"}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setNavigationButtonVideo(null);
+                            setExistingNavigationVideoUrl("");
+                            setNavigationButtonVideoUrl("");
+                            setNavigationButtonVideoTitle("");
+                          }}
+                          className="text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" /> Remove
+                        </Button>
+                      </div>
+                    ) : (
+                      <Label
+                        htmlFor="navigation-video"
+                        className="cursor-pointer"
+                      >
+                        <Video className="mx-auto h-8 w-8 text-gray-400" />
+                        <p className="mt-2 text-sm text-blue-600">
+                          Upload Navigation Video
+                        </p>
+                        <input
+                          id="navigation-video"
+                          type="file"
+                          accept="video/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setNavigationButtonVideo(file);
+                              setNavigationButtonVideoTitle(
+                                file.name.split(".")[0] || "Navigation Video"
+                              );
+                            }
+                          }}
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                          MP4, MOV, AVI up to 100MB
+                        </p>
+                      </Label>
+                    )}
+                  </div>
+
+                  {(navigationButtonVideoTitle ||
+                    existingNavigationVideoUrl) && (
+                    <Input
+                      placeholder="Enter video title"
+                      value={navigationButtonVideoTitle}
+                      onChange={(e) =>
+                        setNavigationButtonVideoTitle(e.target.value)
+                      }
+                      className="h-9 text-sm mt-2"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Preview */}
+              {(navigationButtonImage || existingNavigationImageUrl) &&
+                (navigationButtonVideo || existingNavigationVideoUrl) && (
+                  <div className="mt-6 border rounded-lg bg-white p-4">
+                    <Label className="text-sm font-medium mb-2 block">
+                      Preview
+                    </Label>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center gap-4 bg-gray-100 rounded-lg p-3">
+                        <div className="w-14 h-14 flex items-center justify-center bg-white border rounded-md shadow-sm">
+                          <img
+                            src={
+                              navigationButtonImage
+                                ? URL.createObjectURL(navigationButtonImage)
+                                : existingNavigationImageUrl
+                            }
+                            alt="Preview"
+                            className="max-h-10 object-contain"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">
+                            Navigation Button
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Click to play:{" "}
+                            {navigationButtonVideoTitle || "Untitled"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              {/* Note */}
+              <div className="mt-4 p-3 border border-blue-100 bg-blue-50 rounded-md text-xs text-blue-700">
+                <strong>Note:</strong> Both image and video are required. The
+                button will stay visible in embedded mode.
               </div>
             </div>
 

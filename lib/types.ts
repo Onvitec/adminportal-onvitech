@@ -1,12 +1,12 @@
 export type VideoType = {
   id: string;
   title: string;
-  file: File | null;
+  file?: File | null;
   url: string;
   is_main?: boolean;
   duration: number; // Add duration in seconds
   links?: VideoLink[]; // Add links array
-
+session_id?:string
   db_id?: string;
   path?: string;
   freezeAtEnd?: boolean;

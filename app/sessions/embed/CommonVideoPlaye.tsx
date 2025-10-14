@@ -33,6 +33,12 @@ interface CommonVideoPlayerProps {
   onVideoRestart?: () => void;
   hasQuestions?: boolean; // New prop to indicate if there are questions
   addClickToJourney?: any;
+  navigationButton?: {
+    image_url: string;
+    video_url: string;
+    video_title: string;
+  } | null;
+  onNavigationButtonClick?: () => void;
 }
 
 // Form Display Component
@@ -306,6 +312,8 @@ export function CommonVideoPlayer({
   hasQuestions = false,
   sessionShowPlayButton = true,
   addClickToJourney,
+  navigationButton,
+  onNavigationButtonClick,
 }: CommonVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showControls, setShowControls] = useState(true);
@@ -368,6 +376,19 @@ export function CommonVideoPlayer({
     setVideoRect(rect);
     return rect;
   }, []);
+
+  // Navigation button position - always top right
+  const getNavigationButtonPosition = useCallback(() => {
+    if (!videoRect) {
+      return { right: "20px", top: "20px" };
+    }
+
+    // Position in top right corner of the video area
+    const right = 20; // 20px from right edge
+    const top = 20; // 20px from top edge
+
+    return { right: `${right}px`, top: `${top}px` };
+  }, [videoRect]);
   // Enhanced video rect calculation with better timing
   useEffect(() => {
     const video = videoRef.current;
@@ -482,33 +503,33 @@ export function CommonVideoPlayer({
     [videoRect]
   );
 
- const togglePlayPause = () => {
-  if (videoRef.current && currentVideo) {
-    // Check if video is ended and we're restarting it
-    const isRestartingFromEnd = videoRef.current.ended || showFreezeControls;
-    
-    if (isPlaying) {
-      videoRef.current.pause();
-      setIsPlaying(false);
-      setShowControls(true);
-    } else {
-      videoRef.current.play();
-      setIsPlaying(true);
-      setMouseActive(true);
-      resetMouseTimeout();
-      setShowFreezeControls(false);
-      
-      // Track restart if video was ended/frozen
-      if (isRestartingFromEnd && addClickToJourney) {
-        addClickToJourney(currentVideo, {
-          id: `restart-${currentVideo.id}-${Date.now()}`,
-          label: "Watch Again", 
-          type: "restart",
-        });
+  const togglePlayPause = () => {
+    if (videoRef.current && currentVideo) {
+      // Check if video is ended and we're restarting it
+      const isRestartingFromEnd = videoRef.current.ended || showFreezeControls;
+
+      if (isPlaying) {
+        videoRef.current.pause();
+        setIsPlaying(false);
+        setShowControls(true);
+      } else {
+        videoRef.current.play();
+        setIsPlaying(true);
+        setMouseActive(true);
+        resetMouseTimeout();
+        setShowFreezeControls(false);
+
+        // Track restart if video was ended/frozen
+        if (isRestartingFromEnd && addClickToJourney) {
+          addClickToJourney(currentVideo, {
+            id: `restart-${currentVideo.id}-${Date.now()}`,
+            label: "Watch Again",
+            type: "restart",
+          });
+        }
       }
     }
-  }
-};
+  };
 
   const handleMouseMove = () => {
     setMouseActive(true);
@@ -551,20 +572,20 @@ export function CommonVideoPlayer({
     };
   };
 
-const handleVideoEnd = () => {
-  const shouldFreeze = !hasQuestions && currentVideo?.freezeAtEnd;
+  const handleVideoEnd = () => {
+    const shouldFreeze = !hasQuestions && currentVideo?.freezeAtEnd;
 
-  if (shouldFreeze) {
-    setShowFreezeControls(true);
-    setIsPlaying(false);
-    setShowControls(true);
-  } else {
-    // Mark video as ended for normal videos too
-    setIsPlaying(false);
-    setShowControls(true);
-    onVideoEnd();
-  }
-};
+    if (shouldFreeze) {
+      setShowFreezeControls(true);
+      setIsPlaying(false);
+      setShowControls(true);
+    } else {
+      // Mark video as ended for normal videos too
+      setIsPlaying(false);
+      setShowControls(true);
+      onVideoEnd();
+    }
+  };
   const handleRestartVideo = () => {
     if (videoRef.current && currentVideo) {
       videoRef.current.currentTime = 0;
@@ -584,24 +605,6 @@ const handleVideoEnd = () => {
       }
     }
   };
-
-  // Debug overlay to verify positioning (remove in production)
-  const DebugOverlay = () => (
-    <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white p-2 text-xs rounded z-50">
-      <div>
-        Video: {videoRef.current?.videoWidth}×{videoRef.current?.videoHeight}
-      </div>
-      <div>
-        Rendered: {Math.round(videoRect?.width || 0)}×
-        {Math.round(videoRect?.height || 0)}
-      </div>
-      <div>
-        Offset: {Math.round(videoRect?.left || 0)}×
-        {Math.round(videoRect?.top || 0)}
-      </div>
-      <div>Active Links: {activeLinks.length}</div>
-    </div>
-  );
 
   useEffect(() => {
     return () => {
@@ -654,8 +657,23 @@ const handleVideoEnd = () => {
         onResize={() => setTimeout(() => calculateVideoRect(), 100)}
       />
 
-      {/* Debug overlay - remove in production */}
-      {/* <DebugOverlay /> */}
+      {navigationButton && onNavigationButtonClick && (
+        <div
+          className="absolute z-30 cursor-pointer transition-transform duration-200 hover:scale-110"
+          style={getNavigationButtonPosition()}
+          onClick={onNavigationButtonClick}
+          title={`Play: ${navigationButton.video_title}`}
+        >
+          <div className="relative">
+            <img
+              src={navigationButton.image_url}
+              alt="Navigation"
+              className="w-16 h-16 object-contain rounded-lg shadow-lg transition-all"
+              draggable={false}
+            />
+          </div>
+        </div>
+      )}
 
       {showBackButton && onBackNavigation && !isPlaying && (
         <div
