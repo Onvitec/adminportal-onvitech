@@ -1,88 +1,128 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { VideoType, Question, Answer, Solution, VideoLink } from "@/lib/types";
+import {
+  VideoType,
+  Question,
+  Answer,
+  Solution,
+  VideoLink,
+  SolutionCategory,
+} from "@/lib/types";
 import { Answers, DestinationVedio, Questions } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Clock } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Video,
+  ImageIcon,
+  Eye,
+} from "lucide-react";
 import { SolutionCard } from "@/components/SolutionCard";
 import { Loader } from "@/components/Loader";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import Link from "next/link";
+import Heading from "@/components/Heading";
+
+type ViewVideo = {
+  id: string;
+  title: string;
+  url: string;
+  question: Question | null;
+  isExpanded: boolean;
+  duration: number;
+  links: VideoLink[];
+  freezeAtEnd?: boolean;
+  destination_video_id: string | null;
+  destination_video_title?: string;
+};
+
+type NavigationButtonData = {
+  image_url: string | null;
+  video_url: string | null;
+  video_title: string;
+  video_links: VideoLink[];
+  video_duration: number;
+};
 
 export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
-  const [videos, setVideos] = useState<VideoType[]>([]);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [videoLinks, setVideoLinks] = useState<Record<string, VideoLink[]>>({});
+  const [videos, setVideos] = useState<ViewVideo[]>([]);
   const [loading, setLoading] = useState(true);
   const [solutions, setSolutions] = useState<Solution[]>([]);
   const [solutionsExpanded, setSolutionsExpanded] = useState(true);
-  const [activeLinks, setActiveLinks] = useState<Record<string, VideoLink[]>>(
-    {}
-  );
-  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
-  const [hoveredLinkId, setHoveredLinkId] = useState<string | null>(null);
-  const [currentTimes, setCurrentTimes] = useState<Record<string, number>>({});
-  const [sessionData, setSessionData] = useState();
-  const [destinationVideos, setDestinationVideos] = useState<
-    Record<string, VideoType>
-  >({});
+  const [sessionData, setSessionData] = useState<any>(null);
+  const [navigationButton, setNavigationButton] =
+    useState<NavigationButtonData>({
+      image_url: null,
+      video_url: null,
+      video_title: "",
+      video_links: [],
+      video_duration: 0,
+    });
+  const [showPlayButton, setShowPlayButton] = useState(true);
+  const [sessionName, setSessionName] = useState("");
+  const [selectedCompany, setSelectedCompany] = useState("");
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchSessionData = async () => {
       try {
-
-        // Fetch videos
-        const { data: videosData, error: videosError } = await supabase
-          .from("videos")
+        // Fetch session data
+        const { data: sessionData, error: sessionError } = await supabase
+          .from("sessions")
           .select("*")
-          .eq("session_id", sessionId)
-          .order("order_index", { ascending: true });
+          .eq("id", sessionId)
+          .single();
 
-        if (videosError) throw videosError;
+        if (sessionError || !sessionData)
+          throw sessionError || new Error("Session not found");
 
-        setVideos(videosData || []);
+        setSessionData(sessionData);
+        setSessionName(sessionData.title);
+        setShowPlayButton(sessionData.showPlayButton);
+        setSelectedCompany(sessionData.associated_with);
 
-        // Create a mapping of destination videos
-        const destVideos: Record<string, VideoType> = {};
+        // Fetch navigation button data
+        const navigationData: NavigationButtonData = {
+          image_url: sessionData.navigation_button_image_url,
+          video_url: null,
+          video_title: sessionData.navigation_button_video_title || "",
+          video_links: [],
+          video_duration: 0,
+        };
 
-        // First, get all destination video IDs
-        const destinationVideoIds = new Set<string>();
+        // Fetch navigation video from videos table
+        const { data: navigationVideoData, error: navVideoError } =
+          await supabase
+            .from("videos")
+            .select("*")
+            .eq("session_id", sessionId)
+            .eq("is_navigation_video", true)
+            .maybeSingle();
 
-        for (const video of videosData || []) {
-          if (video.destination_video_id) {
-            destinationVideoIds.add(video.destination_video_id);
-          }
-        }
+        if (!navVideoError && navigationVideoData) {
+          navigationData.video_url = navigationVideoData.url;
+          navigationData.video_title = navigationVideoData.title;
+          navigationData.video_duration = navigationVideoData.duration || 0;
 
-        // Fetch destination videos
-        if (destinationVideoIds.size > 0) {
-          const { data: destVideosData, error: destVideosError } =
-            await supabase
-              .from("videos")
-              .select("*")
-              .in("id", Array.from(destinationVideoIds));
-
-          if (!destVideosError && destVideosData) {
-            destVideosData.forEach((video) => {
-              destVideos[video.id] = video;
-            });
-          }
-        }
-
-        setDestinationVideos(destVideos);
-
-        // Fetch video links for each video
-        const linksByVideo: Record<string, VideoLink[]> = {};
-
-        for (const video of videosData || []) {
-          const { data: linksData, error: linksError } = await supabase
+          // Fetch navigation video links
+          const { data: navLinksData, error: navLinksError } = await supabase
             .from("video_links")
             .select("*")
-            .eq("video_id", video.id)
+            .eq("video_id", navigationVideoData.id)
             .order("timestamp_seconds", { ascending: true });
 
-          if (!linksError && linksData) {
-            linksByVideo[video.id] = linksData.map((link) => ({
+          if (!navLinksError && navLinksData) {
+            navigationData.video_links = navLinksData.map((link) => ({
               id: link.id.toString(),
               timestamp_seconds: link.timestamp_seconds,
               label: link.label,
@@ -94,146 +134,151 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                 (link.url ? "url" : "video"),
               position_x: link.position_x || 20,
               position_y: link.position_y || 20,
+              duration_ms: link.duration_ms,
               normal_state_image: link.normal_state_image || undefined,
               hover_state_image: link.hover_state_image || undefined,
-              normal_image_width: link.normal_image_width || 100,
-              normal_image_height: link.normal_image_height || 100,
-              hover_image_width: link.hover_image_width || 100,
-              hover_image_height: link.hover_image_height || 100,
+              normal_image_width: link.normal_image_width || undefined,
+              normal_image_height: link.normal_image_height || undefined,
+              hover_image_width: link.hover_image_width || undefined,
+              hover_image_height: link.hover_image_height || undefined,
+              form_data: link.form_data || undefined,
             }));
           }
         }
 
-        setVideoLinks(linksByVideo);
-        setActiveLinks({});
+        setNavigationButton(navigationData);
 
-        // Fetch questions
-        const { data: questionsData, error: questionsError } = await supabase
-          .from("questions")
+        // Fetch regular videos
+        const { data: videosData, error: videosError } = await supabase
+          .from("videos")
           .select("*")
-          .in("video_id", videosData?.map((v) => v.id) || []);
+          .eq("session_id", sessionId)
+          .eq("is_navigation_video", false)
+          .order("order_index", { ascending: true });
 
-        if (questionsError) throw questionsError;
+        if (videosError) throw videosError;
 
-        // Fetch answers for these questions
-        const questionsWithAnswers = await Promise.all(
-          (questionsData || []).map(async (question) => {
-            const { data: answersData, error: answersError } = await supabase
-              .from("answers")
-              .select("*")
-              .eq("question_id", question.id);
+        // Create video ID mapping for destination references
+        const videoIdMap: Record<string, string> = {};
+        videosData?.forEach((video) => {
+          videoIdMap[video.id] = video.title;
+        });
 
-            if (answersError) throw answersError;
-
-            // Get destination video details for each answer
-            const answersWithDestinations = await Promise.all(
-              (answersData || []).map(async (answer) => {
-                if (!answer.destination_video_id) {
-                  return { ...answer };
-                }
-
-                const { data: videoData, error: videoError } = await supabase
-                  .from("videos")
-                  .select("*")
-                  .eq("id", answer.destination_video_id)
-                  .single();
-
-                if (videoError) {
-                  console.error(
-                    "Error fetching destination video:",
-                    videoError
-                  );
-                  return { ...answer };
-                }
-
-                return {
-                  ...answer,
-                  destination_video: videoData,
-                };
-              })
-            );
-
-            return {
-              ...question,
-              answers: answersWithDestinations,
+        const videosWithDetails: ViewVideo[] = await Promise.all(
+          (videosData || []).map(async (video) => {
+            const videoObj: ViewVideo = {
+              id: video.id,
+              title: video.title,
+              url: video.url,
+              question: null,
+              isExpanded: true,
+              duration: video.duration || 0,
+              links: [],
+              freezeAtEnd: video.freezeAtEnd || false,
+              destination_video_id: video.destination_video_id,
+              destination_video_title: video.destination_video_id
+                ? videoIdMap[video.destination_video_id]
+                : undefined,
             };
+
+            // Fetch video links
+            const { data: linksData, error: linksError } = await supabase
+              .from("video_links")
+              .select("*")
+              .eq("video_id", video.id)
+              .order("timestamp_seconds", { ascending: true });
+
+            if (!linksError && linksData) {
+              videoObj.links = linksData.map((link) => ({
+                id: link.id.toString(),
+                timestamp_seconds: link.timestamp_seconds,
+                label: link.label,
+                url: link.url || undefined,
+                video_id: link.video_id,
+                destination_video_id: link.destination_video_id || undefined,
+                destination_video_title: link.destination_video_id
+                  ? videoIdMap[link.destination_video_id]
+                  : undefined,
+                link_type:
+                  (link.link_type as "url" | "video" | "form") ||
+                  (link.url ? "url" : "video"),
+                position_x: link.position_x || 20,
+                position_y: link.position_y || 20,
+                duration_ms: link.duration_ms,
+                normal_state_image: link.normal_state_image || undefined,
+                hover_state_image: link.hover_state_image || undefined,
+                normal_image_width: link.normal_image_width || undefined,
+                normal_image_height: link.normal_image_height || undefined,
+                hover_image_width: link.hover_image_width || undefined,
+                hover_image_height: link.hover_image_height || undefined,
+                form_data: link.form_data || undefined,
+              }));
+            }
+
+            // Fetch question for this video
+            const { data: questionData, error: questionError } = await supabase
+              .from("questions")
+              .select("*")
+              .eq("video_id", video.id)
+              .maybeSingle();
+
+            if (!questionError && questionData) {
+              // Fetch answers for this question
+              const { data: answersData, error: answersError } = await supabase
+                .from("answers")
+                .select("*")
+                .eq("question_id", questionData.id)
+                .order("created_at", { ascending: true });
+
+              if (!answersError && answersData) {
+                videoObj.question = {
+                  id: questionData.id,
+                  question_text: questionData.question_text,
+                  video_id: questionData.video_id,
+                  answers: answersData.map((answer) => ({
+                    id: answer.id,
+                    answer_text: answer.answer_text,
+                    question_id: answer.question_id,
+                    destination_video_id: answer.destination_video_id || null,
+                    destination_video_title: answer.destination_video_id
+                      ? videoIdMap[answer.destination_video_id]
+                      : undefined,
+                  })),
+                };
+              }
+            }
+
+            return videoObj;
           })
         );
 
-        // Fetch solutions and categories
+        setVideos(videosWithDetails);
+
+        // Fetch solutions
         const { data: solutionsData, error: solutionsError } = await supabase
           .from("solutions")
           .select("*")
           .eq("session_id", sessionId);
 
         if (solutionsError) throw solutionsError;
-
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from("solution_categories")
-          .select("*");
-
-        if (categoriesError) throw categoriesError;
-
         setSolutions(solutionsData || []);
-        setQuestions(questionsWithAnswers);
       } catch (error) {
-        console.error("Error fetching interactive session data:", error);
+        console.error("Error fetching session data:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    fetchSessionData();
   }, [sessionId]);
 
-  // Setup timeupdate listeners for each video
-  useEffect(() => {
-    const timeUpdateHandlers: Record<string, (e: Event) => void> = {};
-
-    Object.keys(videoRefs.current).forEach((videoId) => {
-      const videoEl = videoRefs.current[videoId];
-      if (!videoEl) return;
-
-      const links = videoLinks[videoId] || [];
-
-      timeUpdateHandlers[videoId] = (e: Event) => {
-        const video = e.target as HTMLVideoElement;
-        const currentTime = Math.floor(video.currentTime);
-
-        // Update current time for this video
-        setCurrentTimes((prev) => ({
-          ...prev,
-          [videoId]: currentTime,
-        }));
-
-        // Show links that are active within a 3-second window
-        const visibleLinks = links.filter(
-          (link) =>
-            currentTime >= link.timestamp_seconds &&
-            currentTime <= link.timestamp_seconds + 3
-        );
-
-        setActiveLinks((prev) => ({
-          ...prev,
-          [videoId]: visibleLinks,
-        }));
-      };
-
-      videoEl.addEventListener("timeupdate", timeUpdateHandlers[videoId]);
-    });
-
-    return () => {
-      Object.keys(timeUpdateHandlers).forEach((videoId) => {
-        const videoEl = videoRefs.current[videoId];
-        if (videoEl) {
-          videoEl.removeEventListener(
-            "timeupdate",
-            timeUpdateHandlers[videoId]
-          );
-        }
-      });
-    };
-  }, [videoLinks]);
+  const toggleExpandVideo = (videoId: string) => {
+    setVideos(
+      videos.map((v) =>
+        v.id === videoId ? { ...v, isExpanded: !v.isExpanded } : v
+      )
+    );
+  };
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -241,328 +286,394 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const getImageUrl = (link: VideoLink) => {
-    if (hoveredLinkId === link.id && link.hover_state_image) {
-      return link.hover_state_image;
-    }
-    return link.normal_state_image;
-  };
-
-  const getImageDimensions = (link: VideoLink) => {
-    if (
-      hoveredLinkId === link.id &&
-      (link.hover_image_width || link.hover_image_height)
-    ) {
-      return {
-        width: link.hover_image_width || 100,
-        height: link.hover_image_height || 100,
-      };
-    }
-    return {
-      width: link.normal_image_width || 100,
-      height: link.normal_image_height || 100,
-    };
-  };
-
-  const seekToTime = (videoId: string, time: number) => {
-    const videoEl = videoRefs.current[videoId];
-    if (videoEl) {
-      videoEl.currentTime = time;
-      videoEl.play();
-    }
-  };
-
   if (loading) {
     return (
-      <div className="p-6 text-center">
-        <Loader size="md" />
+      <div className=" mx-auto py-8 max-w-4xl">
+        <div className="flex justify-center items-center h-64">
+          <Loader size="md" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 py-6">
-      {videos.map((video) => {
-        const videoQuestions = questions.filter((q) => q.video_id === video.id);
-        const links = videoLinks[video.id] || [];
-        const currentActiveLinks = activeLinks[video.id] || [];
-        const currentTime = currentTimes[video.id] || 0;
-        const duration = video.duration || 0;
-        const destinationVideo = video.destination_video_id
-          ? destinationVideos[video.destination_video_id]
-          : null;
+    <div className=" mx-auto">
+      <div>
+        <Link href="/sessions">
+          <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md cursor-pointer hover:underline">
+            Back to Session Maker
+          </p>
+        </Link>
+        <Heading>View Session</Heading>
+      </div>
 
-        return (
-          <div
-            key={video.id}
-            className="border rounded-lg overflow-hidden bg-white shadow-sm"
-          >
-            <div className="p-4 border-b bg-gray-50">
-              <h3 className="text-lg font-medium">
-                {video.title || "Video Name"}
-              </h3>
+      <Card className="border-none shadow-none px-3 mt-4">
+        <CardHeader className="px-0">
+          <CardTitle className="text-2xl font-semibold flex items-center gap-2">
+            <Eye className="h-6 w-6" />
+            {sessionName}
+          </CardTitle>
+          <CardDescription className="text-sm text-neutral-500">
+            Viewing interactive learning experience with branching videos based
+            on user answers.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6 px-0">
+          {/* Session Details */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-1">
+              <Label className="text-sm font-medium text-neutral-700">
+                Session Name
+              </Label>
+              <div className="h-10 px-3 py-2 border border-neutral-200 rounded-md bg-neutral-50 text-neutral-700">
+                {sessionName}
+              </div>
             </div>
 
-            <div className="flex flex-col md:flex-row">
-              {/* Video on the left */}
-              <div className="w-full md:w-2/5 p-4">
-                <div className="relative">
-                  <video
-                    ref={(el: any) => (videoRefs.current[video.id] = el)}
-                    src={video.url}
-                    controls
-                    className="w-full aspect-video object-cover rounded-lg bg-black"
-                  />
+            <div className="space-y-1">
+              <Label className="text-sm font-medium text-neutral-700">
+                Associated Company
+              </Label>
+              <div className="h-10 px-3 py-2 border border-neutral-200 rounded-md bg-neutral-50 text-neutral-700">
+                {selectedCompany || "Not specified"}
+              </div>
+            </div>
+          </div>
 
-                  {/* Display active video links as overlay images */}
-                  {currentActiveLinks.map(
-                    (link) =>
-                      link.normal_state_image && (
-                        <div
-                          key={link.id}
-                          className="absolute z-10 cursor-pointer transition-all duration-200 hover:opacity-90 hover:scale-105"
-                          style={{
-                            left: `${link.position_x}%`,
-                            top: `${link.position_y}%`,
-                            transform: "translate(-50%, -50%)",
-                          }}
-                          onMouseEnter={() => setHoveredLinkId(link.id)}
-                          onMouseLeave={() => setHoveredLinkId(null)}
-                          title={`${link.label} - ${formatTime(
-                            link.timestamp_seconds
-                          )}`}
-                        >
-                          <img
-                            src={getImageUrl(link)}
-                            alt={link.label}
-                            style={{
-                              width: `${getImageDimensions(link).width}px`,
-                              height: `${getImageDimensions(link).height}px`,
-                            }}
-                            className="object-cover rounded shadow-lg border-2 border-yellow-400"
-                            draggable={false}
-                          />
-                        </div>
-                      )
-                  )}
-                </div>
+          {/* Interactive Videos */}
+          <div className="mt-8">
+            <h3 className="text-lg font-semibold text-neutral-900 mb-4">
+              Interactive Videos
+            </h3>
 
-                {/* Video Playback Behavior */}
-                <div className="mt-4 p-3 bg-gray-50 rounded-md border">
-                  <h4 className="text-sm font-medium mb-2">
-                    Playback Behavior
-                  </h4>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {video.freezeAtEnd ? (
-                        <>
-                          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                          <span className="text-sm">Freeze at end</span>
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                          <span className="text-sm">Autoplay next video</span>
-                        </>
-                      )}
+            <div className="space-y-4">
+              {videos.map((video) => (
+                <div
+                  key={video.id}
+                  className="border border-neutral-200 rounded-xl overflow-hidden bg-white"
+                >
+                  <div className="p-4 flex items-center justify-between bg-neutral-50">
+                    <div className="flex items-center gap-3">
+                      <Video className="h-5 w-5 text-neutral-600" />
+                      <h3 className="text-base font-medium text-neutral-900">
+                        {video.title}
+                      </h3>
                     </div>
-
-                    {!video.freezeAtEnd && destinationVideo ? (
-                      <div className="text-sm text-gray-600">
-                        Next:{" "}
-                        <span className="font-medium">
-                          {destinationVideo.title}
-                        </span>
-                      </div>
-                    ) : (
-                      <div> No video</div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        onClick={() => toggleExpandVideo(video.id)}
+                        className="h-8 w-8 p-0 text-neutral-500 hover:text-neutral-900"
+                      >
+                        {video.isExpanded ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                </div>
 
-                {/* Timeline with markers below the video */}
-                {duration > 0 && links.length > 0 && (
-                  <div className="relative mt-4 bg-gray-100 rounded-md overflow-hidden p-2">
-                    {/* Current time indicator */}
-                    <div
-                      className="absolute top-0 w-1 h-full bg-red-500 z-20"
-                      style={{ left: `${(currentTime / duration) * 100}%` }}
-                    />
+                  {video.isExpanded && (
+                    <div className="p-6 space-y-6 bg-white">
+                      {/* Video Player */}
+                      <div className="space-y-4">
+                        <div className="relative h-[1200px]  object-cover rounded-xl overflow-hidden bg-black">
+                          <video
+                            src={video.url}
+                            controls
+                            className="w-full aspect-video object-fill"
+                          />
+                          <div className="absolute top-3 right-3 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-sm">
+                            {formatTime(video.duration)}
+                          </div>
+                        </div>
+                      </div>
 
-                    <div className="flex justify-between items-center h-8 relative">
-                      {links.map((link) => (
-                        <div
-                          key={link.id}
-                          className="absolute flex flex-col items-center z-10"
-                          style={{
-                            left: `${
-                              (link.timestamp_seconds / duration) * 100
-                            }%`,
-                            transform: "translateX(-50%)",
-                          }}
-                        >
-                          {/* Image on timeline */}
-                          {link.normal_state_image && (
-                            <div className="mb-1">
-                              <img
-                                src={link.normal_state_image}
-                                alt={link.label}
-                                className="object-cover h-6 w-6 rounded border cursor-pointer hover:scale-110 transition-transform"
-                                onClick={() =>
-                                  seekToTime(video.id, link.timestamp_seconds)
-                                }
-                                title={`${link.label} - ${formatTime(
-                                  link.timestamp_seconds
-                                )}`}
-                              />
+                      {/* Playback Behavior */}
+                      <div className="p-4 border border-neutral-200 rounded-xl bg-neutral-50">
+                        <Label className="text-sm font-medium text-neutral-900">
+                          Video Playback Behavior
+                        </Label>
+                        <div className="flex items-center space-x-6 gap-3 mt-3">
+                          <div className="flex items-center space-x-2">
+                            <div
+                              className={`h-4 w-4 rounded-full border-2 ${
+                                video.freezeAtEnd
+                                  ? "bg-blue-500 border-blue-500"
+                                  : "border-neutral-400"
+                              }`}
+                            />
+                            <span className="text-sm text-neutral-700">
+                              Freeze at end
+                            </span>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <div
+                              className={`h-4 w-4 rounded-full border-2 ${
+                                !video.freezeAtEnd
+                                  ? "bg-green-500 border-green-500"
+                                  : "border-neutral-400"
+                              }`}
+                            />
+                            <span className="text-sm text-neutral-700">
+                              Autoplay next video
+                            </span>
+                          </div>
+                        </div>
+
+                        {!video.freezeAtEnd &&
+                          video.destination_video_title && (
+                            <div className="mt-3 p-2 bg-blue-50 rounded-md border border-blue-200">
+                              <div className="text-sm text-blue-800">
+                                Next Video:{" "}
+                                <span className="font-medium">
+                                  {video.destination_video_title}
+                                </span>
+                              </div>
                             </div>
                           )}
-                          {/* Time indicator */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              seekToTime(video.id, link.timestamp_seconds);
-                            }}
-                            className={`text-xs px-2 py-1 rounded ${
-                              link.link_type === "url"
-                                ? "bg-blue-100 text-blue-800 hover:bg-blue-200"
-                                : "bg-green-100 text-green-800 hover:bg-green-200"
-                            } whitespace-nowrap`}
-                            title={`${link.label} - ${formatTime(
-                              link.timestamp_seconds
-                            )} (${
-                              link.link_type === "url" ? "Link" : "Video"
-                            })`}
-                          >
-                            {formatTime(link.timestamp_seconds)}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
+                      </div>
 
-              {/* Questions on the right */}
-              <div className="w-full md:w-3/5 p-4">
-                {videoQuestions.length > 0 ? (
-                  <div className="space-y-6">
-                    {videoQuestions.map((question) => (
-                      <div key={question.id} className="space-y-4">
-                        {/* Question section with border bottom */}
-                        <div className="flex items-start gap-3 pb-3 border-b border-gray-200">
-                          <div className="pt-1">
-                            <Questions className="w-[15px] h-[14.35px] text-[#6096BA]" />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-medium text-[12px] text-[#242B42]">
+                      {/* Question Section */}
+                      {video.question ? (
+                        <div className="space-y-4 p-4 border border-neutral-200 rounded-xl bg-white">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium text-neutral-900">
                               Question
-                            </h4>
-                            <p className="text-[#242B42] text-[16px] font-semibold mt-1">
-                              {question.question_text}
-                            </p>
+                            </Label>
+                            <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                              <p className="text-neutral-900">
+                                {video.question.question_text}
+                              </p>
+                            </div>
                           </div>
-                        </div>
 
-                        {/* Answers section */}
-                        <div className="space-y-3">
-                          {question.answers.map((answer, index) => (
-                            <div
-                              key={answer.id}
-                              className="grid grid-cols-10 gap-2"
-                            >
-                              {/* Answer (70% width) */}
-                              <div className="col-span-7">
-                                <div className="flex items-start gap-3 bg-[#EBEEF4] rounded-md p-3 border border-[#EBEEF4]">
-                                  <div className="pt-1">
-                                    <Answers className="w-[15px] h-[14.35px" />
-                                  </div>
-                                  <div className="flex-1">
-                                    <h5 className="font-medium text-[12px] text-[#242B42]">
-                                      Answer {index + 1}
-                                    </h5>
-                                    <p className="text-[#242B42] text-[16px] font-semibold">
-                                      {answer.answer_text}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Destination Video (30% width) */}
-                              {answer.destination_video && (
-                                <div className="col-span-3">
-                                  <div className="flex items-start gap-3 bg-[#EBEEF4] rounded-md p-3 border border-[#EBEEF4] h-full">
-                                    <div className="pt-1">
-                                      <DestinationVedio className="w-[15px] h-[14.35px" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <h5 className="font-medium text-[12px] text-gray-800 truncate">
-                                        Destination Video
-                                      </h5>
-                                      <p className="text-gray-600 text-[16px] font-semibold truncate">
-                                        {answer.destination_video.title}
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium text-neutral-900">
+                              Answers ({video.question.answers.length})
+                            </Label>
+                            <div className="space-y-3">
+                              {video.question.answers.map((answer, index) => (
+                                <div
+                                  key={answer.id}
+                                  className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start"
+                                >
+                                  <div className="md:col-span-7">
+                                    <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
+                                      <div className="text-xs text-neutral-600 mb-1">
+                                        Answer {index + 1}
+                                      </div>
+                                      <p className="text-neutral-900 font-medium">
+                                        {answer.answer_text}
                                       </p>
                                     </div>
                                   </div>
+                                  <div className="md:col-span-5">
+                                    {answer.destination_video ? (
+                                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                        <div className="text-xs text-blue-700 mb-1">
+                                          Destination Video
+                                        </div>
+                                        <div className="text-blue-900 font-medium flex items-center gap-1">
+                                          <Video className="h-3 w-3" />
+                                          {answer.destination_video as any}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="p-3 bg-neutral-100 rounded-lg border border-neutral-200 text-center">
+                                        <div className="text-xs text-neutral-500">
+                                          No destination video
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                              )}
+                              ))}
                             </div>
-                          ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 border border-neutral-200 rounded-xl bg-neutral-50 text-center text-neutral-500">
+                          No questions added to this video
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Navigation Button Section - Read Only */}
+          {(navigationButton.image_url || navigationButton.video_url) && (
+            <div className="mt-8 rounded-2xl border border-neutral-200 bg-white p-8">
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  Navigation Button
+                </h3>
+                <p className="text-sm text-neutral-500 mt-1">
+                  Button image and interactive video configuration for
+                  navigation.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-8">
+                {/* Navigation Image */}
+                {navigationButton.image_url && (
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium text-neutral-700">
+                      Button Image
+                    </Label>
+                    <div className="border border-neutral-200 rounded-xl p-6 bg-neutral-50 md:w-1/3">
+                      <div className="space-y-4 flex flex-col items-center">
+                        <img
+                          src={navigationButton.image_url}
+                          alt="Navigation button"
+                          className="max-h-32 object-contain rounded-md"
+                        />
+                        <div className="text-sm text-neutral-600">
+                          Navigation button image
                         </div>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    This video has no questions
-                  </p>
+                )}
+
+                {/* Navigation Video */}
+                {navigationButton.video_url && (
+                  <div className="space-y-4">
+                    <Label className="text-sm font-medium text-neutral-700">
+                      Navigation Video
+                    </Label>
+
+                    <div className="border border-neutral-200 rounded-xl p-6 bg-neutral-50">
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Video className="h-5 w-5 text-green-600" />
+                            <span className="font-medium text-neutral-900">
+                              {navigationButton.video_title}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-neutral-600">
+                            <Clock className="h-4 w-4" />
+                            {formatTime(navigationButton.video_duration)}
+                          </div>
+                        </div>
+
+                        <div className="relative rounded-lg overflow-hidden bg-black">
+                          <video
+                            src={navigationButton.video_url}
+                            controls
+                            className="w-full aspect-video object-contain"
+                          />
+                        </div>
+
+                        {/* Navigation Video Links */}
+                        {navigationButton.video_links.length > 0 && (
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium text-neutral-700">
+                              Navigation Video Links (
+                              {navigationButton.video_links.length})
+                            </Label>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                              {navigationButton.video_links.map((link) => (
+                                <div
+                                  key={link.id}
+                                  className="flex items-start gap-3 p-3 border border-neutral-200 rounded-lg bg-white"
+                                >
+                                  {link.normal_state_image && (
+                                    <img
+                                      src={link.normal_state_image}
+                                      alt={link.label}
+                                      className="w-16 h-16 object-cover rounded-md flex-shrink-0"
+                                    />
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm text-neutral-900">
+                                      {link.label}
+                                    </div>
+                                    <div className="text-xs text-neutral-600 mt-1">
+                                      At {formatTime(link.timestamp_seconds)} •
+                                      Type:{" "}
+                                      <span className="font-medium">
+                                        {link.link_type}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs text-neutral-600">
+                                      Position: ({link.position_x}%,{" "}
+                                      {link.position_y}%)
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
-          </div>
-        );
-      })}
-      {/* Solutions Section */}
-      <div className="border rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between py-4 px-4 bg-white">
-          <h2 className="text-xl font-bold">Solution Type</h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => setSolutionsExpanded(!solutionsExpanded)}
-            className="cursor-pointer"
-          >
-            {solutionsExpanded ? (
-              <ChevronUp className="h-5 w-5" />
-            ) : (
-              <ChevronDown className="h-5 w-5" />
-            )}
-          </Button>
-        </div>
+          )}
 
-        {solutionsExpanded && (
-          <div className="bg-gray-50 py-4 border-t">
-            {solutions.length > 0 ? (
-              <div className="grid grid-cols-1 gap-4 px-4">
-                {solutions.map((solution) => (
-                  <SolutionCard
-                    key={solution.id}
-                    solution={solution}
-                    readOnly={true}
-                  />
-                ))}
+          {/* Play Button Setting */}
+          <div className="flex items-center space-x-2 p-4 border border-neutral-200 rounded-xl bg-neutral-50">
+            <Switch checked={showPlayButton} disabled className="opacity-50" />
+            <Label className="text-sm font-medium text-neutral-700">
+              Show play/pause button (iFrame)
+            </Label>
+          </div>
+
+          {/* Solutions Section */}
+          <div className="border border-neutral-200 rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between p-6 bg-white">
+              <h2 className="text-xl font-semibold text-neutral-900">
+                Solution Type
+              </h2>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => setSolutionsExpanded(!solutionsExpanded)}
+                className="cursor-pointer"
+              >
+                {solutionsExpanded ? (
+                  <ChevronUp className="h-5 w-5" />
+                ) : (
+                  <ChevronDown className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
+
+            {solutionsExpanded && (
+              <div className="bg-neutral-50 p-6 border-t border-neutral-200">
+                {solutions.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-4">
+                    {solutions.map((solution) => (
+                      <SolutionCard
+                        key={solution.id}
+                        solution={solution}
+                        readOnly={true}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-neutral-500">No solutions added</p>
+                  </div>
+                )}
               </div>
-            ) : (
-              <p className="text-sm text-gray-500 text-center py-4">
-                No solutions added
-              </p>
             )}
           </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

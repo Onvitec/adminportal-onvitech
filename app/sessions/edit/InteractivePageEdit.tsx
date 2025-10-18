@@ -45,6 +45,7 @@ import Heading from "@/components/Heading";
 import { Loader } from "@/components/Loader";
 import { VideoUploadWithLinks } from "@/components/forms/videoo-upload";
 import { Switch } from "@/components/ui/switch";
+import { NavigationButtonSection } from "@/components/navigation-button-section";
 
 type Answer = {
   id: string;
@@ -72,6 +73,7 @@ type Video = {
   links: VideoLink[];
   freezeAtEnd?: boolean;
   destination_video_id: string | null;
+  is_navigation_video?: boolean;
 };
 
 export default function EditInteractiveSession({
@@ -93,6 +95,7 @@ export default function EditInteractiveSession({
   const [showPlayButton, setShowPlayButton] = useState(true);
 
   //// Navigation button states
+  // Navigation button states
   const [navigationButtonImage, setNavigationButtonImage] =
     useState<File | null>(null);
   const [navigationButtonImageUrl, setNavigationButtonImageUrl] = useState("");
@@ -105,6 +108,11 @@ export default function EditInteractiveSession({
     useState("");
   const [existingNavigationVideoUrl, setExistingNavigationVideoUrl] =
     useState("");
+  const [navigationButtonVideoLinks, setNavigationButtonVideoLinks] = useState<
+    VideoLink[]
+  >([]);
+
+  const [navigationButtonVideoDuration,setNavigationButtonVideoDuration] = useState(0)
 
   const [comapnies, setCompanies] = useState<UserType[] | []>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
@@ -152,12 +160,62 @@ export default function EditInteractiveSession({
             sessionData.navigation_button_video_title
           );
         }
+        // Get navigation video from videos table instead of session table
+        const { data: navigationVideoData, error: navVideoError } =
+          await supabase
+            .from("videos")
+            .select("*")
+            .eq("session_id", sessionId)
+            .eq("is_navigation_video", true)
+            .maybeSingle();
+
+        // In fetchSessionData function, after fetching navigation video data:
+        if (!navVideoError && navigationVideoData) {
+          setExistingNavigationVideoUrl(navigationVideoData.url);
+          setNavigationButtonVideoUrl(navigationVideoData.url);
+          setNavigationButtonVideoTitle(navigationVideoData.title);
+          setNavigationButtonVideoDuration(navigationVideoData.duration)
+
+          // Fetch navigation video links
+          const { data: navLinksData, error: navLinksError } = await supabase
+            .from("video_links")
+            .select("*")
+            .eq("video_id", navigationVideoData.id)
+            .order("timestamp_seconds", { ascending: true });
+
+          if (!navLinksError && navLinksData) {
+            setNavigationButtonVideoLinks(
+              navLinksData.map((link) => ({
+                id: link.id.toString(),
+                timestamp_seconds: link.timestamp_seconds,
+                label: link.label,
+                url: link.url || undefined,
+                video_id: link.video_id,
+                destination_video_id: link.destination_video_id || undefined,
+                link_type:
+                  (link.link_type as "url" | "video" | "form") ||
+                  (link.url ? "url" : "video"),
+                position_x: link.position_x || 20,
+                position_y: link.position_y || 20,
+                duration_ms: link.duration_ms,
+                normal_state_image: link.normal_state_image || undefined,
+                hover_state_image: link.hover_state_image || undefined,
+                normal_image_width: link.normal_image_width || undefined,
+                normal_image_height: link.normal_image_height || undefined,
+                hover_image_width: link.hover_image_width || undefined,
+                hover_image_height: link.hover_image_height || undefined,
+                form_data: link.form_data || undefined,
+              }))
+            );
+          }
+        }
 
         // Get videos for this session
         const { data: videosData, error: videosError } = await supabase
           .from("videos")
           .select("*")
           .eq("session_id", sessionId)
+          .eq("is_navigation_video", false)
           .order("order_index", { ascending: true });
 
         if (videosError) throw videosError;
@@ -176,7 +234,8 @@ export default function EditInteractiveSession({
               duration: video.duration || 0,
               links: [], // Will be populated in second pass
               freezeAtEnd: video.freezeAtEnd || false,
-              destination_video_id: video.destination_video_id || null, // Add this
+              destination_video_id: video.destination_video_id || null,
+              is_navigation_video: false,
             };
 
             return videoObj;
@@ -375,6 +434,9 @@ export default function EditInteractiveSession({
       },
     ]);
   };
+  const handleNavigationVideoLinksChange = useCallback((links: VideoLink[]) => {
+    setNavigationButtonVideoLinks(links);
+  }, []);
 
   const removeVideo = (videoId: string) => {
     setVideos(videos.filter((v) => v.id !== videoId));
@@ -383,7 +445,36 @@ export default function EditInteractiveSession({
   const updateVideoName = (videoId: string, title: string) => {
     setVideos(videos.map((v) => (v.id === videoId ? { ...v, title } : v)));
   };
+  // Navigation Button Handlers
+  const handleNavigationImageChange = useCallback((file: File | null) => {
+    setNavigationButtonImage(file);
+  }, []);
 
+  const handleNavigationVideoChange = useCallback((file: File | null) => {
+    setNavigationButtonVideo(file);
+    if (file) {
+      setNavigationButtonVideoTitle(
+        file.name.split(".")[0] || "Navigation Video"
+      );
+    }
+  }, []);
+
+  const handleNavigationVideoTitleChange = useCallback((title: string) => {
+    setNavigationButtonVideoTitle(title);
+  }, []);
+
+  const handleRemoveNavigationImage = useCallback(() => {
+    setNavigationButtonImage(null);
+    setExistingNavigationImageUrl("");
+    setNavigationButtonImageUrl("");
+  }, []);
+
+  const handleRemoveNavigationVideo = useCallback(() => {
+    setNavigationButtonVideo(null);
+    setExistingNavigationVideoUrl("");
+    setNavigationButtonVideoUrl("");
+    setNavigationButtonVideoTitle("");
+  }, []);
   const toggleExpandVideo = (videoId: string) => {
     setVideos(
       videos.map((v) =>
@@ -574,9 +665,13 @@ export default function EditInteractiveSession({
         .filter((v) => v.db_id)
         .map((v) => v.db_id) as string[];
 
-      // Delete videos that were removed
+      // Delete videos that were removed (excluding navigation videos)
       const { data: existingVideos, error: existingVideosError } =
-        await supabase.from("videos").select("id").eq("session_id", sessionId);
+        await supabase
+          .from("videos")
+          .select("id")
+          .eq("session_id", sessionId)
+          .eq("is_navigation_video", false); // Only regular videos
 
       if (existingVideosError) throw existingVideosError;
 
@@ -601,7 +696,7 @@ export default function EditInteractiveSession({
         await supabase.from("videos").delete().eq("id", videoId);
       }
 
-      // First pass: Process all videos and create uploadedVideos mapping
+      // First pass: Process all regular videos and create uploadedVideos mapping
       const uploadedVideos: Record<string, string> = {};
 
       for (const [index, video] of videos.entries()) {
@@ -645,6 +740,7 @@ export default function EditInteractiveSession({
               duration: video.duration,
               freezeAtEnd: video.freezeAtEnd || false,
               destination_video_id: null, // Will be updated later
+              is_navigation_video: false, // Explicitly set as regular video
             })
             .eq("id", videoDbId);
 
@@ -662,6 +758,7 @@ export default function EditInteractiveSession({
               duration: video.duration,
               freezeAtEnd: video.freezeAtEnd || false,
               destination_video_id: null, // Will be updated later
+              is_navigation_video: false, // Mark as regular video
             })
             .select()
             .single();
@@ -674,6 +771,163 @@ export default function EditInteractiveSession({
         // Store mapping of temporary ID to actual DB ID
         uploadedVideos[video.id] = videoDbId!;
       }
+
+      // Handle navigation video
+      let navigationVideoDbId: string | null = null;
+      let finalNavigationImageUrl = existingNavigationImageUrl;
+
+      // Upload new navigation button image if provided
+      if (navigationButtonImage) {
+        const imageFileExt = navigationButtonImage.name.split(".").pop();
+        const imageFilePath = `${user.id}/${sessionId}/navigation-button.${imageFileExt}`;
+
+        // Delete old image if exists
+        if (existingNavigationImageUrl) {
+          const oldImagePath = existingNavigationImageUrl
+            .split("/")
+            .slice(3)
+            .join("/");
+          await supabase.storage
+            .from("navigation-images")
+            .remove([oldImagePath]);
+        }
+
+        const { data: imageUploadData, error: imageUploadError } =
+          await supabase.storage
+            .from("navigation-images")
+            .upload(imageFilePath, navigationButtonImage);
+
+        if (imageUploadError) throw imageUploadError;
+
+        const { data: imageUrlData } = supabase.storage
+          .from("navigation-images")
+          .getPublicUrl(imageFilePath);
+
+        finalNavigationImageUrl = imageUrlData.publicUrl;
+      }
+
+      // Handle navigation video (stored in videos table with is_navigation_video = true)
+      if (navigationButtonVideo || existingNavigationVideoUrl) {
+        // Check if navigation video already exists
+        const { data: existingNavVideo, error: navVideoCheckError } =
+          await supabase
+            .from("videos")
+            .select("id, url")
+            .eq("session_id", sessionId)
+            .eq("is_navigation_video", true)
+            .maybeSingle();
+
+        if (navVideoCheckError) throw navVideoCheckError;
+
+        let navigationVideoUrl = existingNavigationVideoUrl;
+        let navigationVideoDuration = 0;
+
+        // Handle new navigation video upload
+        if (navigationButtonVideo) {
+          const videoFileExt = navigationButtonVideo.name.split(".").pop();
+          const videoFilePath = `${user.id}/${sessionId}/navigation-video.${videoFileExt}`;
+
+          // Delete old video file if exists
+          if (existingNavVideo?.url) {
+            const oldVideoPath = existingNavVideo.url
+              .split("/")
+              .slice(3)
+              .join("/");
+            await supabase.storage.from("videos").remove([oldVideoPath]);
+          }
+
+          // Upload new video file
+          const { data: videoUploadData, error: videoUploadError } =
+            await supabase.storage
+              .from("videos")
+              .upload(videoFilePath, navigationButtonVideo);
+
+          if (videoUploadError) throw videoUploadError;
+
+          const { data: videoUrlData } = supabase.storage
+            .from("videos")
+            .getPublicUrl(videoFilePath);
+
+          navigationVideoUrl = videoUrlData.publicUrl;
+          navigationVideoDuration = navigationButtonVideoDuration || 0;
+        } else {
+          // Use existing video duration if no new file uploaded
+          navigationVideoDuration = navigationButtonVideoDuration || 0;
+        }
+
+        // Create or update navigation video record
+        if (existingNavVideo) {
+          // Update existing navigation video
+          const { error: navVideoError } = await supabase
+            .from("videos")
+            .update({
+              title: navigationButtonVideoTitle,
+              url: navigationVideoUrl,
+              duration: navigationVideoDuration,
+              freezeAtEnd: true,
+            })
+            .eq("id", existingNavVideo.id);
+
+          if (navVideoError) throw navVideoError;
+          navigationVideoDbId = existingNavVideo.id;
+        } else {
+          // Create new navigation video
+          const { data: navVideoData, error: navVideoError } = await supabase
+            .from("videos")
+            .insert({
+              title: navigationButtonVideoTitle,
+              url: navigationVideoUrl,
+              session_id: sessionId,
+              is_interactive: true,
+              order_index: -1, // Special order for navigation video
+              duration: navigationVideoDuration,
+              freezeAtEnd: true,
+              destination_video_id: null,
+              is_navigation_video: true, // Mark as navigation video
+            })
+            .select()
+            .single();
+
+          if (navVideoError || !navVideoData) throw navVideoError;
+          navigationVideoDbId = navVideoData.id;
+        }
+
+        // Add navigation video to uploadedVideos mapping for link destination resolution
+        uploadedVideos["navigation-video"] = navigationVideoDbId as string;
+      } else {
+        // Remove navigation video if both were deleted
+        const { data: existingNavVideo, error: navVideoCheckError } =
+          await supabase
+            .from("videos")
+            .select("id, url")
+            .eq("session_id", sessionId)
+            .eq("is_navigation_video", true)
+            .maybeSingle();
+
+        if (!navVideoCheckError && existingNavVideo) {
+          // Delete video file
+          if (existingNavVideo.url) {
+            const oldVideoPath = existingNavVideo.url
+              .split("/")
+              .slice(3)
+              .join("/");
+            await supabase.storage.from("videos").remove([oldVideoPath]);
+          }
+
+          // Delete video record
+          await supabase.from("videos").delete().eq("id", existingNavVideo.id);
+        }
+      }
+
+      // Update session with navigation button data
+      await supabase
+        .from("sessions")
+        .update({
+          navigation_button_image_url: finalNavigationImageUrl,
+          navigation_button_video_id: navigationVideoDbId, // Store reference to navigation video
+          navigation_button_video_title: navigationButtonVideoTitle,
+        })
+        .eq("id", sessionId);
 
       // Update video destination_video_id after all videos are uploaded
       for (const video of videos) {
@@ -826,94 +1080,147 @@ export default function EditInteractiveSession({
         }
       }
 
-      // handle navigation buttons
-      // Handle navigation button updates
-      let finalNavigationImageUrl = existingNavigationImageUrl;
-      let finalNavigationVideoUrl = existingNavigationVideoUrl;
+      // Handle navigation video links
+      if (navigationVideoDbId && navigationButtonVideoLinks.length > 0) {
+        // Delete existing navigation video links
+        await supabase
+          .from("video_links")
+          .delete()
+          .eq("video_id", navigationVideoDbId);
 
-      // Upload new navigation button image if provided
-      if (navigationButtonImage) {
-        const imageFileExt = navigationButtonImage.name.split(".").pop();
-        const imageFilePath = `${user.id}/${sessionId}/navigation-button.${imageFileExt}`;
+        const navLinkInserts = [];
 
-        // Delete old image if exists
-        if (existingNavigationImageUrl) {
-          const oldImagePath = existingNavigationImageUrl
-            .split("/")
-            .slice(3)
-            .join("/");
-          await supabase.storage
-            .from("navigation-images")
-            .remove([oldImagePath]);
+        for (const link of navigationButtonVideoLinks) {
+          let normalImageUrl = link.normal_state_image;
+          let hoverImageUrl = link.hover_state_image;
+
+          // Upload normal state image if it's a new File object
+          if (link.normalImageFile) {
+            const normalFileExt = link.normalImageFile.name.split(".").pop();
+            const normalFilePath = `${user.id}/${sessionId}/navigation/images/${link.id}_normal.${normalFileExt}`;
+
+            // Delete old normal image if exists
+            if (link.normal_state_image) {
+              const oldNormalFilePath = link.normal_state_image
+                .split("/")
+                .slice(3)
+                .join("/");
+              await supabase.storage
+                .from("video-link-images")
+                .remove([oldNormalFilePath]);
+            }
+
+            const { error: normalUploadError } = await supabase.storage
+              .from("video-link-images")
+              .upload(normalFilePath, link.normalImageFile);
+
+            if (normalUploadError) throw normalUploadError;
+
+            const { data: normalUrlData } = supabase.storage
+              .from("video-link-images")
+              .getPublicUrl(normalFilePath);
+
+            normalImageUrl = normalUrlData.publicUrl;
+          }
+
+          // Upload hover state image if it's a new File object
+          if (link.hoverImageFile) {
+            const hoverFileExt = link.hoverImageFile.name.split(".").pop();
+            const hoverFilePath = `${user.id}/${sessionId}/navigation/images/${link.id}_hover.${hoverFileExt}`;
+
+            // Delete old hover image if exists
+            if (link.hover_state_image) {
+              const oldHoverFilePath = link.hover_state_image
+                .split("/")
+                .slice(3)
+                .join("/");
+              await supabase.storage
+                .from("video-link-images")
+                .remove([oldHoverFilePath]);
+            }
+
+            const { error: hoverUploadError } = await supabase.storage
+              .from("video-link-images")
+              .upload(hoverFilePath, link.hoverImageFile);
+
+            if (hoverUploadError) throw hoverUploadError;
+
+            const { data: hoverUrlData } = supabase.storage
+              .from("video-link-images")
+              .getPublicUrl(hoverFilePath);
+
+            hoverImageUrl = hoverUrlData.publicUrl;
+          }
+
+          // Resolve destination video ID for navigation video links
+          let destinationVideoId = null;
+          if (
+            (link.link_type === "video" || link.link_type === "form") &&
+            link.destination_video_id
+          ) {
+            destinationVideoId = uploadedVideos[link.destination_video_id];
+            if (!destinationVideoId) {
+              console.warn(
+                `Destination video ${link.destination_video_id} not found for navigation video link`
+              );
+            }
+          }
+
+          const navLinkData: any = {
+            video_id: navigationVideoDbId,
+            timestamp_seconds: link.timestamp_seconds,
+            label: link.label,
+            link_type: link.link_type,
+            position_x: link.position_x || 20,
+            position_y: link.position_y || 20,
+            duration_ms: link.duration_ms,
+            normal_state_image: normalImageUrl,
+            hover_state_image: hoverImageUrl,
+            normal_image_width: link.normal_image_width,
+            normal_image_height: link.normal_image_height,
+            hover_image_width: link.hover_image_width,
+            hover_image_height: link.hover_image_height,
+            form_data: link.link_type === "form" ? link.form_data : null,
+          };
+
+          // Handle different link types for navigation video
+          if (link.link_type === "url") {
+            navLinkData.url = link.url;
+            navLinkData.destination_video_id = null;
+          } else if (link.link_type === "video" || link.link_type === "form") {
+            navLinkData.url = null;
+            navLinkData.destination_video_id = destinationVideoId;
+          } else {
+            navLinkData.url = null;
+            navLinkData.destination_video_id = null;
+          }
+
+          navLinkInserts.push(navLinkData);
         }
 
-        const { data: imageUploadData, error: imageUploadError } =
-          await supabase.storage
-            .from("navigation-images")
-            .upload(imageFilePath, navigationButtonImage);
+        const { error: navLinksError } = await supabase
+          .from("video_links")
+          .insert(navLinkInserts);
 
-        if (imageUploadError) throw imageUploadError;
-
-        const { data: imageUrlData } = supabase.storage
-          .from("navigation-images")
-          .getPublicUrl(imageFilePath);
-
-        finalNavigationImageUrl = imageUrlData.publicUrl;
-      }
-
-      // Upload new navigation video if provided
-      if (navigationButtonVideo) {
-        const videoFileExt = navigationButtonVideo.name.split(".").pop();
-        const videoFilePath = `${user.id}/${sessionId}/navigation-video.${videoFileExt}`;
-
-        // Delete old video if exists
-        if (existingNavigationVideoUrl) {
-          const oldVideoPath = existingNavigationVideoUrl
-            .split("/")
-            .slice(3)
-            .join("/");
-          await supabase.storage
-            .from("navigation-videos")
-            .remove([oldVideoPath]);
+        if (navLinksError) {
+          console.error(
+            "Error inserting navigation video links:",
+            navLinksError
+          );
+          throw navLinksError;
         }
-
-        const { data: videoUploadData, error: videoUploadError } =
-          await supabase.storage
-            .from("navigation-videos")
-            .upload(videoFilePath, navigationButtonVideo);
-
-        if (videoUploadError) throw videoUploadError;
-
-        const { data: videoUrlData } = supabase.storage
-          .from("navigation-videos")
-          .getPublicUrl(videoFilePath);
-
-        finalNavigationVideoUrl = videoUrlData.publicUrl;
-      }
-
-      // Remove navigation data if both were deleted
-      if (
-        !navigationButtonImage &&
-        !existingNavigationImageUrl &&
-        !navigationButtonVideo &&
-        !existingNavigationVideoUrl
+      } else if (
+        navigationVideoDbId &&
+        navigationButtonVideoLinks.length === 0
       ) {
-        finalNavigationImageUrl = "";
-        finalNavigationVideoUrl = "";
-        setNavigationButtonVideoTitle("");
+        // If no links but navigation video exists, delete all existing links
+        await supabase
+          .from("video_links")
+          .delete()
+          .eq("video_id", navigationVideoDbId);
       }
 
-      // Update session with navigation button data
-      await supabase
-        .from("sessions")
-        .update({
-          navigation_button_image_url: finalNavigationImageUrl,
-          navigation_button_video_url: finalNavigationVideoUrl,
-          navigation_button_video_title: navigationButtonVideoTitle,
-        })
-        .eq("id", sessionId);
-
-      // Third pass: Handle questions and answers
+      // Third pass: Handle questions and answers (unchanged from your original code)
       for (const video of videos) {
         const videoDbId = uploadedVideos[video.id];
 
@@ -1032,7 +1339,7 @@ export default function EditInteractiveSession({
         }
       }
 
-      // Handle solution
+      // Handle solution (unchanged from your original code)
       if (solution) {
         let solutionData: any = {
           session_id: sessionId,
@@ -1531,191 +1838,21 @@ export default function EditInteractiveSession({
             </div>
 
             {/* Navigation Button Section */}
-            <div className="mt-10 rounded-2xl border border-neutral-200 bg-white p-8">
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-neutral-900">
-                  Edit Navigation Button
-                </h3>
-                <p className="text-sm text-neutral-500 mt-1">
-                  Update your navigation button image or video. The button will
-                  stay visible in embedded mode and play the selected video on
-                  click.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Image Upload */}
-                <div className="space-y-3">
-                  <Label className="text-sm text-neutral-700 font-medium">
-                    Button Image *
-                  </Label>
-                  <div className="border border-dashed border-neutral-300 rounded-xl p-6 text-center bg-neutral-50 hover:bg-neutral-100/60 transition">
-                    {navigationButtonImage || existingNavigationImageUrl ? (
-                      <div className="space-y-4 flex flex-col items-center">
-                        <img
-                          src={
-                            navigationButtonImage
-                              ? URL.createObjectURL(navigationButtonImage)
-                              : existingNavigationImageUrl
-                          }
-                          alt="Navigation button"
-                          className="max-h-28 object-contain rounded-md"
-                        />
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setNavigationButtonImage(null);
-                            setExistingNavigationImageUrl("");
-                            setNavigationButtonImageUrl("");
-                          }}
-                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" /> Remove
-                        </Button>
-                      </div>
-                    ) : (
-                      <Label
-                        htmlFor="navigation-image"
-                        className="cursor-pointer block"
-                      >
-                        <Upload className="mx-auto h-7 w-7 text-neutral-400" />
-                        <p className="mt-2 text-sm font-medium text-blue-600">
-                          Upload Image
-                        </p>
-                        <input
-                          id="navigation-image"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) setNavigationButtonImage(file);
-                          }}
-                        />
-                        <p className="text-xs text-neutral-400 mt-1">
-                          PNG, JPG up to 10MB
-                        </p>
-                      </Label>
-                    )}
-                  </div>
-                </div>
-
-                {/* Video Upload */}
-                <div className="space-y-3">
-                  <Label className="text-sm text-neutral-700 font-medium">
-                    Navigation Video *
-                  </Label>
-                  <div className="border border-dashed border-neutral-300 rounded-xl p-6 text-center bg-neutral-50 hover:bg-neutral-100/60 transition">
-                    {navigationButtonVideo || existingNavigationVideoUrl ? (
-                      <div className="space-y-4 flex flex-col items-center">
-                        <video
-                          controls
-                          className="w-full max-h-32 rounded-lg bg-black object-contain"
-                          src={
-                            navigationButtonVideo
-                              ? URL.createObjectURL(navigationButtonVideo)
-                              : existingNavigationVideoUrl
-                          }
-                        />
-                        <p className="text-sm font-medium text-neutral-700">
-                          {navigationButtonVideo
-                            ? navigationButtonVideo.name
-                            : "Existing Navigation Video"}
-                        </p>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setNavigationButtonVideo(null);
-                            setExistingNavigationVideoUrl("");
-                            setNavigationButtonVideoUrl("");
-                            setNavigationButtonVideoTitle("");
-                          }}
-                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" /> Remove
-                        </Button>
-                      </div>
-                    ) : (
-                      <Label
-                        htmlFor="navigation-video"
-                        className="cursor-pointer block"
-                      >
-                        <Video className="mx-auto h-7 w-7 text-neutral-400" />
-                        <p className="mt-2 text-sm font-medium text-blue-600">
-                          Upload Video
-                        </p>
-                        <input
-                          id="navigation-video"
-                          type="file"
-                          accept="video/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              setNavigationButtonVideo(file);
-                              setNavigationButtonVideoTitle(
-                                file.name.split(".")[0]
-                              );
-                            }
-                          }}
-                        />
-                        <p className="text-xs text-neutral-400 mt-1">
-                          MP4, MOV up to 100MB
-                        </p>
-                      </Label>
-                    )}
-                  </div>
-
-                  {(navigationButtonVideoTitle ||
-                    existingNavigationVideoUrl) && (
-                    <Input
-                      placeholder="Video title"
-                      value={navigationButtonVideoTitle}
-                      onChange={(e) =>
-                        setNavigationButtonVideoTitle(e.target.value)
-                      }
-                      className="h-9 text-sm"
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* Preview */}
-              {(navigationButtonImage || existingNavigationImageUrl) &&
-                (navigationButtonVideo || existingNavigationVideoUrl) && (
-                  <div className="mt-8 border border-neutral-200 rounded-xl bg-neutral-50 p-6">
-                    <Label className="text-sm text-neutral-700 font-medium mb-3 block">
-                      Preview
-                    </Label>
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 flex items-center justify-center bg-white border border-neutral-200 rounded-lg shadow-sm">
-                        <img
-                          src={
-                            navigationButtonImage
-                              ? URL.createObjectURL(navigationButtonImage)
-                              : existingNavigationImageUrl
-                          }
-                          alt="Preview"
-                          className="max-h-10 object-contain"
-                        />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-neutral-800">
-                          Navigation Button
-                        </p>
-                        <p className="text-xs text-neutral-500">
-                          Click to play:{" "}
-                          {navigationButtonVideoTitle || "Untitled"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-            </div>
+            <NavigationButtonSection
+              navigationButtonImage={navigationButtonImage}
+              navigationButtonVideo={navigationButtonVideo}
+              navigationButtonVideoUrl={navigationButtonVideoUrl}
+              navigationButtonVideoTitle={navigationButtonVideoTitle}
+              navigationButtonVideoDuration={0}
+              navigationButtonVideoLinks={navigationButtonVideoLinks}
+              availableVideos={availableVideos}
+              onImageChange={handleNavigationImageChange}
+              onVideoChange={handleNavigationVideoChange}
+              onVideoTitleChange={handleNavigationVideoTitleChange}
+              onVideoLinksChange={handleNavigationVideoLinksChange}
+              existingImageUrl={existingNavigationImageUrl}
+              existingVideoUrl={existingNavigationVideoUrl}
+            />
 
             <div className="flex items-center space-x-2">
               <Switch

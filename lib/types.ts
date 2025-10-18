@@ -6,11 +6,12 @@ export type VideoType = {
   is_main?: boolean;
   duration: number; // Add duration in seconds
   links?: VideoLink[]; // Add links array
-session_id?:string
+  session_id?: string;
   db_id?: string;
   path?: string;
   freezeAtEnd?: boolean;
   destination_video_id: string | null;
+  is_navigation_video?: boolean;
 };
 export type VideoLink = {
   id: string;

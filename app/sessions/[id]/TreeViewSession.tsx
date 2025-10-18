@@ -67,9 +67,14 @@ const getEdgeStyle = (sourceId: string, defaultStyle?: any) => {
 
 function CustomVideoNode({ data }: NodeProps<{ video: VideoType }>) {
   return (
-    <div className="p-4 rounded-lg bg-blue-600 shadow-md  text-white border border-gray-300 w-64 h-full flex flex-col justify-center items-center text-center">
+    <div
+      className={`p-4 rounded-lg ${
+        data.video.is_navigation_video ? "bg-purple-500" : "bg-blue-600"
+      } shadow-md  text-white border border-gray-300 w-64 h-full flex flex-col justify-center items-center text-center`}
+    >
       <div className="font-semibold flex items-center gap-2 text-[16px]  mb-1">
-        <DestinationVedio /> {data.video.title.substring(0, 20)}...
+        <DestinationVedio /> {data.video.title.substring(0, 20)}
+        ...
       </div>
       <div className="text-xs text-gray-500"></div>
       <Handle type="target" position={Position.Top} style={{ opacity: 0 }} />
@@ -97,7 +102,7 @@ function CustomLinkNode({ data }: NodeProps<{ link: VideoLink }>) {
       case "url":
         return <ExternalLinkIcon className="w-4 h-4" />;
       case "video":
-        return <DestinationVedio className="w-4 h-4" />;
+        return <DestinationVedio className="w-4 h-4 text-white" />;
       case "form":
         return <FormInputIcon className="w-4 h-4" />;
       default:
@@ -307,13 +312,20 @@ export function TreeViewSession({ sessionId, videos }: TreeViewSessionProps) {
         };
         createdNodes.set(buttonNodeId, buttonNode);
 
-        // Create edge from video to button
+        const isNavVideo = video.is_navigation_video;
         createdEdges.push({
           id: `edge-${videoNodeId}-to-${buttonNodeId}`,
           source: videoNodeId,
           target: buttonNodeId,
           markerEnd: { type: MarkerType.ArrowClosed },
-          style: getEdgeStyle(videoNodeId),
+          style: {
+            strokeWidth: 2,
+            stroke: isNavVideo ? "#8B5CF6" : "#10B981", // purple for navigation videos, green otherwise
+          },
+          // label: isNavVideo ? "Navigation Link" : undefined,
+          labelStyle: isNavVideo
+            ? { fill: "#8B5CF6", fontWeight: "bold" }
+            : undefined,
         });
 
         // Create destination node based on link type

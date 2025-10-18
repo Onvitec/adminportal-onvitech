@@ -155,8 +155,12 @@ function VideoPlayerWithDraggableImages({
 
   const formatTime = useCallback((seconds: number): string => {
     const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
+    const secs = seconds % 60;
+
+    // Format seconds with up to 1 decimal place
+    const formattedSecs = secs.toFixed(1);
+
+    return `${mins}:${formattedSecs.padStart(4, "0")}`; // padStart(4) to account for decimal
   }, []);
 
   const handleMouseDown = useCallback(
@@ -862,7 +866,7 @@ function VideoUploadWithLinksComponent({
             id: link.id,
             label: link.label,
             url: link.url || "",
-            timestamp: String(link.timestamp_seconds),
+            timestamp: link.timestamp_seconds.toString(),
             linkType: link.link_type,
             destinationVideoId: link.destination_video_id || "",
             position_x: link.position_x || 20,
@@ -1309,7 +1313,7 @@ function VideoUploadWithLinksComponent({
               type="button"
               variant="outline"
               onClick={() => setShowPreview(!showPreview)}
-              className="bg-white"
+              className="bg-white mt-2"
             >
               {showPreview ? (
                 <EyeOff className="h-10 w-10" />
@@ -1429,7 +1433,8 @@ function VideoUploadWithLinksComponent({
                     <div className="flex flex-col gap-2">
                       <Label className="font-bold">Timestamp (seconds)</Label>
                       <Input
-                        type="number"
+                        type="number" // Change this to accept decimals
+                        step="0.1" // Add step attribute for decimal increments
                         min={0}
                         max={video.duration || undefined}
                         placeholder={`0${
@@ -1437,7 +1442,7 @@ function VideoUploadWithLinksComponent({
                         }`}
                         value={formData.timestamp}
                         onChange={(e) => {
-                          const rawValue = Number(e.target.value);
+                          const rawValue = parseFloat(e.target.value); // Use parseFloat instead of Number
 
                           // Clamp the value between 0 and video.duration
                           let clampedValue = rawValue;
@@ -1445,7 +1450,16 @@ function VideoUploadWithLinksComponent({
                           if (video.duration && rawValue > video.duration)
                             clampedValue = video.duration;
 
-                          handleFormChange(index, "timestamp", clampedValue);
+                          // Handle NaN case (when input is empty)
+                          if (isNaN(clampedValue)) {
+                            handleFormChange(index, "timestamp", "");
+                          } else {
+                            handleFormChange(
+                              index,
+                              "timestamp",
+                              clampedValue.toString()
+                            );
+                          }
                         }}
                       />
                     </div>
@@ -1455,15 +1469,16 @@ function VideoUploadWithLinksComponent({
                       <Label className="font-bold">Duration (seconds)</Label>
                       <Input
                         type="number"
+                        step="0.1" // Add step for decimals
                         min={0}
-                        max={video.duration || undefined} // assuming video.duration is in seconds
+                        max={video.duration || undefined}
                         value={
                           formData.duration_ms
-                            ? formData.duration_ms / 1000
+                            ? (formData.duration_ms / 1000).toFixed(1) // Show with 1 decimal
                             : ""
-                        } // show in seconds
+                        }
                         onChange={(e) => {
-                          const rawSeconds = Number(e.target.value);
+                          const rawSeconds = parseFloat(e.target.value); // Use parseFloat
 
                           // Clamp between 0 and video.duration
                           let clampedSeconds = rawSeconds;
@@ -1471,7 +1486,7 @@ function VideoUploadWithLinksComponent({
                           if (video.duration && rawSeconds > video.duration)
                             clampedSeconds = video.duration;
 
-                          // Save in ms
+                          // Save in ms (multiply by 1000)
                           handleFormChange(
                             index,
                             "duration_ms",

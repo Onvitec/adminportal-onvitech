@@ -39,6 +39,7 @@ interface CommonVideoPlayerProps {
     video_title: string;
   } | null;
   onNavigationButtonClick?: () => void;
+  isNavigationVideo?: boolean;
 }
 
 // Form Display Component
@@ -313,6 +314,8 @@ export function CommonVideoPlayer({
   sessionShowPlayButton = true,
   addClickToJourney,
   navigationButton,
+  isNavigationVideo = false,
+
   onNavigationButtonClick,
 }: CommonVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -332,28 +335,47 @@ export function CommonVideoPlayer({
     top: number;
   } | null>(null);
 
-  // PERFECT Video rect calculation - USING BROWSER'S ACTUAL RENDERED DIMENSIONS
+  // CRITICAL: Check if we should show navigation button
+  const shouldShowNavigationButton = useCallback(() => {
+    // Only show navigation button if:
+    // 1. navigationButton prop is provided
+    // 2. onNavigationButtonClick callback is provided
+    // 3. We're not currently showing a form
+    // 4. We're not in freeze controls mode
+    // 5. This is NOT a navigation video
+    return (
+      navigationButton &&
+      onNavigationButtonClick &&
+      !currentForm &&
+      !showFreezeControls &&
+      !isNavigationVideo // ADD THIS: Don't show in navigation video
+    );
+  }, [
+    navigationButton,
+    onNavigationButtonClick,
+    currentForm,
+    showFreezeControls,
+    isNavigationVideo,
+  ]);
+
+  // PERFECT Video rect calculation
   const calculateVideoRect = useCallback(() => {
     const video = videoRef.current;
     const container = videoContainerRef.current;
     if (!video || !container) return null;
 
     const containerRect = container.getBoundingClientRect();
-
-    // Get ACTUAL video dimensions from video element
     const videoAspect = video.videoWidth / video.videoHeight;
     const containerAspect = containerRect.width / containerRect.height;
 
     let actualVideoWidth, actualVideoHeight, offsetLeft, offsetTop;
 
     if (containerAspect > videoAspect) {
-      // Container is wider, video height matches container (letterbox)
       actualVideoHeight = containerRect.height;
       actualVideoWidth = actualVideoHeight * videoAspect;
       offsetLeft = (containerRect.width - actualVideoWidth) / 2;
       offsetTop = 0;
     } else {
-      // Container is taller, video width matches container (pillarbox)
       actualVideoWidth = containerRect.width;
       actualVideoHeight = actualVideoWidth / videoAspect;
       offsetLeft = 0;
@@ -367,12 +389,6 @@ export function CommonVideoPlayer({
       top: offsetTop,
     };
 
-    // console.log("CommonVideoPlayer - VideoRect:", {
-    //   container: { width: containerRect.width, height: containerRect.height },
-    //   video: { width: video.videoWidth, height: video.videoHeight },
-    //   calculated: rect,
-    // });
-
     setVideoRect(rect);
     return rect;
   }, []);
@@ -383,12 +399,12 @@ export function CommonVideoPlayer({
       return { right: "20px", top: "20px" };
     }
 
-    // Position in top right corner of the video area
-    const right = 20; // 20px from right edge
-    const top = 20; // 20px from top edge
+    const right = 20;
+    const top = 20;
 
     return { right: `${right}px`, top: `${top}px` };
   }, [videoRect]);
+
   // Enhanced video rect calculation with better timing
   useEffect(() => {
     const video = videoRef.current;
@@ -401,11 +417,9 @@ export function CommonVideoPlayer({
       }, 100);
     };
 
-    // Monitor container size changes
     const resizeObserver = new ResizeObserver(calculateAndSetRect);
     resizeObserver.observe(container);
 
-    // Video events
     video.addEventListener("loadedmetadata", calculateAndSetRect);
     video.addEventListener("canplay", calculateAndSetRect);
     video.addEventListener("loadeddata", calculateAndSetRect);
@@ -413,12 +427,10 @@ export function CommonVideoPlayer({
 
     window.addEventListener("resize", calculateAndSetRect);
 
-    // Initial calculation with container size check
     const checkContainerSize = () => {
       if (container.getBoundingClientRect().width > 0) {
         calculateAndSetRect();
       } else {
-        // Container not rendered yet, try again
         setTimeout(checkContainerSize, 50);
       }
     };
@@ -434,6 +446,7 @@ export function CommonVideoPlayer({
       window.removeEventListener("resize", calculateAndSetRect);
     };
   }, [currentVideo, calculateVideoRect]);
+
   // Track timestamps for video links
   useEffect(() => {
     const videoEl = videoRef.current;
@@ -443,7 +456,6 @@ export function CommonVideoPlayer({
       const links = videoLinks[currentVideo.id] || [];
       const currentTime = videoEl.currentTime;
 
-      // Calculate visible links based on timestamp and duration
       const visibleLinks = links.filter((link) => {
         const startTime = link.timestamp_seconds;
         const durationSeconds = (link.duration_ms || 3000) / 1000;
@@ -452,7 +464,6 @@ export function CommonVideoPlayer({
         return currentTime >= startTime && currentTime <= endTime;
       });
 
-      // Update active links only if there's a change
       setActiveLinks((prev) => {
         if (
           prev.length !== visibleLinks.length ||
@@ -488,7 +499,7 @@ export function CommonVideoPlayer({
     setShowFreezeControls(false);
   }, [currentVideo]);
 
-  // Get image position - PERFECT SYNCHRONIZATION WITH VideoUploadWithLinks
+  // Get image position
   const getImagePosition = useCallback(
     (link: VideoLink) => {
       if (!videoRect) {
@@ -505,7 +516,6 @@ export function CommonVideoPlayer({
 
   const togglePlayPause = () => {
     if (videoRef.current && currentVideo) {
-      // Check if video is ended and we're restarting it
       const isRestartingFromEnd = videoRef.current.ended || showFreezeControls;
 
       if (isPlaying) {
@@ -519,7 +529,6 @@ export function CommonVideoPlayer({
         resetMouseTimeout();
         setShowFreezeControls(false);
 
-        // Track restart if video was ended/frozen
         if (isRestartingFromEnd && addClickToJourney) {
           addClickToJourney(currentVideo, {
             id: `restart-${currentVideo.id}-${Date.now()}`,
@@ -573,19 +582,29 @@ export function CommonVideoPlayer({
   };
 
   const handleVideoEnd = () => {
-    const shouldFreeze = !hasQuestions && currentVideo?.freezeAtEnd;
+    // CRITICAL FIX: Navigation videos should NOT show freeze controls
+    // They should freeze at end but keep buttons functional without showing "Video Completed"
+    const shouldFreeze =
+      !hasQuestions && currentVideo?.freezeAtEnd && !isNavigationVideo;
 
     if (shouldFreeze) {
       setShowFreezeControls(true);
       setIsPlaying(false);
       setShowControls(true);
     } else {
-      // Mark video as ended for normal videos too
-      setIsPlaying(false);
-      setShowControls(true);
-      onVideoEnd();
+      // For navigation videos, just pause and keep buttons functional
+      if (isNavigationVideo) {
+        setIsPlaying(false);
+        setShowControls(true);
+        // Don't show freeze controls for navigation videos
+      } else {
+        setIsPlaying(false);
+        setShowControls(true);
+        onVideoEnd();
+      }
     }
   };
+
   const handleRestartVideo = () => {
     if (videoRef.current && currentVideo) {
       videoRef.current.currentTime = 0;
@@ -595,7 +614,6 @@ export function CommonVideoPlayer({
       setMouseActive(true);
       resetMouseTimeout();
 
-      // Add restart action to journey - only if video was actually ended/frozen
       if (addClickToJourney && (showFreezeControls || videoRef.current.ended)) {
         addClickToJourney(currentVideo, {
           id: `restart-${currentVideo.id}-${Date.now()}`,
@@ -657,16 +675,17 @@ export function CommonVideoPlayer({
         onResize={() => setTimeout(() => calculateVideoRect(), 100)}
       />
 
-      {navigationButton && onNavigationButtonClick && (
+      {/* CRITICAL FIX: Only show navigation button when conditions are met */}
+      {shouldShowNavigationButton() && (
         <div
           className="absolute z-30 cursor-pointer transition-transform duration-200 hover:scale-110"
           style={getNavigationButtonPosition()}
           onClick={onNavigationButtonClick}
-          title={`Play: ${navigationButton.video_title}`}
+          title={`Play: ${navigationButton!.video_title}`}
         >
           <div className="relative">
             <img
-              src={navigationButton.image_url}
+              src={navigationButton!.image_url}
               alt="Navigation"
               className="w-16 h-16 object-contain rounded-lg shadow-lg transition-all"
               draggable={false}
@@ -714,7 +733,6 @@ export function CommonVideoPlayer({
           }`}
           onClick={togglePlayPause}
         >
-          {/* session Show buttonis when we want to display or hide button */}
           <div
             className={`bg-white/30 ${
               !sessionShowPlayButton && "opacity-0"
@@ -755,7 +773,7 @@ export function CommonVideoPlayer({
         />
       )}
 
-      {/* Enhanced Video Link Buttons - PERFECT POSITIONING */}
+      {/* Enhanced Video Link Buttons */}
       {activeLinks.length > 0 && (
         <>
           {activeLinks.map((link) => {

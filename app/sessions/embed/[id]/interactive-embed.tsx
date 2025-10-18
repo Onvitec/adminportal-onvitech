@@ -41,11 +41,13 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [showQuestions, setShowQuestions] = useState(false);
 
-  // nav button
+  // Update the navigationButton state type
   const [navigationButton, setNavigationButton] = useState<{
     image_url: string;
     video_url: string;
     video_title: string;
+    video_data?: VideoType & { freezeAtEnd?: boolean };
+    video_links?: VideoLink[];
   } | null>(null);
   const [showNavigationVideo, setShowNavigationVideo] = useState(false);
   const [navigationVideo, setNavigationVideo] = useState<VideoType | null>(
@@ -70,15 +72,12 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     steps: [],
   });
   const userJourneyRef = useRef<UserJourney>(userJourney);
-  // Track last video ID to prevent duplicates
   const lastVideoIdRef = useRef<string | null>(null);
-
-  // Modify the video link click handler to store the form link
   const [currentFormLink, setCurrentFormLink] = useState<VideoLink | null>(
     null
   );
 
-  // Watch time tracking - track actual video watching time
+  // Watch time tracking
   const watchTimeRef = useRef(0);
   const startTimeRef = useRef<number>(0);
   const hasSavedRef = useRef<boolean>(false);
@@ -89,19 +88,16 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     userJourneyRef.current = userJourney;
   }, [userJourney]);
+
   const saveLeadData = useCallback(async () => {
-    // if (hasSavedRef.current) return;
     hasSavedRef.current = true;
 
     try {
-      // Always calculate fresh elapsed time for accuracy
       const elapsedSeconds = Math.floor(
         (Date.now() - startTimeRef.current) / 1000
       );
       const finalWatchTime = Math.max(elapsedSeconds, watchTimeRef.current);
 
-      // Only save if they watched for more than a minimal time (e.g., 3 seconds)
-      // This filters out accidental clicks or immediate bounces
       if (finalWatchTime < 3) {
         console.log("⏰ Watch time too short, skipping save:", finalWatchTime);
         return;
@@ -149,9 +145,10 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       console.log("✅ Lead saved with watch_time:", finalWatchTime);
     } catch (err) {
       console.error("❌ Error in saveLeadData:", err);
-      hasSavedRef.current = false; // Allow retry on error
+      hasSavedRef.current = false;
     }
   }, [sessionId, currentFormLink?.form_data]);
+
   // Watch time tracking system
   useEffect(() => {
     const startTime = Date.now();
@@ -161,12 +158,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       watchTimeRef.current = Math.floor((Date.now() - startTime) / 1000);
     };
 
-    // Start timer
     timerRef.current = setInterval(updateWatchTime, 1000);
 
-    // ✅ Single, centralized save function with proper locking
     const performFinalSave = () => {
-      // Double-check lock pattern to prevent duplicates
       if (hasSavedRef.current) {
         console.log("⏩ Save already completed, skipping");
         return false;
@@ -183,14 +177,12 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         return false;
       }
 
-      // Set the lock immediately
       hasSavedRef.current = true;
       console.log("💾 Final watch time to save:", finalWatchTime);
 
       return finalWatchTime;
     };
 
-    // ✅ Unified sync save for page unload (tab close/refresh)
     const handleUnloadSave = () => {
       const finalWatchTime = performFinalSave();
       if (!finalWatchTime) return;
@@ -203,7 +195,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           user_journey: userJourneyRef.current,
         };
 
-        // Use sendBeacon first (designed for unload)
         const blob = new Blob([JSON.stringify(payload)], {
           type: "application/json",
         });
@@ -212,7 +203,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           return;
         }
 
-        // Fallback to sync XHR
         console.log("🔄 sendBeacon failed, trying sync XHR");
         const xhr = new XMLHttpRequest();
         xhr.open("POST", "/api/save-lead", false);
@@ -224,30 +214,23 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       }
     };
 
-    // ✅ Async save for normal navigation (SPA)
     const handleAsyncSave = () => {
       const finalWatchTime = performFinalSave();
       if (!finalWatchTime) return;
-
-      // Use the existing async saveLeadData for SPA navigation
       saveLeadData();
     };
 
-    // ✅ Debounced visibility change handler
     let visibilityTimeout: NodeJS.Timeout;
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {
-        // Small delay to catch quick tab switches vs actual closes
         visibilityTimeout = setTimeout(() => {
           handleUnloadSave();
         }, 100);
       } else {
-        // Tab became visible again - cancel the save
         clearTimeout(visibilityTimeout);
       }
     };
 
-    // Attach event listeners
     window.addEventListener("beforeunload", handleUnloadSave);
     window.addEventListener("pagehide", handleUnloadSave);
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -260,8 +243,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       window.removeEventListener("pagehide", handleUnloadSave);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
 
-      // Only save on unmount if we're in SPA navigation (not page unload)
-      // The page unload events should have already handled this
       if (!hasSavedRef.current) {
         console.log("🔚 Component unmounting (likely SPA navigation)");
         handleAsyncSave();
@@ -331,7 +312,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     });
   }, []);
 
-  // Function to get journey summary - UPDATED VERSION
+  // Function to get journey summary
   const getJourneySummary = useCallback(() => {
     return userJourney.steps
       .map((step) => {
@@ -350,7 +331,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           }
           return `clicked: ${step.clickedElement.label}`;
         }
-        // Mark navigation videos specifically in the summary
         if (step.videoId.startsWith("navigation-video-")) {
           return `[Navigation video] ${step.videoTitle}`;
         }
@@ -375,32 +355,13 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         if (sessionError) throw sessionError;
         setIsShowPlayButton(sessionData.showPlayButton);
         setSessionName(sessionData.title);
-        // Check if session has navigation button data
-        if (
-          sessionData.navigation_button_image_url &&
-          sessionData.navigation_button_video_url
-        ) {
-          setNavigationButton({
-            image_url: sessionData.navigation_button_image_url,
-            video_url: sessionData.navigation_button_video_url,
-            video_title:
-              sessionData.navigation_button_video_title || "Navigation Video",
-          });
-        }
 
-        // Increment total_views by 1
-        if (sessionData) {
-          await supabase
-            .from("sessions")
-            .update({ total_views: (sessionData.total_views || 0) + 1 })
-            .eq("id", sessionId);
-        }
-
-        // Fetch videos
+        // Fetch videos - EXCLUDE navigation videos
         const { data: videosData, error: videosError } = await supabase
           .from("videos")
           .select("*")
           .eq("session_id", sessionId)
+          .eq("is_navigation_video", false)
           .order("order_index", { ascending: true });
 
         if (videosError) throw videosError;
@@ -418,8 +379,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
         // Create a mapping of destination videos
         const destVideos: Record<string, VideoType> = {};
-
-        // First, get all destination video IDs
         const destinationVideoIds = new Set<string>();
 
         for (const video of videosData || []) {
@@ -445,7 +404,91 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
         setDestinationVideos(destVideos);
 
-        // Fetch questions
+        // Fetch navigation video data separately
+        if (sessionData.navigation_button_video_id) {
+          // Fetch navigation video details
+          const { data: navVideoData, error: navVideoError } = await supabase
+            .from("videos")
+            .select("*")
+            .eq("id", sessionData.navigation_button_video_id)
+            .single();
+
+          if (!navVideoError && navVideoData) {
+            // Fetch navigation video links
+            const { data: navLinksData, error: navLinksError } = await supabase
+              .from("video_links")
+              .select("*")
+              .eq("video_id", sessionData.navigation_button_video_id);
+
+            if (!navLinksError) {
+              // Process navigation video links with destinations
+              const navLinksWithDestinations = await Promise.all(
+                (navLinksData || []).map(async (link): Promise<VideoLink> => {
+                  if (
+                    (link.link_type === "video" || link.link_type === "form") &&
+                    link.destination_video_id
+                  ) {
+                    const destinationVideo =
+                      videosData.find(
+                        (v) => v.id === link.destination_video_id
+                      ) || destVideos[link.destination_video_id];
+
+                    const result = {
+                      ...link,
+                      destination_video: destinationVideo,
+                    };
+
+                    if (link.link_type === "form" && link.form_data) {
+                      try {
+                        const formData =
+                          typeof link.form_data === "string"
+                            ? JSON.parse(link.form_data)
+                            : link.form_data;
+                        result.form_data = formData;
+                      } catch (error) {
+                        console.error("Error parsing form data:", error);
+                      }
+                    }
+
+                    return result;
+                  } else if (link.link_type === "form" && link.form_data) {
+                    try {
+                      const formData =
+                        typeof link.form_data === "string"
+                          ? JSON.parse(link.form_data)
+                          : link.form_data;
+                      return {
+                        ...link,
+                        form_data: formData,
+                      };
+                    } catch (error) {
+                      console.error("Error parsing form data:", error);
+                      return link;
+                    }
+                  }
+
+                  return link;
+                })
+              );
+
+              // Set navigation button with video and links
+              setNavigationButton({
+                image_url: sessionData.navigation_button_image_url,
+                video_url: navVideoData.url,
+                video_title:
+                  sessionData.navigation_button_video_title ||
+                  "Navigation Video",
+                video_data: {
+                  ...navVideoData,
+                  freezeAtEnd: true,
+                },
+                video_links: navLinksWithDestinations || [],
+              });
+            }
+          }
+        }
+
+        // Fetch questions for regular videos only
         const { data: questionsData, error: questionsError } = await supabase
           .from("questions")
           .select("*")
@@ -500,7 +543,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           })
         );
 
-        // Fetch video links with enhanced logic for video-type links
+        // Fetch video links for regular videos only
         const { data: linksData, error: linksError } = await supabase
           .from("video_links")
           .select("*")
@@ -518,24 +561,21 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
               (link.link_type === "video" || link.link_type === "form") &&
               link.destination_video_id
             ) {
-              // Find the destination video from our already loaded videos
               const destinationVideo =
                 videosData.find((v) => v.id === link.destination_video_id) ||
                 destVideos[link.destination_video_id];
 
               const result = {
                 ...link,
-                destination_video: destinationVideo, // Store the video object
+                destination_video: destinationVideo,
               };
 
-              // Parse form data if it's a form link
               if (link.link_type === "form" && link.form_data) {
                 try {
                   const formData =
                     typeof link.form_data === "string"
                       ? JSON.parse(link.form_data)
                       : link.form_data;
-
                   result.form_data = formData;
                 } catch (error) {
                   console.error("Error parsing form data:", error);
@@ -544,13 +584,11 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
               return result;
             } else if (link.link_type === "form" && link.form_data) {
-              // Parse form data for form links without destination video
               try {
                 const formData =
                   typeof link.form_data === "string"
                     ? JSON.parse(link.form_data)
                     : link.form_data;
-
                 return {
                   ...link,
                   form_data: formData,
@@ -606,10 +644,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     }
   }, [currentVideo, questions]);
 
-  // Add destination videos to journey when they load - FIXED DUPLICATION
+  // Add destination videos to journey when they load
   useEffect(() => {
     if (currentVideo && currentVideo.id !== lastVideoIdRef.current) {
-      // Only add to journey if this is a new video
       addVideoToJourney(currentVideo);
       lastVideoIdRef.current = currentVideo.id;
     }
@@ -633,7 +670,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           videos.find((v) => v.id === currentVideo.destination_video_id);
 
         if (destinationVideo) {
-          // Go to destination video
           if (currentVideo && !isNavigatingBack) {
             setVideoHistory((prev) => [...prev, currentVideo]);
           }
@@ -646,7 +682,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       // If no destination video or freezeAtEnd is true, check for next video in order
       const currentIndex = videos.findIndex((v) => v.id === currentVideo?.id);
       if (currentIndex < videos.length - 1 && !currentVideo?.freezeAtEnd) {
-        // has next video → play it
         const nextVideo = videos[currentIndex + 1];
         if (currentVideo && !isNavigatingBack) {
           setVideoHistory((prev) => [...prev, currentVideo]);
@@ -662,7 +697,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     answer: Answer & { destination_video?: VideoType }
   ) => {
     if (answer.destination_video) {
-      // go to destination video
       if (currentVideo && !isNavigatingBack) {
         setVideoHistory((prev) => [...prev, currentVideo]);
       }
@@ -673,10 +707,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     }
   };
 
-  // Handle video link clicks - FIXED to properly track navigation
+  // Handle video link clicks
   const handleVideoLinkClick = useCallback(
     (link: VideoLink) => {
-      // Track the click in journey FIRST
       if (currentVideo) {
         addClickToJourney(currentVideo, {
           id: link.id,
@@ -688,6 +721,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       if (link.link_type === "url" && link.url) {
         window.open(link.url, "_blank", "noopener,noreferrer");
       } else if (link.link_type === "video" && link.destination_video_id) {
+        setShowNavigationVideo(false);
         const destinationVideo =
           destinationVideos[link.destination_video_id] ||
           videos.find((v) => v.id === link.destination_video_id);
@@ -698,17 +732,13 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           }
           setCurrentVideo(destinationVideo);
           setShowQuestions(false);
-
-          // The destination video will be automatically added via useEffect
         }
       } else if (link.link_type === "form" && link.form_data) {
         console.log("Form link clicked, pausing video");
         setIsVideoPaused(true);
-        isVideoPlayingRef.current = false; // Pause timer
+        isVideoPlayingRef.current = false;
         setCurrentForm(link.form_data);
         setCurrentFormLink(link);
-
-        // Log journey before form
         console.log("User journey before form:", getJourneySummary());
       }
     },
@@ -732,7 +762,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       }
     ) => {
       try {
-        // First, create the updated journey with form submission
         let finalJourney: UserJourney;
 
         if (currentVideo && currentFormLink) {
@@ -752,43 +781,32 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
               },
             ],
           };
-
-          // Update the state
           setUserJourney(finalJourney);
         } else {
           finalJourney = userJourneyRef.current;
         }
 
-        // Get the journey summary from the FINAL journey, this is imp although its duplication because if we call
         const journeySummary = finalJourney.steps
           .map((step) => {
             if (step.clickedElement) {
               const el = step.clickedElement;
-
               if (el.label?.startsWith("Submitted form:")) {
                 return el.label;
               }
-
               if (el.type === "restart") {
                 return `${step.videoTitle} (${el.label})`;
               }
-
               if (el.id === "navigation-video-completed") {
                 return `Completed navigation video: ${step.videoTitle}`;
               }
-
               if (el.label === "Navigation Button") {
                 return `Clicked: Navigation Button`;
               }
-
               return `Clicked: ${el.label}`;
             }
-
-            // Handle navigation videos (when playing)
             if (step.videoId?.startsWith("navigation-video-")) {
               return `Started navigation video: ${step.videoTitle}`;
             }
-
             return step.videoTitle;
           })
           .join(" -> ");
@@ -806,18 +824,15 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
           const companyId = sessionData?.associated_with;
 
-          // Save form submission data
-          const { error: saveError } = await supabase
-            .from("leads") // You'll need to create this table
-            .insert({
-              session_id: sessionId,
-              company_id: companyId,
-              form_title: data.title,
-              form_data: data.values.formatted, // Store the raw form values as JSONB
-              user_journey: finalJourney, // Store the complete journey as JSONB
-              journey_summary: journeySummary,
-              created_at: new Date().toISOString(),
-            });
+          const { error: saveError } = await supabase.from("leads").insert({
+            session_id: sessionId,
+            company_id: companyId,
+            form_title: data.title,
+            form_data: data.values.formatted,
+            user_journey: finalJourney,
+            journey_summary: journeySummary,
+            created_at: new Date().toISOString(),
+          });
 
           if (saveError) {
             console.error("❌ Error saving form data:", saveError);
@@ -828,7 +843,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           console.error("❌ Database save error:", dbError);
         }
 
-        // Send email (your existing code)
         const message_html = buildEmailTemplate(data.title, {
           ...data.values.formatted,
           userJourney: journeySummary,
@@ -854,7 +868,6 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         setIsFormSubmitting(false);
       }
 
-      // Navigation logic (your existing code)
       if (currentFormLink && currentFormLink.destination_video_id) {
         const destinationVideo =
           destinationVideos[currentFormLink.destination_video_id] ||
@@ -869,7 +882,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       }
 
       setIsVideoPaused(false);
-      isVideoPlayingRef.current = true; // Resume timer
+      isVideoPlayingRef.current = true;
       setCurrentForm(null);
       setCurrentFormLink(null);
     },
@@ -880,85 +893,67 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       isNavigatingBack,
       destinationVideos,
       sessionName,
-      sessionId, // Added sessionId dependency
+      sessionId,
     ]
   );
 
   // Handle form cancellation
   const handleFormCancel = () => {
-    // Resume video playback
     setIsVideoPaused(false);
-    isVideoPlayingRef.current = true; // Resume timer
+    isVideoPlayingRef.current = true;
     setCurrentForm(null);
     setCurrentFormLink(null);
   };
 
-  // Function to handle navigation button click - FIXED VERSION
+  // Function to handle navigation button click
   const handleNavigationButtonClick = useCallback(() => {
-    if (navigationButton) {
-      // Create a proper video object for the navigation video
+    if (navigationButton && navigationButton.video_data) {
+      console.log("Navigation button clicked, opening navigation video");
+
       const navVideo: VideoType = {
-        id: "navigation-video-" + Date.now(), // Unique ID
+        ...navigationButton.video_data,
+        id: "navigation-video-" + Date.now(),
         title: navigationButton.video_title,
         url: navigationButton.video_url,
-        session_id: sessionId,
-        duration: 0,
-        freezeAtEnd: false,
-        destination_video_id: null,
+        freezeAtEnd: true,
       };
 
-      // FIRST: Track the button click on the current video
       if (currentVideo) {
         addClickToJourney(currentVideo, {
           id: "navigation-button",
-          label: "Navigation Button", // You can customize this label
+          label: "Navigation Button",
           type: "button",
         });
       }
 
-      // THEN: Add the navigation video to journey
       addVideoToJourney(navVideo);
 
-      // Clear any current state before setting navigation video
       setShowQuestions(false);
       setCurrentForm(null);
       setCurrentFormLink(null);
       setIsVideoPaused(false);
 
-      // Set navigation video state
-      setNavigationVideo(navVideo as any);
+      setNavigationVideo(navVideo);
       setShowNavigationVideo(true);
-    }
-  }, [
-    navigationButton,
-    sessionId,
-    addClickToJourney,
-    addVideoToJourney,
-    currentVideo,
-  ]);
 
-  // Function to close navigation video and return to main content - FIXED VERSION
+      console.log("Navigation video state set to show");
+    }
+  }, [navigationButton, addClickToJourney, addVideoToJourney, currentVideo]);
+
+  // Function to close navigation video and return to main content
   const handleCloseNavigationVideo = useCallback(() => {
     console.log("Closing navigation video, returning to main content");
-
-    // Reset navigation video state first
     setShowNavigationVideo(false);
-
-    // Small delay to ensure state updates are processed
-    setTimeout(() => {
-      setNavigationVideo(null);
-      // Ensure we return to the current video (don't change currentVideo state)
-      if (currentVideo) {
-        console.log("Returning to video:", currentVideo.title);
-      }
-    }, 100);
-  }, [currentVideo]);
+    setNavigationVideo(null);
+    console.log(
+      "Navigation video closed, main session should show with navigation button"
+    );
+  }, []);
 
   // Separate handler for navigation video end
   const handleNavigationVideoEnd = useCallback(() => {
-    console.log("Navigation video ended");
+    console.log("Navigation video ended - keeping on last frame with buttons");
 
-    // Add navigation video completion to journey
     if (navigationVideo) {
       addClickToJourney(navigationVideo, {
         id: "navigation-video-completed",
@@ -967,36 +962,19 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       });
     }
 
-    // THEN return to current video and add it back to journey
-    if (currentVideo) {
-      addVideoToJourney(currentVideo);
-    }
-
-    handleCloseNavigationVideo();
-  }, [
-    navigationVideo,
-    handleCloseNavigationVideo,
-    addClickToJourney,
-    addVideoToJourney,
-    currentVideo,
-  ]);
+    // DO NOT return to current video - keep navigation video visible
+    // The video will freeze at end (freezeAtEnd: true) and buttons remain functional
+    setIsVideoPaused(true);
+  }, [navigationVideo, addClickToJourney]);
 
   const goToPreviousVideo = () => {
     if (videoHistory.length === 0) return;
 
     setIsNavigatingBack(true);
     const lastVideo = videoHistory[videoHistory.length - 1];
-
-    // Set previous video as current
     setCurrentVideo(lastVideo);
-
-    // Remove last from history
     setVideoHistory((prev) => prev.slice(0, -1));
-
-    // Reset UI state
     setShowQuestions(false);
-
-    // Reset navigation flag after a short delay
     setTimeout(() => setIsNavigatingBack(false), 100);
   };
 
@@ -1016,20 +994,21 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     return <div className="text-center p-4">No video content available</div>;
   }
 
-  // If navigation video is showing, render it with proper handlers
-  if (showNavigationVideo && navigationVideo) {
+  // If navigation video is showing, render it with proper handlers and links
+  if (showNavigationVideo && navigationVideo && navigationButton) {
     return (
       <div className="flex flex-col h-full rounded-xl overflow-hidden">
         <CommonVideoPlayer
           currentVideo={navigationVideo}
-          videoLinks={{}}
-          onVideoEnd={handleNavigationVideoEnd} // Use separate handler
-          onVideoLinkClick={() => {}} // No links in navigation video
+          videoLinks={{
+            [navigationVideo.id]: navigationButton.video_links || [],
+          }}
+          onVideoEnd={handleNavigationVideoEnd}
+          onVideoLinkClick={handleVideoLinkClick}
           showBackButton={true}
           onBackNavigation={handleCloseNavigationVideo}
           sessionShowPlayButton={showPlayButton}
           onVideoRestart={() => {
-            // Restart the navigation video itself
             if (navigationVideo) {
               const videoEl = document.querySelector("video");
               if (videoEl) {
@@ -1038,14 +1017,23 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
               }
             }
           }}
-          // Don't pass navigation button to navigation video
+          // Don't show navigation button inside navigation video
           navigationButton={null}
           onNavigationButtonClick={undefined}
+          currentForm={currentForm}
+          onFormSubmit={handleFormSubmit}
+          onFormLoading={isFormSubmitting}
+          onFormCancel={handleFormCancel}
+          isPaused={isVideoPaused}
+          currentFormLink={currentFormLink}
+          addClickToJourney={addClickToJourney}
+          // CRITICAL: Mark this as a navigation video
+          isNavigationVideo={true}
         />
       </div>
     );
   }
-
+  // Main session rendering
   return (
     <div className="flex flex-col h-full rounded-xl overflow-hidden">
       <CommonVideoPlayer
@@ -1071,8 +1059,10 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           setCurrentForm(null);
           setCurrentFormLink(null);
         }}
+        // Show navigation button only in main session
         navigationButton={navigationButton}
         onNavigationButtonClick={handleNavigationButtonClick}
+        isNavigationVideo={false}
       >
         {showQuestions && currentQuestions.length > 0 && (
           <div className="absolute right-4 top-1/2 transform -translate-y-1/2 w-96 space-y-4">
