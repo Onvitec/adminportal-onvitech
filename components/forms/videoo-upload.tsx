@@ -949,6 +949,25 @@ function VideoUploadWithLinksComponent({
 
           let updated = { ...form, [field]: value };
 
+
+          if (field === "timestamp") {
+          // Allow empty string
+          if (value === "") {
+            return { ...form, timestamp: "" };
+          }
+          
+          // Parse as float to handle decimals
+          const timestampValue = parseFloat(value);
+          
+          // Only update if it's a valid number
+          if (!isNaN(timestampValue)) {
+            const maxTimestamp = video.duration || Infinity;
+            const clampedValue = Math.max(0, Math.min(timestampValue, maxTimestamp));
+            return { ...form, timestamp: clampedValue.toString() };
+          }
+          return form; // Don't update if invalid
+        }
+
           // Handle link type specific logic
           if (field === "url" && value) {
             // If URL is set, ensure link type is URL and clear other fields
@@ -1123,7 +1142,7 @@ function VideoUploadWithLinksComponent({
           setIsUploading(false);
           return;
         }
-        if (!formData.timestamp || isNaN(parseInt(formData.timestamp))) {
+        if (!formData.timestamp || isNaN(parseFloat(formData.timestamp))) {
           alert("Please provide valid timestamps for all buttons.");
           setIsUploading(false);
           return;
@@ -1151,7 +1170,7 @@ function VideoUploadWithLinksComponent({
       const updatedLinks: VideoLink[] = [];
 
       for (const formData of buttonForms) {
-        const ts = parseInt(formData.timestamp);
+        const ts = parseFloat(formData.timestamp);
 
         const linkData: VideoLink = {
           id: formData.id ?? Math.random().toString(36).substr(2, 9),
@@ -1251,7 +1270,7 @@ function VideoUploadWithLinksComponent({
         (form, index) =>
           ({
             id: form.id || `temp_${index}`,
-            timestamp_seconds: parseInt(form.timestamp) || 0,
+            timestamp_seconds: parseFloat(form.timestamp) || 0,
             label: form.label,
             url: form.url,
             destination_video_id: form.destinationVideoId,
@@ -1433,8 +1452,8 @@ function VideoUploadWithLinksComponent({
                     <div className="flex flex-col gap-2">
                       <Label className="font-bold">Timestamp (seconds)</Label>
                       <Input
-                        type="number" // Change this to accept decimals
-                        step="0.1" // Add step attribute for decimal increments
+                        type="number" // Keep as number
+                        step="0.1" // Allow decimal increments
                         min={0}
                         max={video.duration || undefined}
                         placeholder={`0${
@@ -1442,23 +1461,38 @@ function VideoUploadWithLinksComponent({
                         }`}
                         value={formData.timestamp}
                         onChange={(e) => {
-                          const rawValue = parseFloat(e.target.value); // Use parseFloat instead of Number
+                          const rawValue = e.target.value;
 
-                          // Clamp the value between 0 and video.duration
-                          let clampedValue = rawValue;
-                          if (rawValue < 0) clampedValue = 0;
-                          if (video.duration && rawValue > video.duration)
-                            clampedValue = video.duration;
-
-                          // Handle NaN case (when input is empty)
-                          if (isNaN(clampedValue)) {
+                          // Allow empty input
+                          if (rawValue === "") {
                             handleFormChange(index, "timestamp", "");
-                          } else {
+                            return;
+                          }
+
+                          // Parse as float to preserve decimals
+                          const floatValue = parseFloat(rawValue);
+
+                          // Only update if it's a valid number
+                          if (!isNaN(floatValue)) {
+                            // Clamp the value between 0 and video.duration
+                            let clampedValue = floatValue;
+                            if (floatValue < 0) clampedValue = 0;
+                            if (video.duration && floatValue > video.duration) {
+                              clampedValue = video.duration;
+                            }
                             handleFormChange(
                               index,
                               "timestamp",
                               clampedValue.toString()
                             );
+                          }
+                        }}
+                        onBlur={(e) => {
+                          // Format the value on blur to ensure it's a proper number
+                          const value = e.target.value;
+                          if (value && !value.includes(".")) {
+                            // If it's a whole number, add .0 for consistency
+                            handleFormChange(index, "timestamp", value + ".0");
                           }
                         }}
                       />
@@ -1469,7 +1503,6 @@ function VideoUploadWithLinksComponent({
                       <Label className="font-bold">Duration (seconds)</Label>
                       <Input
                         type="number"
-                        step="0.1" // Add step for decimals
                         min={0}
                         max={video.duration || undefined}
                         value={
