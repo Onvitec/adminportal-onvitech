@@ -949,24 +949,26 @@ function VideoUploadWithLinksComponent({
 
           let updated = { ...form, [field]: value };
 
-
           if (field === "timestamp") {
-          // Allow empty string
-          if (value === "") {
-            return { ...form, timestamp: "" };
+            // Allow empty string
+            if (value === "") {
+              return { ...form, timestamp: "" };
+            }
+
+            // Parse as float to handle decimals
+            const timestampValue = parseFloat(value);
+
+            // Only update if it's a valid number
+            if (!isNaN(timestampValue)) {
+              const maxTimestamp = video.duration || Infinity;
+              const clampedValue = Math.max(
+                0,
+                Math.min(timestampValue, maxTimestamp)
+              );
+              return { ...form, timestamp: clampedValue.toString() };
+            }
+            return form; // Don't update if invalid
           }
-          
-          // Parse as float to handle decimals
-          const timestampValue = parseFloat(value);
-          
-          // Only update if it's a valid number
-          if (!isNaN(timestampValue)) {
-            const maxTimestamp = video.duration || Infinity;
-            const clampedValue = Math.max(0, Math.min(timestampValue, maxTimestamp));
-            return { ...form, timestamp: clampedValue.toString() };
-          }
-          return form; // Don't update if invalid
-        }
 
           // Handle link type specific logic
           if (field === "url" && value) {
@@ -1378,7 +1380,7 @@ function VideoUploadWithLinksComponent({
           }
         }}
       >
-        <DialogContent className="sm:max-w-6xl overflow-y-auto max-h-[90vh]">
+        <DialogContent className="sm:max-w-[2300px] overflow-y-auto h-[80%]">
           <DialogHeader className="border-b py-4">
             <DialogTitle className="flex items-center justify-between">
               <span>Add / Edit Buttons</span>
@@ -1397,7 +1399,7 @@ function VideoUploadWithLinksComponent({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex flex-col gap-6 my-4">
+          <div className="flex  gap-6 my-4">
             {/* Left side - Video Preview */}
             {hasVideoContent && (
               <div className="flex-1">
@@ -1448,103 +1450,152 @@ function VideoUploadWithLinksComponent({
                       </Button>
                     </div>
 
-                    {/* Timestamp */}
-                    <div className="flex flex-col gap-2">
-                      <Label className="font-bold">Timestamp (seconds)</Label>
-                      <Input
-                        type="number" // Keep as number
-                        step="0.1" // Allow decimal increments
-                        min={0}
-                        max={video.duration || undefined}
-                        placeholder={`0${
-                          video.duration ? ` - ${video.duration}` : ""
-                        }`}
-                        value={formData.timestamp}
-                        onChange={(e) => {
-                          const rawValue = e.target.value;
+                    <div className="flex gap-3">
+                      <>
+                        {/* Timestamp */}
+                        <div className="flex flex-col gap-2">
+                          <Label className="font-bold">Timestamp</Label>
+                          <Input
+                            type="number" // Keep as number
+                            step="0.1" // Allow decimal increments
+                            min={0}
+                            max={video.duration || undefined}
+                            placeholder={`0${
+                              video.duration ? ` - ${video.duration}` : ""
+                            }`}
+                            value={formData.timestamp}
+                            onChange={(e) => {
+                              const rawValue = e.target.value;
 
-                          // Allow empty input
-                          if (rawValue === "") {
-                            handleFormChange(index, "timestamp", "");
-                            return;
-                          }
+                              // Allow empty input
+                              if (rawValue === "") {
+                                handleFormChange(index, "timestamp", "");
+                                return;
+                              }
 
-                          // Parse as float to preserve decimals
-                          const floatValue = parseFloat(rawValue);
+                              // Parse as float to preserve decimals
+                              const floatValue = parseFloat(rawValue);
 
-                          // Only update if it's a valid number
-                          if (!isNaN(floatValue)) {
-                            // Clamp the value between 0 and video.duration
-                            let clampedValue = floatValue;
-                            if (floatValue < 0) clampedValue = 0;
-                            if (video.duration && floatValue > video.duration) {
-                              clampedValue = video.duration;
+                              // Only update if it's a valid number
+                              if (!isNaN(floatValue)) {
+                                // Clamp the value between 0 and video.duration
+                                let clampedValue = floatValue;
+                                if (floatValue < 0) clampedValue = 0;
+                                if (
+                                  video.duration &&
+                                  floatValue > video.duration
+                                ) {
+                                  clampedValue = video.duration;
+                                }
+                                handleFormChange(
+                                  index,
+                                  "timestamp",
+                                  clampedValue.toString()
+                                );
+                              }
+                            }}
+                            onBlur={(e) => {
+                              // Format the value on blur to ensure it's a proper number
+                              const value = e.target.value;
+                              if (value && !value.includes(".")) {
+                                // If it's a whole number, add .0 for consistency
+                                handleFormChange(
+                                  index,
+                                  "timestamp",
+                                  value + ".0"
+                                );
+                              }
+                            }}
+                          />
+                        </div>
+
+                        {/* Duration */}
+                        <div className="flex flex-col gap-2">
+                          <Label className="font-bold">Duration</Label>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min={0}
+                            max={video.duration || undefined}
+                            value={
+                              formData.duration_ms !== undefined
+                                ? formData.duration_ms / 1000
+                                : ""
                             }
-                            handleFormChange(
-                              index,
-                              "timestamp",
-                              clampedValue.toString()
-                            );
+                            onChange={(e) => {
+                              const rawValue = e.target.value;
+
+                              // Allow empty input
+                              if (rawValue === "") {
+                                handleFormChange(
+                                  index,
+                                  "duration_ms",
+                                  undefined
+                                );
+                                return;
+                              }
+
+                              // Parse as float to preserve decimals
+                              const secondsValue = parseFloat(rawValue);
+
+                              // Only update if it's a valid number
+                              if (!isNaN(secondsValue)) {
+                                // Clamp between 0 and video.duration
+                                let clampedSeconds = secondsValue;
+                                if (secondsValue < 0) clampedSeconds = 0;
+                                if (
+                                  video.duration &&
+                                  secondsValue > video.duration
+                                ) {
+                                  clampedSeconds = video.duration;
+                                }
+
+                                // Convert to milliseconds for storage
+                                handleFormChange(
+                                  index,
+                                  "duration_ms",
+                                  clampedSeconds * 1000
+                                );
+                              }
+                            }}
+                            onBlur={(e) => {
+                              // Format the value on blur to ensure proper decimal handling
+                              const value = e.target.value;
+                              if (value && !value.includes(".")) {
+                                // If it's a whole number, keep it as whole number (no .0)
+                                // The value is already stored correctly, just update display if needed
+                                const secondsValue = parseFloat(value);
+                                if (!isNaN(secondsValue)) {
+                                  // Trigger a re-render with the clean value
+                                  handleFormChange(
+                                    index,
+                                    "duration_ms",
+                                    secondsValue * 1000
+                                  );
+                                }
+                              }
+                            }}
+                            placeholder="How long the button should appear"
+                          />
+                        </div>
+                      </>
+                      {/* Image Label */}
+                      <div className="flex flex-col gap-2 flex-1">
+                        <Label className="font-bold">Image Label</Label>
+                        <Input
+                          placeholder="Click here"
+                          value={formData.label}
+                          onChange={(e) =>
+                            handleFormChange(index, "label", e.target.value)
                           }
-                        }}
-                        onBlur={(e) => {
-                          // Format the value on blur to ensure it's a proper number
-                          const value = e.target.value;
-                          if (value && !value.includes(".")) {
-                            // If it's a whole number, add .0 for consistency
-                            handleFormChange(index, "timestamp", value + ".0");
-                          }
-                        }}
-                      />
-                    </div>
-
-                    {/* Duration */}
-                    <div className="flex flex-col gap-2">
-                      <Label className="font-bold">Duration (seconds)</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={video.duration || undefined}
-                        value={
-                          formData.duration_ms
-                            ? (formData.duration_ms / 1000).toFixed(1) // Show with 1 decimal
-                            : ""
-                        }
-                        onChange={(e) => {
-                          const rawSeconds = parseFloat(e.target.value); // Use parseFloat
-
-                          // Clamp between 0 and video.duration
-                          let clampedSeconds = rawSeconds;
-                          if (rawSeconds < 0) clampedSeconds = 0;
-                          if (video.duration && rawSeconds > video.duration)
-                            clampedSeconds = video.duration;
-
-                          // Save in ms (multiply by 1000)
-                          handleFormChange(
-                            index,
-                            "duration_ms",
-                            clampedSeconds * 1000
-                          );
-                        }}
-                      />
-                    </div>
-
-                    {/* Image Label */}
-                    <div className="flex flex-col gap-2">
-                      <Label className="font-bold">Image Label</Label>
-                      <Input
-                        placeholder="Click here"
-                        value={formData.label}
-                        onChange={(e) =>
-                          handleFormChange(index, "label", e.target.value)
-                        }
-                      />
+                        />
+                      </div>
                     </div>
 
                     {/* Position Controls */}
                     <div className="flex gap-2">
                       <div className="flex-1">
-                        <Label className="font-bold">X Position (%)</Label>
+                        <Label className="font-bold mb-1">X Position (%)</Label>
                         <Input
                           type="number"
                           min="0"
@@ -1560,7 +1611,9 @@ function VideoUploadWithLinksComponent({
                         />
                       </div>
                       <div className="flex-1">
-                        <Label className="font-bold">Y Position (%)</Label>
+                        <Label className="font-bold  mb-1">
+                          Y Position (%)
+                        </Label>
                         <Input
                           type="number"
                           min="0"
@@ -1821,25 +1874,25 @@ function VideoUploadWithLinksComponent({
             </div>
           </div>
           {/* Footer */}
-          <DialogFooter className="flex justify-between p-0 w-full">
-            <Button
-              variant="destructive"
-              onClick={handleRemoveAllForms}
-              disabled={buttonForms.length === 0}
-            >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Delete All buttons
-            </Button>
+         <DialogFooter className="flex justify-between items-center border-t pt-4 mt-4">
+  <Button
+    variant="destructive"
+    onClick={handleRemoveAllForms}
+    disabled={buttonForms.length === 0}
+  >
+    <Trash2 className="h-4 w-4 mr-1" />
+    Delete All buttons
+  </Button>
 
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSaveButton} disabled={isUploading}>
-                {isUploading ? "Uploading..." : "Save All"}
-              </Button>
-            </div>
-          </DialogFooter>
+  <div className="flex gap-2">
+    <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+      Cancel
+    </Button>
+    <Button onClick={handleSaveButton} disabled={isUploading}>
+      {isUploading ? "Uploading..." : "Save All"}
+    </Button>
+  </div>
+</DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>
