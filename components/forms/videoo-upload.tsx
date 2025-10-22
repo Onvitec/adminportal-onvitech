@@ -735,6 +735,7 @@ function VideoUploadWithLinksComponent({
       formData?: FormSolutionData;
     }[]
   >([]);
+  const [formErrors, setFormErrors] = useState<{ [key: number]: string[] }>({});
 
   // Ref to track unsaved changes
   const unsavedChangesRef = useRef<typeof buttonForms>([]);
@@ -806,6 +807,7 @@ function VideoUploadWithLinksComponent({
     },
     []
   );
+
   const areFormsDifferentFromLinks = useCallback(
     (forms: typeof buttonForms, links: VideoLink[]) => {
       if (forms.length !== links.length) return true;
@@ -906,19 +908,41 @@ function VideoUploadWithLinksComponent({
     }
   }, [video.links, isModalOpen]);
 
-  // // Cleanup blob URLs when component unmounts
-  // useEffect(() => {
-  //   return () => {
-  //     buttonForms.forEach((form) => {
-  //       if (form.normalImagePreview?.startsWith("blob:")) {
-  //         URL.revokeObjectURL(form.normalImagePreview);
-  //       }
-  //       if (form.hoverImagePreview?.startsWith("blob:")) {
-  //         URL.revokeObjectURL(form.hoverImagePreview);
-  //       }
-  //     });
-  //   };
-  // }, []);
+  const validateForms = (
+    forms: typeof buttonForms
+  ): { [key: number]: string[] } => {
+    const errors: { [key: number]: string[] } = {};
+
+    forms.forEach((form, index) => {
+      const formErrors: string[] = [];
+
+      if (!form.label.trim()) {
+        formErrors.push("label");
+      }
+
+      if (!form.timestamp || isNaN(parseFloat(form.timestamp))) {
+        formErrors.push("timestamp");
+      }
+
+      if (form.linkType === "form") {
+        const email = form.formData?.email;
+        if (!email) {
+          formErrors.push("formEmail");
+        } else {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(email)) {
+            formErrors.push("formEmail");
+          }
+        }
+      }
+
+      if (formErrors.length > 0) {
+        errors[index] = formErrors;
+      }
+    });
+
+    return errors;
+  };
 
   const handleFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1058,8 +1082,24 @@ function VideoUploadWithLinksComponent({
           return updated;
         })
       );
+
+      // Clear errors for this field when user starts typing
+      if (formErrors[index]?.length > 0) {
+        setFormErrors((prev) => {
+          const newErrors = { ...prev };
+          if (newErrors[index]) {
+            newErrors[index] = newErrors[index].filter(
+              (error) => error !== field
+            );
+            if (newErrors[index].length === 0) {
+              delete newErrors[index];
+            }
+          }
+          return newErrors;
+        });
+      }
     },
-    [video.duration]
+    [video.duration, formErrors]
   );
 
   const handleImageMove = useCallback(
@@ -1117,6 +1157,23 @@ function VideoUploadWithLinksComponent({
       }
       return prev.filter((_, i) => i !== index);
     });
+
+    // Remove errors for this form
+    setFormErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[index];
+      // Reindex remaining errors
+      const reindexedErrors: { [key: number]: string[] } = {};
+      Object.keys(newErrors).forEach((key) => {
+        const oldIndex = parseInt(key);
+        if (oldIndex > index) {
+          reindexedErrors[oldIndex - 1] = newErrors[oldIndex];
+        } else {
+          reindexedErrors[oldIndex] = newErrors[oldIndex];
+        }
+      });
+      return reindexedErrors;
+    });
   }, []);
 
   const handleRemoveAllForms = useCallback(() => {
@@ -1130,45 +1187,24 @@ function VideoUploadWithLinksComponent({
       }
     });
     setButtonForms([]);
+    setFormErrors({});
     onLinksChange([]);
     unsavedChangesRef.current = [];
   }, [buttonForms, onLinksChange]);
 
   const handleSaveButton = useCallback(async () => {
     setIsUploading(true);
+
+    // Validate all forms
+    const errors = validateForms(buttonForms);
+    setFormErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      setIsUploading(false);
+      return;
+    }
+
     try {
-      // Validate all forms first
-      for (const formData of buttonForms) {
-        if (!formData.label.trim()) {
-          alert("Please provide a label for all buttons.");
-          setIsUploading(false);
-          return;
-        }
-        if (!formData.timestamp || isNaN(parseFloat(formData.timestamp))) {
-          alert("Please provide valid timestamps for all buttons.");
-          setIsUploading(false);
-          return;
-        }
-        if (formData.linkType === "form") {
-          const email = formData.formData?.email;
-
-          if (!email) {
-            alert("Please provide an email for all form submissions");
-            setIsUploading(false);
-            return;
-          } else {
-            // Basic email validation regex
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-            if (!emailRegex.test(email)) {
-              alert("Please provide a valid email address");
-              setIsUploading(false);
-              return;
-            }
-          }
-        }
-      }
-
       const updatedLinks: VideoLink[] = [];
 
       for (const formData of buttonForms) {
@@ -1229,7 +1265,7 @@ function VideoUploadWithLinksComponent({
     } finally {
       setIsUploading(false);
     }
-  }, [buttonForms, onLinksChange, areFormsDifferentFromLinks]);
+  }, [buttonForms, onLinksChange]);
 
   // Get video URL - works for both local files and remote URLs
   const videoUrl = useMemo(() => {
@@ -1323,6 +1359,12 @@ function VideoUploadWithLinksComponent({
   );
 
   const hasVideoContent = video.file || video.url;
+
+  // Helper function to check if a field has error
+  const hasError = (formIndex: number, fieldName: string) => {
+    return formErrors[formIndex]?.includes(fieldName);
+  };
+
   return (
     <Card className="mb-6">
       <CardContent className="relative">
@@ -1377,10 +1419,11 @@ function VideoUploadWithLinksComponent({
           setIsModalOpen(open);
           if (!open) {
             setIsEditMode(false);
+            setFormErrors({});
           }
         }}
       >
-        <DialogContent className="sm:max-w-[2300px] overflow-y-auto h-[80%]">
+        <DialogContent className="min-w-[90vw] min-h-[90vh] max-w-none overflow-y-auto">
           <DialogHeader className="border-b py-4">
             <DialogTitle className="flex items-center justify-between">
               <span>Add / Edit Buttons</span>
@@ -1399,7 +1442,7 @@ function VideoUploadWithLinksComponent({
             </DialogTitle>
           </DialogHeader>
 
-          <div className="flex  gap-6 my-4">
+          <div className="flex gap-6 my-4 h-full">
             {/* Left side - Video Preview */}
             {hasVideoContent && (
               <div className="flex-1">
@@ -1434,7 +1477,7 @@ function VideoUploadWithLinksComponent({
                 buttonForms.map((formData, index) => (
                   <div
                     key={index}
-                    className="space-y-4 rounded-lg p-3 border border-gray-200 bg-gray-50"
+                    className="space-y-4 rounded-lg p-4 border border-gray-200 bg-gray-50"
                   >
                     <div className="flex justify-between items-center">
                       <h4 className="font-medium text-gray-700">
@@ -1451,151 +1494,175 @@ function VideoUploadWithLinksComponent({
                     </div>
 
                     <div className="flex gap-3">
-                      <>
-                        {/* Timestamp */}
-                        <div className="flex flex-col gap-2">
-                          <Label className="font-bold">Timestamp</Label>
-                          <Input
-                            type="number" // Keep as number
-                            step="0.1" // Allow decimal increments
-                            min={0}
-                            max={video.duration || undefined}
-                            placeholder={`0${
-                              video.duration ? ` - ${video.duration}` : ""
-                            }`}
-                            value={formData.timestamp}
-                            onChange={(e) => {
-                              const rawValue = e.target.value;
-
-                              // Allow empty input
-                              if (rawValue === "") {
-                                handleFormChange(index, "timestamp", "");
-                                return;
-                              }
-
-                              // Parse as float to preserve decimals
-                              const floatValue = parseFloat(rawValue);
-
-                              // Only update if it's a valid number
-                              if (!isNaN(floatValue)) {
-                                // Clamp the value between 0 and video.duration
-                                let clampedValue = floatValue;
-                                if (floatValue < 0) clampedValue = 0;
-                                if (
-                                  video.duration &&
-                                  floatValue > video.duration
-                                ) {
-                                  clampedValue = video.duration;
-                                }
-                                handleFormChange(
-                                  index,
-                                  "timestamp",
-                                  clampedValue.toString()
-                                );
-                              }
-                            }}
-                            onBlur={(e) => {
-                              // Format the value on blur to ensure it's a proper number
-                              const value = e.target.value;
-                              if (value && !value.includes(".")) {
-                                // If it's a whole number, add .0 for consistency
-                                handleFormChange(
-                                  index,
-                                  "timestamp",
-                                  value + ".0"
-                                );
-                              }
-                            }}
-                          />
-                        </div>
-
-                        {/* Duration */}
-                        <div className="flex flex-col gap-2">
-                          <Label className="font-bold">Duration</Label>
-                          <Input
-                            type="number"
-                            step="0.1"
-                            min={0}
-                            max={video.duration || undefined}
-                            value={
-                              formData.duration_ms !== undefined
-                                ? formData.duration_ms / 1000
-                                : ""
+                      {/* Timestamp */}
+                      <div className="flex flex-col gap-2 flex-1">
+                        <Label className="font-bold">Timestamp (seconds)</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          min={0}
+                          max={video.duration || undefined}
+                          placeholder={`0${
+                            video.duration ? ` - ${video.duration}` : ""
+                          }`}
+                          value={formData.timestamp}
+                          onKeyDown={(e) => {
+                            // Disallow typing '-', '+', 'e', 'E'
+                            if (["-", "+", "e", "E"].includes(e.key)) {
+                              e.preventDefault();
                             }
-                            onChange={(e) => {
-                              const rawValue = e.target.value;
+                          }}
+                          onChange={(e) => {
+                            const rawValue = e.target.value;
 
-                              // Allow empty input
-                              if (rawValue === "") {
-                                handleFormChange(
-                                  index,
-                                  "duration_ms",
-                                  undefined
-                                );
-                                return;
+                            // Allow empty input
+                            if (rawValue === "") {
+                              handleFormChange(index, "timestamp", "");
+                              return;
+                            }
+
+                            // Parse as float to preserve decimals
+                            const floatValue = parseFloat(rawValue);
+
+                            // Only update if it's a valid number
+                            if (!isNaN(floatValue)) {
+                              // Clamp between 0 and video.duration
+                              let clampedValue = floatValue;
+                              if (floatValue < 0) clampedValue = 0;
+                              if (
+                                video.duration &&
+                                floatValue > video.duration
+                              ) {
+                                clampedValue = video.duration;
+                              }
+                              handleFormChange(
+                                index,
+                                "timestamp",
+                                clampedValue.toString()
+                              );
+                            }
+                          }}
+                          onBlur={(e) => {
+                            const value = e.target.value;
+                            if (value && !value.includes(".")) {
+                              handleFormChange(
+                                index,
+                                "timestamp",
+                                value + ".0"
+                              );
+                            }
+                          }}
+                          className={
+                            hasError(index, "timestamp") ? "border-red-500" : ""
+                          }
+                        />
+
+                        {hasError(index, "timestamp") && (
+                          <p className="text-red-500 text-xs">
+                            Valid timestamp required
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Duration */}
+                      <div className="flex flex-col gap-2 flex-1">
+                        <Label className="font-bold">Duration (seconds)</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          min={0}
+                          max={video.duration || undefined}
+                          value={
+                            formData.duration_ms !== undefined
+                              ? formData.duration_ms / 1000
+                              : ""
+                          }
+                          onKeyDown={(e) => {
+                            // Disallow typing '-', '+', 'e', 'E'
+                            if (["-", "+", "e", "E"].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          onChange={(e) => {
+                            const rawValue = e.target.value;
+
+                            // Allow empty input
+                            if (rawValue === "") {
+                              handleFormChange(index, "duration_ms", undefined);
+                              return;
+                            }
+
+                            // Parse as float to preserve decimals
+                            const secondsValue = parseFloat(rawValue);
+
+                            // Only update if it's a valid number
+                            if (!isNaN(secondsValue)) {
+                              // Clamp between 0 and video.duration
+                              let clampedSeconds = secondsValue;
+                              if (secondsValue < 0) clampedSeconds = 0;
+                              if (
+                                video.duration &&
+                                secondsValue > video.duration
+                              ) {
+                                clampedSeconds = video.duration;
                               }
 
-                              // Parse as float to preserve decimals
-                              const secondsValue = parseFloat(rawValue);
-
-                              // Only update if it's a valid number
+                              // Convert to milliseconds for storage
+                              handleFormChange(
+                                index,
+                                "duration_ms",
+                                clampedSeconds * 1000
+                              );
+                            }
+                          }}
+                          onBlur={(e) => {
+                            // Format the value on blur to ensure proper decimal handling
+                            const value = e.target.value;
+                            if (value && !value.includes(".")) {
+                              // If it's a whole number, keep it as whole number (no .0)
+                              // The value is already stored correctly, just update display if needed
+                              const secondsValue = parseFloat(value);
                               if (!isNaN(secondsValue)) {
-                                // Clamp between 0 and video.duration
-                                let clampedSeconds = secondsValue;
-                                if (secondsValue < 0) clampedSeconds = 0;
-                                if (
-                                  video.duration &&
-                                  secondsValue > video.duration
-                                ) {
-                                  clampedSeconds = video.duration;
-                                }
-
-                                // Convert to milliseconds for storage
+                                // Trigger a re-render with the clean value
                                 handleFormChange(
                                   index,
                                   "duration_ms",
-                                  clampedSeconds * 1000
+                                  secondsValue * 1000
                                 );
                               }
-                            }}
-                            onBlur={(e) => {
-                              // Format the value on blur to ensure proper decimal handling
-                              const value = e.target.value;
-                              if (value && !value.includes(".")) {
-                                // If it's a whole number, keep it as whole number (no .0)
-                                // The value is already stored correctly, just update display if needed
-                                const secondsValue = parseFloat(value);
-                                if (!isNaN(secondsValue)) {
-                                  // Trigger a re-render with the clean value
-                                  handleFormChange(
-                                    index,
-                                    "duration_ms",
-                                    secondsValue * 1000
-                                  );
-                                }
-                              }
-                            }}
-                            placeholder="How long the button should appear"
-                          />
-                        </div>
-                      </>
+                            }
+                          }}
+                          placeholder={`0${
+                            video.duration ? ` - ${video.duration}` : ""
+                          }`}
+                        />
+                      </div>
+
                       {/* Image Label */}
                       <div className="flex flex-col gap-2 flex-1">
                         <Label className="font-bold">Image Label</Label>
                         <Input
-                          placeholder="Click here"
+                          placeholder="Add Image label"
                           value={formData.label}
                           onChange={(e) =>
                             handleFormChange(index, "label", e.target.value)
                           }
+                          className={
+                            hasError(index, "label") ? "border-red-500" : ""
+                          }
                         />
+                        {hasError(index, "label") && (
+                          <p className="text-red-500 text-xs">
+                            Label is required
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     {/* Position Controls */}
-                    <div className="flex gap-2">
-                      <div className="flex-1">
-                        <Label className="font-bold mb-1">X Position (%)</Label>
+                    <div className="flex gap-3">
+                      <div className="flex flex-col gap-2 flex-1">
+                        <Label className="font-bold">X Position (%)</Label>
                         <Input
                           type="number"
                           min="0"
@@ -1610,10 +1677,8 @@ function VideoUploadWithLinksComponent({
                           }
                         />
                       </div>
-                      <div className="flex-1">
-                        <Label className="font-bold  mb-1">
-                          Y Position (%)
-                        </Label>
+                      <div className="flex flex-col gap-2 flex-1">
+                        <Label className="font-bold">Y Position (%)</Label>
                         <Input
                           type="number"
                           min="0"
@@ -1726,7 +1791,7 @@ function VideoUploadWithLinksComponent({
                       </div>
 
                       {formData.linkType === "url" && (
-                        <div>
+                        <div className="flex flex-col gap-2">
                           <Label className="font-bold">URL</Label>
                           <Input
                             placeholder="https://example.com"
@@ -1739,7 +1804,7 @@ function VideoUploadWithLinksComponent({
                       )}
 
                       {formData.linkType === "video" && (
-                        <div>
+                        <div className="flex flex-col gap-2">
                           <Label className="font-bold">Destination Video</Label>
                           <Select
                             value={formData.destinationVideoId ?? "no"}
@@ -1770,7 +1835,7 @@ function VideoUploadWithLinksComponent({
 
                       {formData.linkType === "form" && (
                         <>
-                          <div className="my-2">
+                          <div className="flex flex-col gap-2 my-2">
                             <Label className="font-bold">
                               Destination Video (After Form Submission)
                             </Label>
@@ -1803,10 +1868,8 @@ function VideoUploadWithLinksComponent({
                           {formData.formData && (
                             <div className="space-y-4">
                               {/* Add form title input field */}
-                              <div>
-                                <Label className="font-bold my-2">
-                                  Form Title
-                                </Label>
+                              <div className="flex flex-col gap-2">
+                                <Label className="font-bold">Form Title</Label>
                                 <Input
                                   placeholder="Enter form title"
                                   value={formData.formData.title || ""}
@@ -1823,10 +1886,8 @@ function VideoUploadWithLinksComponent({
                                   }}
                                 />
                               </div>
-                              <div>
-                                <Label className="font-bold my-2">
-                                  Form Email
-                                </Label>
+                              <div className="flex flex-col gap-2">
+                                <Label className="font-bold">Form Email</Label>
                                 <Input
                                   placeholder="Enter email"
                                   value={formData.formData.email || ""}
@@ -1841,7 +1902,17 @@ function VideoUploadWithLinksComponent({
                                       newFormData
                                     );
                                   }}
+                                  className={
+                                    hasError(index, "formEmail")
+                                      ? "border-red-500"
+                                      : ""
+                                  }
                                 />
+                                {hasError(index, "formEmail") && (
+                                  <p className="text-red-500 text-xs">
+                                    Valid email is required
+                                  </p>
+                                )}
                               </div>
 
                               <EnhancedFormBuilder
@@ -1874,31 +1945,30 @@ function VideoUploadWithLinksComponent({
             </div>
           </div>
           {/* Footer */}
-         <DialogFooter className="flex justify-between items-center border-t pt-4 mt-4">
-  <Button
-    variant="destructive"
-    onClick={handleRemoveAllForms}
-    disabled={buttonForms.length === 0}
-  >
-    <Trash2 className="h-4 w-4 mr-1" />
-    Delete All buttons
-  </Button>
+          <DialogFooter className="flex justify-between items-center border-t pt-4 mt-4">
+            <Button
+              variant="destructive"
+              onClick={handleRemoveAllForms}
+              disabled={buttonForms.length === 0}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Delete All buttons
+            </Button>
 
-  <div className="flex gap-2">
-    <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-      Cancel
-    </Button>
-    <Button onClick={handleSaveButton} disabled={isUploading}>
-      {isUploading ? "Uploading..." : "Save All"}
-    </Button>
-  </div>
-</DialogFooter>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveButton} disabled={isUploading}>
+                {isUploading ? "Uploading..." : "Save All"}
+              </Button>
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Card>
   );
 }
-
 const arePropsEqual = (
   prevProps: VideoUploadWithLinksProps,
   nextProps: VideoUploadWithLinksProps

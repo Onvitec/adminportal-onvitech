@@ -298,17 +298,17 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
 
   return (
     <div className=" mx-auto">
-      <div>
+      {/* <div>
         <Link href="/sessions">
           <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md cursor-pointer hover:underline">
             Back to Session Maker
           </p>
         </Link>
         <Heading>View Session</Heading>
-      </div>
+      </div> */}
 
       <Card className="border-none shadow-none px-3 mt-4">
-        <CardHeader className="px-0">
+        {/* <CardHeader className="px-0">
           <CardTitle className="text-2xl font-semibold flex items-center gap-2">
             <Eye className="h-6 w-6" />
             {sessionName}
@@ -317,10 +317,10 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
             Viewing interactive learning experience with branching videos based
             on user answers.
           </CardDescription>
-        </CardHeader>
+        </CardHeader> */}
         <CardContent className="space-y-6 px-0">
           {/* Session Details */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-1">
               <Label className="text-sm font-medium text-neutral-700">
                 Session Name
@@ -338,14 +338,10 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                 {selectedCompany || "Not specified"}
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Interactive Videos */}
           <div className="mt-8">
-            <h3 className="text-lg font-semibold text-neutral-900 mb-4">
-              Interactive Videos
-            </h3>
-
             <div className="space-y-4">
               {videos.map((video) => (
                 <div
