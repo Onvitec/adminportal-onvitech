@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,9 @@ interface NavigationButtonSectionProps {
   onVideoChange: (file: File | null, duration: number) => void;
   onVideoTitleChange: (title: string) => void;
   onVideoLinksChange: (links: VideoLink[]) => void;
+  // Make these optional for creation form
+  onRemoveImage?: () => void;
+  onRemoveVideo?: () => void;
   existingImageUrl?: string | null;
   existingVideoUrl?: string | null;
 }
@@ -36,6 +39,8 @@ export function NavigationButtonSection({
   onVideoChange,
   onVideoTitleChange,
   onVideoLinksChange,
+  onRemoveImage, // Optional for creation
+  onRemoveVideo, // Optional for creation
   existingImageUrl,
   existingVideoUrl,
 }: NavigationButtonSectionProps) {
@@ -49,19 +54,51 @@ export function NavigationButtonSection({
     }
   };
 
+  // ✅ SIMPLE DELETE HANDLERS FOR CREATION FORM
+  const handleRemoveImage = () => {
+    onImageChange(null);
+  };
+
+  const handleRemoveVideo = () => {
+    onVideoChange(null, 0);
+    onVideoTitleChange("");
+    onVideoLinksChange([]);
+  };
+
   const getImagePreview = () => {
-    if (navigationButtonImage)
-      return URL.createObjectURL(navigationButtonImage);
+    if (navigationButtonImage) return URL.createObjectURL(navigationButtonImage);
     if (existingImageUrl) return existingImageUrl;
     return null;
   };
 
   const getVideoPreview = () => {
-    if (navigationButtonVideo)
-      return URL.createObjectURL(navigationButtonVideo);
+    if (navigationButtonVideo) return URL.createObjectURL(navigationButtonVideo);
     if (existingVideoUrl) return existingVideoUrl;
     return navigationButtonVideoUrl;
   };
+
+  // ✅ Check if we have any video content
+  const hasVideoContent = navigationButtonVideo || existingVideoUrl || navigationButtonVideoUrl;
+
+  // ✅ Stable video data for VideoUploadWithLinks
+  const videoData = useMemo(
+    () => ({
+      id: "navigation-video",
+      title: navigationButtonVideoTitle,
+      file: navigationButtonVideo,
+      url: getVideoPreview(),
+      duration: navigationButtonVideoDuration || 0,
+      links: navigationButtonVideoLinks,
+      freezeAtEnd: false,
+      destination_video_id: null,
+    }),
+    [
+      navigationButtonVideo,
+      navigationButtonVideoDuration,
+      navigationButtonVideoLinks,
+      existingVideoUrl,
+    ]
+  );
 
   return (
     <div className="mt-10 rounded-2xl border border-neutral-200 bg-white p-8">
@@ -116,7 +153,7 @@ export function NavigationButtonSection({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => onImageChange(null)}
+                      onClick={onRemoveImage || handleRemoveImage}
                       className="text-red-500 hover:text-red-600 hover:bg-red-50"
                     >
                       <Trash2 className="h-4 w-4 mr-1" />
@@ -158,12 +195,28 @@ export function NavigationButtonSection({
             Interactive Video *
           </Label>
 
-          {navigationButtonVideo || existingVideoUrl ? (
+          {/* Video Title ABOVE video */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-neutral-700">
+              Video Title
+            </Label>
+            <Input
+              placeholder="Enter video title"
+              value={navigationButtonVideoTitle}
+              onChange={(e) => onVideoTitleChange(e.target.value)}
+              className="h-9"
+            />
+          </div>
+
+          {hasVideoContent ? (
             <div className="space-y-4">
               <div className="border rounded-lg p-4 bg-neutral-50">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Video className="h-5 w-5 text-green-600" />
+                    <span className="font-medium text-sm text-neutral-700">
+                      {navigationButtonVideoTitle || "Untitled Video"}
+                    </span>
                   </div>
                   <div className="flex gap-1">
                     <Button
@@ -180,11 +233,7 @@ export function NavigationButtonSection({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => {
-                        onVideoChange(null, 0);
-                        onVideoTitleChange("");
-                        onVideoLinksChange([]);
-                      }}
+                      onClick={onRemoveVideo || handleRemoveVideo}
                       className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
                       title="Remove video"
                     >
@@ -194,16 +243,7 @@ export function NavigationButtonSection({
                 </div>
 
                 <VideoUploadWithLinks
-                  video={{
-                    id: "navigation-video",
-                    title: navigationButtonVideoTitle,
-                    file: navigationButtonVideo,
-                    url: getVideoPreview(),
-                    duration: navigationButtonVideoDuration || 0,
-                    links: navigationButtonVideoLinks,
-                    freezeAtEnd: false,
-                    destination_video_id: null,
-                  }}
+                  video={videoData}
                   availableVideos={availableVideos}
                   onFileChange={handleVideoUpload}
                   onLinksChange={onVideoLinksChange}
@@ -211,23 +251,8 @@ export function NavigationButtonSection({
                 />
 
                 <div className="flex justify-between items-center mt-2 text-xs text-neutral-600">
-                  <span>
-                    {/* Duration: {Math.round(navigationButtonVideoDuration || 0)}s */}
-                  </span>
                   <span>{navigationButtonVideoLinks.length} buttons</span>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-neutral-700">
-                  Video Title
-                </Label>
-                <Input
-                  placeholder="Enter video title"
-                  value={navigationButtonVideoTitle}
-                  onChange={(e) => onVideoTitleChange(e.target.value)}
-                  className="h-9"
-                />
               </div>
             </div>
           ) : (

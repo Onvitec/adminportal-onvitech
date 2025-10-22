@@ -168,6 +168,10 @@ export default function InteractiveSessionForm() {
     (file: File | null, duration: number) => {
       setNavigationButtonVideo(file);
       setNavigationButtonVideoDuration(duration);
+
+      if (file === null) {
+        setNavigationButtonVideoUrl("");
+      }
     },
     []
   );
@@ -179,7 +183,6 @@ export default function InteractiveSessionForm() {
   const handleNavigationVideoLinksChange = useCallback((links: VideoLink[]) => {
     setNavigationButtonVideoLinks(links);
   }, []);
-
   const removeVideo = (videoId: string) => {
     setVideos(videos.filter((v) => v.id !== videoId));
   };
@@ -463,7 +466,7 @@ export default function InteractiveSessionForm() {
             duration: navigationButtonVideoDuration,
             freezeAtEnd: true, // Navigation video should freeze at end
             destination_video_id: null,
-            is_navigation_button: true,
+            is_navigation_video: true,
           })
           .select()
           .single();

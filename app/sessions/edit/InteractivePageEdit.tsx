@@ -112,7 +112,8 @@ export default function EditInteractiveSession({
     VideoLink[]
   >([]);
 
-  const [navigationButtonVideoDuration,setNavigationButtonVideoDuration] = useState(0)
+  const [navigationButtonVideoDuration, setNavigationButtonVideoDuration] =
+    useState(0);
 
   const [comapnies, setCompanies] = useState<UserType[] | []>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
@@ -174,7 +175,7 @@ export default function EditInteractiveSession({
           setExistingNavigationVideoUrl(navigationVideoData.url);
           setNavigationButtonVideoUrl(navigationVideoData.url);
           setNavigationButtonVideoTitle(navigationVideoData.title);
-          setNavigationButtonVideoDuration(navigationVideoData.duration)
+          setNavigationButtonVideoDuration(navigationVideoData.duration);
 
           // Fetch navigation video links
           const { data: navLinksData, error: navLinksError } = await supabase
@@ -445,6 +446,7 @@ export default function EditInteractiveSession({
   const updateVideoName = (videoId: string, title: string) => {
     setVideos(videos.map((v) => (v.id === videoId ? { ...v, title } : v)));
   };
+
   // Navigation Button Handlers
   const handleNavigationImageChange = useCallback((file: File | null) => {
     setNavigationButtonImage(file);
@@ -456,6 +458,9 @@ export default function EditInteractiveSession({
       setNavigationButtonVideoTitle(
         file.name.split(".")[0] || "Navigation Video"
       );
+    } else {
+      // ✅ Clear URL states when file is removed
+      setNavigationButtonVideoUrl("");
     }
   }, []);
 
@@ -474,7 +479,9 @@ export default function EditInteractiveSession({
     setExistingNavigationVideoUrl("");
     setNavigationButtonVideoUrl("");
     setNavigationButtonVideoTitle("");
+    setNavigationButtonVideoLinks([]);
   }, []);
+
   const toggleExpandVideo = (videoId: string) => {
     setVideos(
       videos.map((v) =>
@@ -1843,13 +1850,15 @@ export default function EditInteractiveSession({
               navigationButtonVideo={navigationButtonVideo}
               navigationButtonVideoUrl={navigationButtonVideoUrl}
               navigationButtonVideoTitle={navigationButtonVideoTitle}
-              navigationButtonVideoDuration={0}
+              navigationButtonVideoDuration={navigationButtonVideoDuration}
               navigationButtonVideoLinks={navigationButtonVideoLinks}
               availableVideos={availableVideos}
               onImageChange={handleNavigationImageChange}
               onVideoChange={handleNavigationVideoChange}
               onVideoTitleChange={handleNavigationVideoTitleChange}
               onVideoLinksChange={handleNavigationVideoLinksChange}
+              onRemoveImage={handleRemoveNavigationImage} // ✅ Pass remove handlers
+              onRemoveVideo={handleRemoveNavigationVideo} // ✅ Pass remove handlers
               existingImageUrl={existingNavigationImageUrl}
               existingVideoUrl={existingNavigationVideoUrl}
             />
