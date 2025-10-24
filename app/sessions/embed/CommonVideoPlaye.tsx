@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface CommonVideoPlayerProps {
   currentVideo: VideoType | null;
@@ -776,54 +777,58 @@ export function CommonVideoPlayer({
       {/* Enhanced Video Link Buttons */}
       {activeLinks.length > 0 && (
         <>
-          {activeLinks.map((link) => {
-            const imageUrl = getImageUrl(link);
-            const dimensions = getImageDimensions(link);
-            const position = getImagePosition(link);
+          <AnimatePresence>
+            {activeLinks.map((link) => {
+              const imageUrl = getImageUrl(link);
+              const dimensions = getImageDimensions(link);
+              const position = getImagePosition(link);
 
-            return imageUrl ? (
-              <div
-                key={link.id}
-                className="absolute z-10 cursor-pointer transition-transform duration-200 group"
-                style={{
-                  ...position,
-                }}
-                onClick={() => onVideoLinkClick(link)}
-              >
-                <div className="relative">
-                  {/* Normal image (always shown) */}
-                  {link.normal_state_image && (
-                    <img
-                      src={link.normal_state_image}
-                      alt={link.label}
-                      style={{
-                        width: `${dimensions.width}px`,
-                        height: `${dimensions.height}px`,
-                      }}
-                      className={`object- rounded block ${
-                        link.hover_state_image ? "group-hover:hidden" : ""
-                      }`}
-                      draggable={false}
-                    />
-                  )}
+              return imageUrl ? (
+                <motion.div
+                  key={link.id}
+                  className="absolute z-10 cursor-pointer transition-transform duration-200 group"
+                  style={{ ...position }}
+                  onClick={() => onVideoLinkClick(link)}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.35, ease: "easeInOut" }}
+                >
+                  <div className="relative">
+                    {/* Normal image (always shown) */}
+                    {link.normal_state_image && (
+                      <img
+                        src={link.normal_state_image}
+                        alt={link.label}
+                        style={{
+                          width: `${dimensions.width}px`,
+                          height: `${dimensions.height}px`,
+                        }}
+                        className={`object-cover rounded block ${
+                          link.hover_state_image ? "group-hover:hidden" : ""
+                        }`}
+                        draggable={false}
+                      />
+                    )}
 
-                  {/* Hover image (optional, only rendered if available) */}
-                  {link.hover_state_image && (
-                    <img
-                      src={link.hover_state_image}
-                      alt={link.label}
-                      style={{
-                        width: `${dimensions.width}px`,
-                        height: `${dimensions.height}px`,
-                      }}
-                      className="object- rounded hidden group-hover:block"
-                      draggable={false}
-                    />
-                  )}
-                </div>
-              </div>
-            ) : null;
-          })}
+                    {/* Hover image (optional, only rendered if available) */}
+                    {link.hover_state_image && (
+                      <img
+                        src={link.hover_state_image}
+                        alt={link.label}
+                        style={{
+                          width: `${dimensions.width}px`,
+                          height: `${dimensions.height}px`,
+                        }}
+                        className="object-cover rounded hidden group-hover:block"
+                        draggable={false}
+                      />
+                    )}
+                  </div>
+                </motion.div>
+              ) : null;
+            })}
+          </AnimatePresence>
         </>
       )}
 

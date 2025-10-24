@@ -30,6 +30,7 @@
     "dagre": "^0.8.5",
     "emailjs": "^4.0.3",
     "emailjs-com": "^3.2.0",
+    "framer-motion": "^12.23.24",
     "json2csv": "^6.0.0-alpha.2",
     "jspdf": "^3.0.3",
     "jspdf-autotable": "^5.0.2",
