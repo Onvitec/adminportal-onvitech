@@ -687,7 +687,7 @@ export function CommonVideoPlayer({
             <img
               src={navigationButton!.image_url}
               alt="Navigation"
-              className="w-16 h-16 object-contain rounded-lg shadow-lg transition-all"
+              className="w-16 h-16 object-contain rounded-lg transition-all"
               draggable={false}
             />
           </div>
@@ -701,7 +701,7 @@ export function CommonVideoPlayer({
           }`}
           onClick={onBackNavigation}
         >
-          <ChevronLeft className="w-6 h-6 text-white font-bold" />
+          <ChevronLeft className="w-10 h-10 text-white font-bold" />
         </div>
       )}
 
@@ -789,13 +789,6 @@ export function CommonVideoPlayer({
                   ...position,
                 }}
                 onClick={() => onVideoLinkClick(link)}
-                title={
-                  link.link_type === "url"
-                    ? `Open link: ${link.url}`
-                    : link.link_type === "video"
-                    ? `Go to video: ${link.destination_video_id}`
-                    : `Fill form: ${link.label}`
-                }
               >
                 <div className="relative">
                   {/* Normal image (always shown) */}

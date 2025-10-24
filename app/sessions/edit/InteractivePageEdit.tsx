@@ -42,10 +42,10 @@ import { toast } from "sonner";
 import { showToast } from "@/components/toast";
 import Link from "next/link";
 import Heading from "@/components/Heading";
-import { Loader } from "@/components/Loader";
 import { VideoUploadWithLinks } from "@/components/forms/videoo-upload";
 import { Switch } from "@/components/ui/switch";
 import { NavigationButtonSection } from "@/components/navigation-button-section";
+import { Loader } from "@/components/saving-loader";
 
 type Answer = {
   id: string;
@@ -647,7 +647,19 @@ export default function EditInteractiveSession({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
+    const toastId = toast.loading(
+      <div className="flex items-center space-x-3">
+        <div>
+          <p className="font-medium">Saving Session</p>
+          <p className="text-sm text-gray-500">
+            Please wait while we save your changes...
+          </p>
+        </div>
+      </div>,
+      {
+        duration: Infinity, // Keep open until we manually dismiss
+      }
+    );
     try {
       // Get current user
       const {
@@ -1422,12 +1434,40 @@ export default function EditInteractiveSession({
             .eq("id", existingSolution.id);
         }
       }
-
+      toast.success(
+        <div className="flex items-center space-x-3">
+          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+            <Check className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <p className="font-medium">Session Saved!</p>
+            <p className="text-sm text-gray-500">
+              Your changes have been successfully saved.
+            </p>
+          </div>
+        </div>,
+        { id: toastId, duration: 3000 }
+      );
       router.push("/sessions");
       showToast("success", "Interactive Session updated successfully!");
     } catch (error) {
       console.error("Error updating session:", error);
       showToast("error", "Error updating Interactive Session");
+      // Error toast
+      toast.error(
+        <div className="flex items-center space-x-3">
+          <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+            <X className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <p className="font-medium">Save Failed</p>
+            <p className="text-sm text-gray-500">
+              There was an error saving your session.
+            </p>
+          </div>
+        </div>,
+        { id: toastId, duration: 5000 }
+      );
     } finally {
       setIsLoading(false);
     }

@@ -634,6 +634,39 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
     fetchData();
   }, [sessionId, addVideoToJourney]);
 
+  // Add this useEffect at the top level of your component, near other useEffects
+  useEffect(() => {
+    const incrementViews = async () => {
+      try {
+        // First get the current session data
+        const { data: sessionData, error: fetchError } = await supabase
+          .from("sessions")
+          .select("total_views")
+          .eq("id", sessionId)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const currentViews = sessionData?.total_views || 0;
+        const newViews = currentViews + 1;
+
+        // Update with the incremented value
+        const { error: updateError } = await supabase
+          .from("sessions")
+          .update({ total_views: newViews })
+          .eq("id", sessionId);
+
+        if (updateError) {
+          console.error("Error incrementing session views:", updateError);
+        }
+      } catch (err) {
+        console.error("Error in incrementViews:", err);
+      }
+    };
+
+    incrementViews();
+  }, [sessionId]); // Empty dependency array ensures this runs only once on mount
+
   useEffect(() => {
     if (currentVideo && questions.length > 0) {
       const videoQuestions = questions.filter(
@@ -719,7 +752,14 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       }
 
       if (link.link_type === "url" && link.url) {
-        window.open(link.url, "_blank", "noopener,noreferrer");
+        let url = link.url.trim();
+
+        // Add https:// if missing
+        if (!/^https?:\/\//i.test(url)) {
+          url = `https://${url}`;
+        }
+
+        window.open(url, "_blank", "noopener,noreferrer");
       } else if (link.link_type === "video" && link.destination_video_id) {
         setShowNavigationVideo(false);
         const destinationVideo =

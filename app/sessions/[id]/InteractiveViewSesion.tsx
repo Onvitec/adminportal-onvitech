@@ -19,6 +19,7 @@ import {
   Video,
   ImageIcon,
   Eye,
+  LinkIcon,
 } from "lucide-react";
 import { SolutionCard } from "@/components/SolutionCard";
 import { Loader } from "@/components/Loader";
@@ -286,6 +287,32 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  const getLinkTypeIcon = (linkType: string) => {
+    switch (linkType) {
+      case "url":
+        return <LinkIcon className="h-3 w-3" />;
+      case "video":
+        return <Video className="h-3 w-3" />;
+      case "form":
+        return "📋";
+      default:
+        return <LinkIcon className="h-3 w-3" />;
+    }
+  };
+
+  const getLinkTypeColor = (linkType: string) => {
+    switch (linkType) {
+      case "url":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "video":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "form":
+        return "bg-purple-100 text-purple-800 border-purple-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
   if (loading) {
     return (
       <div className=" mx-auto py-8 max-w-4xl">
@@ -298,48 +325,8 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
 
   return (
     <div className=" mx-auto">
-      {/* <div>
-        <Link href="/sessions">
-          <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md cursor-pointer hover:underline">
-            Back to Session Maker
-          </p>
-        </Link>
-        <Heading>View Session</Heading>
-      </div> */}
-
       <Card className="border-none shadow-none px-3 mt-4">
-        {/* <CardHeader className="px-0">
-          <CardTitle className="text-2xl font-semibold flex items-center gap-2">
-            <Eye className="h-6 w-6" />
-            {sessionName}
-          </CardTitle>
-          <CardDescription className="text-sm text-neutral-500">
-            Viewing interactive learning experience with branching videos based
-            on user answers.
-          </CardDescription>
-        </CardHeader> */}
         <CardContent className="space-y-6 px-0">
-          {/* Session Details */}
-          {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-1">
-              <Label className="text-sm font-medium text-neutral-700">
-                Session Name
-              </Label>
-              <div className="h-10 px-3 py-2 border border-neutral-200 rounded-md bg-neutral-50 text-neutral-700">
-                {sessionName}
-              </div>
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-sm font-medium text-neutral-700">
-                Associated Company
-              </Label>
-              <div className="h-10 px-3 py-2 border border-neutral-200 rounded-md bg-neutral-50 text-neutral-700">
-                {selectedCompany || "Not specified"}
-              </div>
-            </div>
-          </div> */}
-
           {/* Interactive Videos */}
           <div className="mt-8">
             <div className="space-y-4">
@@ -376,7 +363,7 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                     <div className="p-6 space-y-6 bg-white">
                       {/* Video Player */}
                       <div className="space-y-4">
-                        <div className="relative h-[1200px]  object-cover rounded-xl overflow-hidden bg-black">
+                        <div className="relative h-[1200px] object-cover rounded-xl overflow-hidden bg-black">
                           <video
                             src={video.url}
                             controls
@@ -387,6 +374,87 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                           </div>
                         </div>
                       </div>
+
+                      {/* Video Links Section */}
+                      {video.links.length > 0 && (
+                        <div className="space-y-4 p-4 border border-neutral-200 rounded-xl bg-white">
+                          <Label className="text-sm font-medium text-neutral-900 flex items-center gap-2">
+                            <LinkIcon className="h-4 w-4" />
+                            Video Links ({video.links.length})
+                          </Label>
+                          <p className="text-sm text-neutral-500">
+                            Interactive links that appear at specific timestamps during video playback
+                          </p>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {video.links.map((link) => (
+                              <div
+                                key={link.id}
+                                className="flex items-start gap-3 p-4 border border-neutral-200 rounded-lg bg-white hover:bg-neutral-50 transition-colors"
+                              >
+                                {link.normal_state_image && (
+                                  <img
+                                    src={link.normal_state_image}
+                                    alt={link.label}
+                                    className="w-16 h-16 object-cover rounded-md flex-shrink-0"
+                                  />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="font-medium text-sm text-neutral-900 truncate">
+                                      {link.label}
+                                    </span>
+                                    <span
+                                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getLinkTypeColor(
+                                        link.link_type
+                                      )}`}
+                                    >
+                                      {getLinkTypeIcon(link.link_type)}
+                                      {link.link_type}
+                                    </span>
+                                  </div>
+                                  
+                                  <div className="space-y-1 text-xs text-neutral-600">
+                                    <div className="flex items-center gap-1">
+                                      <Clock className="h-3 w-3" />
+                                      Appears at: {formatTime(link.timestamp_seconds)}
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-1">
+                                      📍 Position: ({link.position_x}%, {link.position_y}%)
+                                    </div>
+
+                                    {link.duration_ms && (
+                                      <div className="flex items-center gap-1">
+                                        ⏱️ Duration: {link.duration_ms}ms
+                                      </div>
+                                    )}
+
+                                    {link.link_type === "url" && link.url && (
+                                      <div className="truncate">
+                                        🔗 URL: {link.url}
+                                      </div>
+                                    )}
+
+                                    {link.link_type === "video" && link.destination_video_title && (
+                                      <div className="flex items-center gap-1">
+                                        <Video className="h-3 w-3" />
+                                        Destination: {link.destination_video_title}
+                                      </div>
+                                    )}
+
+                                    {link.link_type === "form" && link.form_data && (
+                                      <div className="flex items-center gap-1">
+                                        📋 Form: {link.form_data.title || "Custom Form"}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Playback Behavior */}
                       <div className="p-4 border border-neutral-200 rounded-xl bg-neutral-50">
@@ -421,17 +489,16 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                           </div>
                         </div>
 
-                        {!video.freezeAtEnd &&
-                          video.destination_video_title && (
-                            <div className="mt-3 p-2 bg-blue-50 rounded-md border border-blue-200">
-                              <div className="text-sm text-blue-800">
-                                Next Video:{" "}
-                                <span className="font-medium">
-                                  {video.destination_video_title}
-                                </span>
-                              </div>
+                        {!video.freezeAtEnd && video.destination_video_title && (
+                          <div className="mt-3 p-2 bg-blue-50 rounded-md border border-blue-200">
+                            <div className="text-sm text-blue-800">
+                              Next Video:{" "}
+                              <span className="font-medium">
+                                {video.destination_video_title}
+                              </span>
                             </div>
-                          )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Question Section */}
@@ -468,15 +535,15 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                                       </p>
                                     </div>
                                   </div>
-                                  <div className="md:col-span-5">
-                                    {answer.destination_video ? (
+                                  {/* <div className="md:col-span-5">
+                                    {answer.destination_video_title ? (
                                       <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                                         <div className="text-xs text-blue-700 mb-1">
                                           Destination Video
                                         </div>
                                         <div className="text-blue-900 font-medium flex items-center gap-1">
                                           <Video className="h-3 w-3" />
-                                          {answer.destination_video as any}
+                                          {answer.destination_video_title}
                                         </div>
                                       </div>
                                     ) : (
@@ -486,7 +553,7 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                                         </div>
                                       </div>
                                     )}
-                                  </div>
+                                  </div> */}
                                 </div>
                               ))}
                             </div>
@@ -577,11 +644,11 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                               Navigation Video Links (
                               {navigationButton.video_links.length})
                             </Label>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                               {navigationButton.video_links.map((link) => (
                                 <div
                                   key={link.id}
-                                  className="flex items-start gap-3 p-3 border border-neutral-200 rounded-lg bg-white"
+                                  className="flex items-start gap-3 p-4 border border-neutral-200 rounded-lg bg-white"
                                 >
                                   {link.normal_state_image && (
                                     <img
@@ -591,19 +658,43 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                                     />
                                   )}
                                   <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-sm text-neutral-900">
-                                      {link.label}
-                                    </div>
-                                    <div className="text-xs text-neutral-600 mt-1">
-                                      At {formatTime(link.timestamp_seconds)} •
-                                      Type:{" "}
-                                      <span className="font-medium">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <span className="font-medium text-sm text-neutral-900">
+                                        {link.label}
+                                      </span>
+                                      <span
+                                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getLinkTypeColor(
+                                          link.link_type
+                                        )}`}
+                                      >
+                                        {getLinkTypeIcon(link.link_type)}
                                         {link.link_type}
                                       </span>
                                     </div>
-                                    <div className="text-xs text-neutral-600">
-                                      Position: ({link.position_x}%,{" "}
-                                      {link.position_y}%)
+                                    <div className="space-y-1 text-xs text-neutral-600">
+                                      <div className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        At {formatTime(link.timestamp_seconds)}
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        📍 Position: ({link.position_x}%, {link.position_y}%)
+                                      </div>
+                                      {link.duration_ms && (
+                                        <div className="flex items-center gap-1">
+                                          ⏱️ Duration: {link.duration_ms}ms
+                                        </div>
+                                      )}
+                                      {link.link_type === "url" && link.url && (
+                                        <div className="truncate">
+                                          🔗 {link.url}
+                                        </div>
+                                      )}
+                                      {/* {link.link_type === "video" && link.destination_video_title && (
+                                        <div className="flex items-center gap-1">
+                                          <Video className="h-3 w-3" />
+                                          To: {link.destination_video_title}
+                                        </div>
+                                      )} */}
                                     </div>
                                   </div>
                                 </div>

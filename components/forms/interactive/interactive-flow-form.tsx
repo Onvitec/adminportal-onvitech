@@ -46,6 +46,7 @@ import Link from "next/link";
 import Heading from "@/components/Heading";
 import { Switch } from "@/components/ui/switch";
 import { NavigationButtonSection } from "@/components/navigation-button-section";
+import { Loader } from "@/components/saving-loader";
 
 type Answer = {
   id: string;
@@ -353,7 +354,19 @@ export default function InteractiveSessionForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    const toastId = toast.loading(
+      <div className="flex items-center space-x-3">
+        <div>
+          <p className="font-medium">Saving Session</p>
+          <p className="text-sm text-gray-500">
+            Please wait while we save your changes...
+          </p>
+        </div>
+      </div>,
+      {
+        duration: Infinity, // Keep open until we manually dismiss
+      }
+    );
     if (sessionName.length === 0) {
       showToast("error", "session name is missing");
       return;
@@ -759,10 +772,39 @@ export default function InteractiveSessionForm() {
         await supabase.from("solutions").insert(solutionData);
       }
 
+      toast.success(
+        <div className="flex items-center space-x-3">
+          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+            <Check className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <p className="font-medium">Session Created!</p>
+            <p className="text-sm text-gray-500">
+              Your have successfully created a session.
+            </p>
+          </div>
+        </div>,
+        { id: toastId, duration: 3000 }
+      );
+
       // Redirect to sessions page
       router.push("/sessions");
       showToast("success", "Interactive Session created successfully!");
     } catch (error) {
+      toast.error(
+        <div className="flex items-center space-x-3">
+          <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+            <X className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <p className="font-medium">Save Failed</p>
+            <p className="text-sm text-gray-500">
+              There was an error saving your session.
+            </p>
+          </div>
+        </div>,
+        { id: toastId, duration: 5000 }
+      );
       console.error("Error creating session:", error);
       showToast("error", "Error creating Interactive Session");
     } finally {

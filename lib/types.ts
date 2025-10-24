@@ -25,6 +25,7 @@ export type VideoLink = {
   link_type: "url" | "video" | "form"; // Type discriminator
   position_x: number;
   position_y: number;
+  destination_video_title?: string;
 
   // Database image URLs (persisted)
   normal_state_image?: string;
