@@ -125,279 +125,275 @@ export default function EditInteractiveSession({
   }));
 
   useEffect(() => {
-    const fetchSessionData = async () => {
-      setIsFetching(true);
-      try {
-        // Get session data
-        const { data: sessionData, error: sessionError } = await supabase
-          .from("sessions")
-          .select("*")
-          .eq("id", sessionId)
-          .single();
+   const fetchSessionData = async () => {
+  setIsFetching(true);
+  try {
+    // Get session data
+    const { data: sessionData, error: sessionError } = await supabase
+      .from("sessions")
+      .select("*")
+      .eq("id", sessionId)
+      .single();
 
-        if (sessionError || !sessionData)
-          throw sessionError || new Error("Session not found");
+    if (sessionError || !sessionData)
+      throw sessionError || new Error("Session not found");
 
-        setSessionName(sessionData.title);
-        setShowPlayButton(sessionData.showPlayButton);
-        setSelectedCompanyId(sessionData.associated_with);
+    setSessionName(sessionData.title);
+    setShowPlayButton(sessionData.showPlayButton);
+    setSelectedCompanyId(sessionData.associated_with);
 
-        setUserId(sessionData.created_by);
-        // Set navigation button data if exists
-        if (sessionData.navigation_button_image_url) {
-          setExistingNavigationImageUrl(
-            sessionData.navigation_button_image_url
-          );
-          setNavigationButtonImageUrl(sessionData.navigation_button_image_url);
-        }
-        if (sessionData.navigation_button_video_url) {
-          setExistingNavigationVideoUrl(
-            sessionData.navigation_button_video_url
-          );
-          setNavigationButtonVideoUrl(sessionData.navigation_button_video_url);
-        }
-        if (sessionData.navigation_button_video_title) {
-          setNavigationButtonVideoTitle(
-            sessionData.navigation_button_video_title
-          );
-        }
-        // Get navigation video from videos table instead of session table
-        const { data: navigationVideoData, error: navVideoError } =
-          await supabase
-            .from("videos")
-            .select("*")
-            .eq("session_id", sessionId)
-            .eq("is_navigation_video", true)
-            .maybeSingle();
+    setUserId(sessionData.created_by);
+    
+    // Set navigation button data if exists
+    if (sessionData.navigation_button_image_url) {
+      setExistingNavigationImageUrl(sessionData.navigation_button_image_url);
+      setNavigationButtonImageUrl(sessionData.navigation_button_image_url);
+    }
+    if (sessionData.navigation_button_video_url) {
+      setExistingNavigationVideoUrl(sessionData.navigation_button_video_url);
+      setNavigationButtonVideoUrl(sessionData.navigation_button_video_url);
+    }
+    if (sessionData.navigation_button_video_title) {
+      setNavigationButtonVideoTitle(sessionData.navigation_button_video_title);
+    }
 
-        // In fetchSessionData function, after fetching navigation video data:
-        if (!navVideoError && navigationVideoData) {
-          setExistingNavigationVideoUrl(navigationVideoData.url);
-          setNavigationButtonVideoUrl(navigationVideoData.url);
-          setNavigationButtonVideoTitle(navigationVideoData.title);
-          setNavigationButtonVideoDuration(navigationVideoData.duration);
+    // Get videos for this session FIRST
+    const { data: videosData, error: videosError } = await supabase
+      .from("videos")
+      .select("*")
+      .eq("session_id", sessionId)
+      .eq("is_navigation_video", false)
+      .order("order_index", { ascending: true });
 
-          // Fetch navigation video links
-          const { data: navLinksData, error: navLinksError } = await supabase
-            .from("video_links")
-            .select("*")
-            .eq("video_id", navigationVideoData.id)
-            .order("timestamp_seconds", { ascending: true });
+    if (videosError) throw videosError;
 
-          if (!navLinksError && navLinksData) {
-            setNavigationButtonVideoLinks(
-              navLinksData.map((link) => ({
-                id: link.id.toString(),
-                timestamp_seconds: link.timestamp_seconds,
-                label: link.label,
-                url: link.url || undefined,
-                video_id: link.video_id,
-                destination_video_id: link.destination_video_id || undefined,
-                link_type:
-                  (link.link_type as "url" | "video" | "form") ||
-                  (link.url ? "url" : "video"),
-                position_x: link.position_x || 20,
-                position_y: link.position_y || 20,
-                duration_ms: link.duration_ms,
-                normal_state_image: link.normal_state_image || undefined,
-                hover_state_image: link.hover_state_image || undefined,
-                normal_image_width: link.normal_image_width || undefined,
-                normal_image_height: link.normal_image_height || undefined,
-                hover_image_width: link.hover_image_width || undefined,
-                hover_image_height: link.hover_image_height || undefined,
-                form_data: link.form_data || undefined,
-              }))
-            );
-          }
-        }
+    // First pass: Create video objects without links
+    const videosWithQuestions: Video[] = await Promise.all(
+      videosData.map(async (video) => {
+        const videoObj: Video = {
+          id: uuidv4(),
+          db_id: video.id,
+          title: video.title,
+          file: null,
+          url: video.url,
+          question: null,
+          isExpanded: true,
+          duration: video.duration || 0,
+          links: [], // Will be populated in second pass
+          freezeAtEnd: video.freezeAtEnd || false,
+          destination_video_id: video.destination_video_id || null,
+          is_navigation_video: false,
+        };
+        return videoObj;
+      })
+    );
 
-        // Get videos for this session
-        const { data: videosData, error: videosError } = await supabase
-          .from("videos")
-          .select("*")
-          .eq("session_id", sessionId)
-          .eq("is_navigation_video", false)
-          .order("order_index", { ascending: true });
-
-        if (videosError) throw videosError;
-
-        // First pass: Create video objects without links
-        const videosWithQuestions: Video[] = await Promise.all(
-          videosData.map(async (video) => {
-            const videoObj: Video = {
-              id: uuidv4(),
-              db_id: video.id,
-              title: video.title,
-              file: null,
-              url: video.url,
-              question: null,
-              isExpanded: true,
-              duration: video.duration || 0,
-              links: [], // Will be populated in second pass
-              freezeAtEnd: video.freezeAtEnd || false,
-              destination_video_id: video.destination_video_id || null,
-              is_navigation_video: false,
-            };
-
-            return videoObj;
-          })
-        );
-
-        // Create ID mapping for video references
-        const videoIdMap: Record<string, string> = {};
-        const dbIdToTempIdMap: Record<string, string> = {}; // Add reverse mapping
-        videosWithQuestions.forEach((v) => {
-          if (v.db_id) {
-            videoIdMap[v.db_id] = v.id;
-            dbIdToTempIdMap[v.id] = v.db_id; // Add reverse mapping
-          }
-        });
-
-        // Second pass: Fetch links and questions with proper ID mapping
-        for (const video of videosWithQuestions) {
-          // Get links for this video
-          const { data: linksData, error: linksError } = await supabase
-            .from("video_links")
-            .select("*")
-            .eq("video_id", video.db_id)
-            .order("timestamp_seconds", { ascending: true });
-
-          if (!linksError && linksData && linksData.length > 0) {
-            video.links = linksData.map((link) => ({
-              id: link.id.toString(),
-              timestamp_seconds: link.timestamp_seconds,
-              label: link.label,
-              url: link.url || undefined,
-              video_id: link.video_id,
-              destination_video_id: link.destination_video_id
-                ? videoIdMap[link.destination_video_id] ||
-                  link.destination_video_id
-                : undefined,
-              link_type:
-                (link.link_type as "url" | "video" | "form") ||
-                (link.url ? "url" : "video"),
-              position_x: link.position_x || 20,
-              position_y: link.position_y || 20,
-
-              duration_ms: link.duration_ms,
-              normal_state_image: link.normal_state_image || undefined,
-              hover_state_image: link.hover_state_image || undefined,
-              normal_image_width: link.normal_image_width || undefined,
-              normal_image_height: link.normal_image_height || undefined,
-              hover_image_width: link.hover_image_width || undefined,
-              hover_image_height: link.hover_image_height || undefined,
-              form_data: link.form_data || undefined,
-            }));
-          }
-
-          // Get question for this video
-          const { data: questionData, error: questionError } = await supabase
-            .from("questions")
-            .select("*")
-            .eq("video_id", video.db_id)
-            .maybeSingle();
-
-          if (!questionError && questionData) {
-            // Get answers for this question
-            const { data: answersData, error: answersError } = await supabase
-              .from("answers")
-              .select("*")
-              .eq("question_id", questionData.id)
-              .order("created_at", { ascending: true });
-
-            if (!answersError && answersData) {
-              video.question = {
-                id: uuidv4(),
-                db_id: questionData.id,
-                question_text: questionData.question_text,
-                answers: answersData.map((answer) => ({
-                  id: uuidv4(),
-                  db_id: answer.id,
-                  answer_text: answer.answer_text,
-                  destination_video_id: answer.destination_video_id
-                    ? videoIdMap[answer.destination_video_id] || ""
-                    : "",
-                })),
-              };
-            }
-          }
-        }
-
-        // Third pass: Update destination_video_id references to use temporary IDs
-        for (const video of videosWithQuestions) {
-          // Update video destination_video_id to use temporary ID
-          if (
-            video.destination_video_id &&
-            typeof video.destination_video_id === "string"
-          ) {
-            // Check if it's a database ID (not already a temporary ID)
-            if (video.destination_video_id in videoIdMap) {
-              video.destination_video_id =
-                videoIdMap[video.destination_video_id];
-            }
-          }
-
-          // Update answer destination_video_id references
-          if (video.question) {
-            for (const answer of video.question.answers) {
-              if (
-                answer.destination_video_id &&
-                typeof answer.destination_video_id === "string"
-              ) {
-                // Check if it's a database ID (not already a temporary ID)
-                if (answer.destination_video_id in videoIdMap) {
-                  answer.destination_video_id =
-                    videoIdMap[answer.destination_video_id];
-                }
-              }
-            }
-          }
-
-          // Update link destination_video_id references
-          for (const link of video.links) {
-            if (
-              link.destination_video_id &&
-              typeof link.destination_video_id === "string"
-            ) {
-              // Check if it's a database ID (not already a temporary ID)
-              if (link.destination_video_id in videoIdMap) {
-                link.destination_video_id =
-                  videoIdMap[link.destination_video_id];
-              }
-            }
-          }
-        }
-
-        setVideos(videosWithQuestions);
-
-        // Get solution if exists
-        const { data: solutionData, error: solutionError } = await supabase
-          .from("solutions")
-          .select("*")
-          .eq("session_id", sessionId)
-          .maybeSingle();
-
-        if (solutionError) throw solutionError;
-
-        if (solutionData) {
-          setSolution({
-            id: solutionData.id,
-            category_id: solutionData.category_id,
-            session_id: solutionData.session_id,
-            form_data: solutionData.form_data,
-            emailTarget: solutionData.email_content,
-            link_url: solutionData.link_url,
-            video_url: solutionData.video_url,
-          });
-          setSelectedCategory(solutionData.category_id);
-        }
-      } catch (error) {
-        console.error("Error fetching session data:", error);
-        alert("Failed to load session data");
-      } finally {
-        setIsFetching(false);
+    // ✅ CREATE VIDEO ID MAP EARLY
+    const videoIdMap: Record<string, string> = {};
+    const dbIdToTempIdMap: Record<string, string> = {};
+    
+    videosWithQuestions.forEach((v) => {
+      if (v.db_id) {
+        videoIdMap[v.db_id] = v.id;
+        dbIdToTempIdMap[v.id] = v.db_id;
       }
-    };
+    });
+
+    // ✅ NOW get navigation video data AFTER creating videoIdMap
+    const { data: navigationVideoData, error: navVideoError } = await supabase
+      .from("videos")
+      .select("*")
+      .eq("session_id", sessionId)
+      .eq("is_navigation_video", true)
+      .maybeSingle();
+
+    // ✅ Add navigation video to mapping if it exists
+    if (navigationVideoData?.id) {
+      videoIdMap[navigationVideoData.id] = "navigation-video";
+    }
+
+    // ✅ NOW process navigation video links WITH access to videoIdMap
+    if (!navVideoError && navigationVideoData) {
+      setExistingNavigationVideoUrl(navigationVideoData.url);
+      setNavigationButtonVideoUrl(navigationVideoData.url);
+      setNavigationButtonVideoTitle(navigationVideoData.title);
+      setNavigationButtonVideoDuration(navigationVideoData.duration);
+
+      // Fetch navigation video links
+      const { data: navLinksData, error: navLinksError } = await supabase
+        .from("video_links")
+        .select("*")
+        .eq("video_id", navigationVideoData.id)
+        .order("timestamp_seconds", { ascending: true });
+
+      if (!navLinksError && navLinksData) {
+        // ✅ NOW videoIdMap is available for mapping
+        const mappedNavLinks = navLinksData.map((link) => ({
+          id: link.id.toString(),
+          timestamp_seconds: link.timestamp_seconds,
+          label: link.label,
+          url: link.url || undefined,
+          video_id: link.video_id,
+          destination_video_id: link.destination_video_id
+            ? videoIdMap[link.destination_video_id] || link.destination_video_id
+            : undefined,
+          link_type:
+            (link.link_type as "url" | "video" | "form") ||
+            (link.url ? "url" : "video"),
+          position_x: link.position_x || 20,
+          position_y: link.position_y || 20,
+          duration_ms: link.duration_ms,
+          normal_state_image: link.normal_state_image || undefined,
+          hover_state_image: link.hover_state_image || undefined,
+          normal_image_width: link.normal_image_width || undefined,
+          normal_image_height: link.normal_image_height || undefined,
+          hover_image_width: link.hover_image_width || undefined,
+          hover_image_height: link.hover_image_height || undefined,
+          form_data: link.form_data || undefined,
+        }));
+
+        setNavigationButtonVideoLinks(mappedNavLinks);
+      }
+    }
+
+    // ✅ Continue with the rest of your code (second pass, third pass, etc.)
+    // Second pass: Fetch links and questions with proper ID mapping
+    for (const video of videosWithQuestions) {
+      // Get links for this video
+      const { data: linksData, error: linksError } = await supabase
+        .from("video_links")
+        .select("*")
+        .eq("video_id", video.db_id)
+        .order("timestamp_seconds", { ascending: true });
+
+      if (!linksError && linksData && linksData.length > 0) {
+        video.links = linksData.map((link) => ({
+          id: link.id.toString(),
+          timestamp_seconds: link.timestamp_seconds,
+          label: link.label,
+          url: link.url || undefined,
+          video_id: link.video_id,
+          destination_video_id: link.destination_video_id
+            ? videoIdMap[link.destination_video_id] || link.destination_video_id
+            : undefined,
+          link_type:
+            (link.link_type as "url" | "video" | "form") ||
+            (link.url ? "url" : "video"),
+          position_x: link.position_x || 20,
+          position_y: link.position_y || 20,
+          duration_ms: link.duration_ms,
+          normal_state_image: link.normal_state_image || undefined,
+          hover_state_image: link.hover_state_image || undefined,
+          normal_image_width: link.normal_image_width || undefined,
+          normal_image_height: link.normal_image_height || undefined,
+          hover_image_width: link.hover_image_width || undefined,
+          hover_image_height: link.hover_image_height || undefined,
+          form_data: link.form_data || undefined,
+        }));
+      }
+
+      // Get question for this video
+      const { data: questionData, error: questionError } = await supabase
+        .from("questions")
+        .select("*")
+        .eq("video_id", video.db_id)
+        .maybeSingle();
+
+      if (!questionError && questionData) {
+        // Get answers for this question
+        const { data: answersData, error: answersError } = await supabase
+          .from("answers")
+          .select("*")
+          .eq("question_id", questionData.id)
+          .order("created_at", { ascending: true });
+
+        if (!answersError && answersData) {
+          video.question = {
+            id: uuidv4(),
+            db_id: questionData.id,
+            question_text: questionData.question_text,
+            answers: answersData.map((answer) => ({
+              id: uuidv4(),
+              db_id: answer.id,
+              answer_text: answer.answer_text,
+              destination_video_id: answer.destination_video_id
+                ? videoIdMap[answer.destination_video_id] || ""
+                : "",
+            })),
+          };
+        }
+      }
+    }
+
+    // Third pass: Update destination_video_id references to use temporary IDs
+    for (const video of videosWithQuestions) {
+      // Update video destination_video_id to use temporary ID
+      if (
+        video.destination_video_id &&
+        typeof video.destination_video_id === "string"
+      ) {
+        if (video.destination_video_id in videoIdMap) {
+          video.destination_video_id = videoIdMap[video.destination_video_id];
+        }
+      }
+
+      // Update answer destination_video_id references
+      if (video.question) {
+        for (const answer of video.question.answers) {
+          if (
+            answer.destination_video_id &&
+            typeof answer.destination_video_id === "string"
+          ) {
+            if (answer.destination_video_id in videoIdMap) {
+              answer.destination_video_id = videoIdMap[answer.destination_video_id];
+            }
+          }
+        }
+      }
+
+      // Update link destination_video_id references
+      for (const link of video.links) {
+        if (
+          link.destination_video_id &&
+          typeof link.destination_video_id === "string"
+        ) {
+          if (link.destination_video_id in videoIdMap) {
+            link.destination_video_id = videoIdMap[link.destination_video_id];
+          }
+        }
+      }
+    }
+
+    setVideos(videosWithQuestions);
+
+    // Get solution if exists
+    const { data: solutionData, error: solutionError } = await supabase
+      .from("solutions")
+      .select("*")
+      .eq("session_id", sessionId)
+      .maybeSingle();
+
+    if (solutionError) throw solutionError;
+
+    if (solutionData) {
+      setSolution({
+        id: solutionData.id,
+        category_id: solutionData.category_id,
+        session_id: solutionData.session_id,
+        form_data: solutionData.form_data,
+        emailTarget: solutionData.email_content,
+        link_url: solutionData.link_url,
+        video_url: solutionData.video_url,
+      });
+      setSelectedCategory(solutionData.category_id);
+    }
+  } catch (error) {
+    console.error("Error fetching session data:", error);
+    alert("Failed to load session data");
+  } finally {
+    setIsFetching(false);
+  }
+};
 
     const fetchCompanies = async () => {
       const { data, error } = await supabase

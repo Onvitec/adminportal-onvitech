@@ -276,8 +276,6 @@ function VideoPlayerWithDraggableImages({
   // Convert percentage position to actual pixels based on videoRect
   const getImagePosition = useCallback(
     (link: VideoLink) => {
-      console.log("VIDEO RECT", videoRect);
-
       if (!videoRect) {
         // Fallback to percentages if videoRect not available
         return { left: `${link.position_x}%`, top: `${link.position_y}%` };

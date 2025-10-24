@@ -40,7 +40,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showQuestions, setShowQuestions] = useState(false);
-
+  const [allVideosLookup, setAllVideosLookup] = useState<
+    Record<string, VideoType>
+  >({});
   // Update the navigationButton state type
   const [navigationButton, setNavigationButton] = useState<{
     image_url: string;
@@ -404,6 +406,19 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
         setDestinationVideos(destVideos);
 
+        // ✅ CREATE COMPREHENSIVE VIDEO LOOKUP AT HIGHER SCOPE
+        const allVideosLookup: Record<string, VideoType> = {};
+
+        // Add regular videos
+        videosData.forEach((video) => {
+          allVideosLookup[video.id] = video;
+        });
+
+        // Add destination videos
+        Object.keys(destVideos).forEach((id) => {
+          allVideosLookup[id] = destVideos[id];
+        });
+
         // Fetch navigation video data separately
         if (sessionData.navigation_button_video_id) {
           // Fetch navigation video details
@@ -414,6 +429,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
             .single();
 
           if (!navVideoError && navVideoData) {
+            // ✅ Add navigation video to the lookup
+            allVideosLookup[navVideoData.id] = navVideoData;
+
             // Fetch navigation video links
             const { data: navLinksData, error: navLinksError } = await supabase
               .from("video_links")
@@ -428,10 +446,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
                     (link.link_type === "video" || link.link_type === "form") &&
                     link.destination_video_id
                   ) {
+                    // ✅ Look in the comprehensive video lookup
                     const destinationVideo =
-                      videosData.find(
-                        (v) => v.id === link.destination_video_id
-                      ) || destVideos[link.destination_video_id];
+                      allVideosLookup[link.destination_video_id];
 
                     const result = {
                       ...link,
@@ -561,9 +578,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
               (link.link_type === "video" || link.link_type === "form") &&
               link.destination_video_id
             ) {
+              // ✅ Use the same comprehensive lookup approach
               const destinationVideo =
-                videosData.find((v) => v.id === link.destination_video_id) ||
-                destVideos[link.destination_video_id];
+                allVideosLookup[link.destination_video_id];
 
               const result = {
                 ...link,
@@ -623,6 +640,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         });
         setVideoLinks(groupedLinks);
         setQuestions(questionsWithAnswers);
+
+        // ✅ STORE ALL VIDEOS LOOKUP IN STATE FOR USE IN HANDLERS
+        setAllVideosLookup(allVideosLookup);
       } catch (error) {
         console.error("Error fetching interactive session data:", error);
         setError(error instanceof Error ? error.message : "An error occurred");
@@ -762,9 +782,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
         window.open(url, "_blank", "noopener,noreferrer");
       } else if (link.link_type === "video" && link.destination_video_id) {
         setShowNavigationVideo(false);
-        const destinationVideo =
-          destinationVideos[link.destination_video_id] ||
-          videos.find((v) => v.id === link.destination_video_id);
+
+        // ✅ Use the stored allVideosLookup
+        const destinationVideo = allVideosLookup[link.destination_video_id];
 
         if (destinationVideo) {
           if (currentVideo && !isNavigatingBack) {
@@ -772,6 +792,11 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           }
           setCurrentVideo(destinationVideo);
           setShowQuestions(false);
+        } else {
+          console.warn(
+            "Destination video not found:",
+            link.destination_video_id
+          );
         }
       } else if (link.link_type === "form" && link.form_data) {
         console.log("Form link clicked, pausing video");
@@ -789,6 +814,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       destinationVideos,
       addClickToJourney,
       getJourneySummary,
+      allVideosLookup, // ✅ Add this dependency
     ]
   );
 
@@ -909,9 +935,11 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       }
 
       if (currentFormLink && currentFormLink.destination_video_id) {
+        // const destinationVideo =
+        //   destinationVideos[currentFormLink.destination_video_id] ||
+        //   videos.find((v) => v.id === currentFormLink.destination_video_id);
         const destinationVideo =
-          destinationVideos[currentFormLink.destination_video_id] ||
-          videos.find((v) => v.id === currentFormLink.destination_video_id);
+          allVideosLookup[currentFormLink.destination_video_id];
 
         if (destinationVideo) {
           if (currentVideo && !isNavigatingBack) {
@@ -934,6 +962,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
       destinationVideos,
       sessionName,
       sessionId,
+      allVideosLookup,
     ]
   );
 
