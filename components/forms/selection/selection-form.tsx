@@ -25,6 +25,7 @@ import {
   Plus,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -35,7 +36,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { cn, solutionCategories } from "@/lib/utils";
-import { Solution, SolutionCategory, VideoLink } from "@/lib/types";
+import { Solution, SolutionCategory, VideoLink, UserType } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
 import {
   Dialog,
@@ -47,6 +48,9 @@ import {
 import Link from "next/link";
 import Heading from "@/components/Heading";
 import { VideoUploadWithLinks } from "../videoo-upload";
+import { NavigationButtonSection } from "@/components/navigation-button-section";
+import { toast } from "sonner";
+import { showToast } from "@/components/toast";
 
 type Answer = {
   id: string;
@@ -102,6 +106,23 @@ export default function SelectionSessionForm() {
     useState(false);
   const [solutions, setSolutions] = useState<Solution[]>([]);
   const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(false);
+  const [comapnies, setCompanies] = useState<UserType[] | []>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [showPlayButton, setShowPlayButton] = useState(true);
+
+  // Navigation Video State - ADDED FROM INTERACTIVE SESSION
+  const [navigationButtonImage, setNavigationButtonImage] =
+    useState<File | null>(null);
+  const [navigationButtonVideo, setNavigationButtonVideo] =
+    useState<File | null>(null);
+  const [navigationButtonVideoUrl, setNavigationButtonVideoUrl] = useState("");
+  const [navigationButtonVideoTitle, setNavigationButtonVideoTitle] =
+    useState("");
+  const [navigationButtonVideoDuration, setNavigationButtonVideoDuration] =
+    useState(0);
+  const [navigationButtonVideoLinks, setNavigationButtonVideoLinks] = useState<
+    VideoLink[]
+  >([]);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -113,11 +134,54 @@ export default function SelectionSessionForm() {
     category_id: null,
   });
 
+  // Fetch companies - ADDED FROM INTERACTIVE SESSION
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("is_company", true);
+
+      if (error) {
+        console.error("Error fetching companies:", error);
+        return;
+      }
+      setCompanies(data || []);
+    };
+
+    fetchCompanies();
+  }, []);
+
   // Generate available videos list for video link destinations
   const availableVideos = videos.map((video) => ({
     id: video.id,
     title: video.title || video.name,
   }));
+
+  // Navigation handlers - ADDED FROM INTERACTIVE SESSION
+  const handleNavigationImageChange = useCallback((file: File | null) => {
+    setNavigationButtonImage(file);
+  }, []);
+
+  const handleNavigationVideoChange = useCallback(
+    (file: File | null, duration: number) => {
+      setNavigationButtonVideo(file);
+      setNavigationButtonVideoDuration(duration);
+
+      if (file === null) {
+        setNavigationButtonVideoUrl("");
+      }
+    },
+    []
+  );
+
+  const handleNavigationVideoTitleChange = useCallback((title: string) => {
+    setNavigationButtonVideoTitle(title);
+  }, []);
+
+  const handleNavigationVideoLinksChange = useCallback((links: VideoLink[]) => {
+    setNavigationButtonVideoLinks(links);
+  }, []);
 
   // Open modal for a specific combination
   const openSolutionModal = (combinationId: string) => {
@@ -422,9 +486,31 @@ export default function SelectionSessionForm() {
     );
   };
 
-  // Submit the form
+  // Submit the form - UPDATED WITH NAVIGATION VIDEO LOGIC
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const toastId = toast.loading(
+      <div className="flex items-center space-x-3">
+        <div>
+          <p className="font-medium">Saving Session</p>
+          <p className="text-sm text-gray-500">
+            Please wait while we save your changes...
+          </p>
+        </div>
+      </div>,
+      {
+        duration: Infinity,
+      }
+    );
+
+    if (sessionName.length === 0) {
+      showToast("error", "session name is missing");
+      return;
+    }
+    if (!selectedCompanyId) {
+      showToast("error", "Select a company");
+      return;
+    }
     setIsLoading(true);
 
     try {
@@ -434,13 +520,18 @@ export default function SelectionSessionForm() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      const userId = user.id;
+      setUserId(userId);
+
       // Create session
       const { data: sessionData, error: sessionError } = await supabase
         .from("sessions")
         .insert({
           title: sessionName,
           session_type: "selection",
-          created_by: user.id,
+          showPlayButton: showPlayButton,
+          associated_with: selectedCompanyId,
+          created_by: userId,
         })
         .select()
         .single();
@@ -452,12 +543,13 @@ export default function SelectionSessionForm() {
       const uploadedVideos: Record<string, string> = {};
       const uploadedAnswers: Record<string, string> = {};
 
+      // PHASE 1: Upload all videos first
       for (const [index, video] of videos.entries()) {
         if (!video.file) continue;
 
         // Upload file to storage
         const fileExt = video.file.name.split(".").pop();
-        const filePath = `${user.id}/${sessionData.id}/${video.id}.${fileExt}`;
+        const filePath = `${userId}/${sessionData.id}/${video.id}.${fileExt}`;
 
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from("videos")
@@ -479,6 +571,7 @@ export default function SelectionSessionForm() {
             session_id: sessionData.id,
             session_type: "selection",
             order_index: index,
+            duration: video.duration,
           })
           .select()
           .single();
@@ -488,93 +581,82 @@ export default function SelectionSessionForm() {
 
         // Store mapping of temporary ID to actual DB ID
         uploadedVideos[video.id] = videoData.id;
+      }
 
-        // Insert links if available - Updated to handle both URL and video links
-        if (video.links && video.links.length > 0) {
-          const linkInserts = [];
+      // UPLOAD NAVIGATION VIDEO - ADDED FROM INTERACTIVE SESSION
+      let navigationVideoDbId: string | null = null;
+      let finalNavigationImageUrl = "";
 
-          for (const link of video.links) {
-            let normalImageUrl = link.normal_state_image;
-            let hoverImageUrl = link.hover_state_image;
+      if (navigationButtonVideo) {
+        const videoFileExt = navigationButtonVideo.name.split(".").pop();
+        const videoFilePath = `${userId}/${sessionData.id}/navigation-video.${videoFileExt}`;
 
-            // Upload normal state image if it's a File object
-            if (link.normalImageFile) {
-              const normalFileExt = link.normalImageFile.name.split(".").pop();
-              const normalFilePath = `${userId}/${sessionData.id}/images/${link.id}_normal.${normalFileExt}`;
+        const { data: videoUploadData, error: videoUploadError } =
+          await supabase.storage
+            .from("navigation-videos")
+            .upload(videoFilePath, navigationButtonVideo);
 
-              const { error: normalUploadError } = await supabase.storage
-                .from("video-link-images")
-                .upload(normalFilePath, link.normalImageFile);
+        if (videoUploadError) throw videoUploadError;
 
-              if (normalUploadError) throw normalUploadError;
+        const { data: videoUrlData } = supabase.storage
+          .from("navigation-videos")
+          .getPublicUrl(videoFilePath);
 
-              const { data: normalUrlData } = supabase.storage
-                .from("video-link-images")
-                .getPublicUrl(normalFilePath);
+        // Create navigation video record
+        const { data: navVideoData, error: navVideoError } = await supabase
+          .from("videos")
+          .insert({
+            title: navigationButtonVideoTitle,
+            url: videoUrlData.publicUrl,
+            session_id: sessionData.id,
+            is_interactive: true,
+            order_index: -1,
+            duration: navigationButtonVideoDuration,
+            freezeAtEnd: true, // Navigation video should freeze at end
+            destination_video_id: null,
+            is_navigation_video: true,
+          })
+          .select()
+          .single();
 
-              normalImageUrl = normalUrlData.publicUrl;
-            }
+        if (navVideoError || !navVideoData) throw navVideoError;
 
-            // Upload hover state image if it's a File object
-            if (link.hoverImageFile) {
-              const hoverFileExt = link.hoverImageFile.name.split(".").pop();
-              const hoverFilePath = `${userId}/${sessionData.id}/images/${link.id}_hover.${hoverFileExt}`;
+        navigationVideoDbId = navVideoData.id;
+      }
 
-              const { error: hoverUploadError } = await supabase.storage
-                .from("video-link-images")
-                .upload(hoverFilePath, link.hoverImageFile);
+      // Upload navigation button image if provided
+      if (navigationButtonImage) {
+        const imageFileExt = navigationButtonImage.name.split(".").pop();
+        const imageFilePath = `${userId}/${sessionData.id}/navigation-button.${imageFileExt}`;
 
-              if (hoverUploadError) throw hoverUploadError;
+        const { data: imageUploadData, error: imageUploadError } =
+          await supabase.storage
+            .from("navigation-images")
+            .upload(imageFilePath, navigationButtonImage);
 
-              const { data: hoverUrlData } = supabase.storage
-                .from("video-link-images")
-                .getPublicUrl(hoverFilePath);
+        if (imageUploadError) throw imageUploadError;
 
-              hoverImageUrl = hoverUrlData.publicUrl;
-            }
+        const { data: imageUrlData } = supabase.storage
+          .from("navigation-images")
+          .getPublicUrl(imageFilePath);
 
-            linkInserts.push({
-              video_id: videoData.id,
-              timestamp_seconds: link.timestamp_seconds,
-              label: link.label,
-              url: link.link_type === "url" ? link.url : null,
-              destination_video_id: link.link_type === "video" ? null : null,
-              link_type: link.link_type,
-              position_x: link.position_x || 20,
-              position_y: link.position_y || 20,
-              normal_state_image: normalImageUrl,
-              hover_state_image: hoverImageUrl,
-              normal_image_width: link.normal_image_width,
-              normal_image_height: link.normal_image_height,
-              hover_image_width: link.hover_image_width,
-              hover_image_height: link.hover_image_height,
-            });
-          }
+        finalNavigationImageUrl = imageUrlData.publicUrl;
+      }
 
-          const { data: insertedLinks, error: linksError } = await supabase
-            .from("video_links")
-            .insert(linkInserts)
-            .select();
+      // Update session with navigation button data
+      await supabase
+        .from("sessions")
+        .update({
+          navigation_button_image_url: finalNavigationImageUrl,
+          navigation_button_video_id: navigationVideoDbId,
+          navigation_button_video_title: navigationButtonVideoTitle,
+        })
+        .eq("id", sessionData.id);
 
-          if (linksError) throw linksError;
-
-          // Store link mapping for later destination video ID updates
-          if (insertedLinks) {
-            video.links.forEach((originalLink, linkIndex) => {
-              if (
-                originalLink.link_type === "video" &&
-                originalLink.destination_video_id
-              ) {
-                const insertedLink = insertedLinks[linkIndex];
-                if (insertedLink) {
-                  insertedLink._temp_destination_video_id =
-                    originalLink.destination_video_id;
-                  insertedLink._temp_link_id = originalLink.id;
-                }
-              }
-            });
-          }
-        }
+      // PHASE 2: Create questions and answers for videos
+      for (const video of videos) {
+        const videoDbId = uploadedVideos[video.id];
+        if (!videoDbId) continue;
 
         // Create question if exists
         if (video.question) {
@@ -582,7 +664,7 @@ export default function SelectionSessionForm() {
             .from("questions")
             .insert({
               question_text: video.question.question_text,
-              video_id: videoData.id,
+              video_id: videoDbId,
             })
             .select()
             .single();
@@ -610,44 +692,174 @@ export default function SelectionSessionForm() {
         }
       }
 
-      // Update video link destination_video_id for video-type links after all videos are uploaded
+      // PHASE 3: Upload video links for all videos
       for (const video of videos) {
-        if (!video.links || video.links.length === 0) continue;
-
         const videoDbId = uploadedVideos[video.id];
-        if (!videoDbId) continue;
+        if (!videoDbId || !video.links || video.links.length === 0) continue;
 
-        // Get all video links for this video
-        const { data: videoLinks } = await supabase
-          .from("video_links")
-          .select("id, link_type")
-          .eq("video_id", videoDbId);
+        const linkInserts = [];
 
-        if (!videoLinks) continue;
+        for (const link of video.links) {
+          let normalImageUrl = link.normal_state_image;
+          let hoverImageUrl = link.hover_state_image;
 
-        // Update destination_video_id for video-type links
-        for (let i = 0; i < video.links.length; i++) {
-          const originalLink = video.links[i];
-          const dbLink = videoLinks[i];
+          // Upload normal state image if it's a File object
+          if (link.normalImageFile) {
+            const normalFileExt = link.normalImageFile.name.split(".").pop();
+            const normalFilePath = `${userId}/${sessionData.id}/images/${link.id}_normal.${normalFileExt}`;
 
-          if (
-            originalLink.link_type === "video" &&
-            originalLink.destination_video_id &&
-            dbLink
-          ) {
-            const destinationDbId =
-              uploadedVideos[originalLink.destination_video_id];
-            if (destinationDbId) {
-              await supabase
-                .from("video_links")
-                .update({ destination_video_id: destinationDbId })
-                .eq("id", dbLink.id);
-            }
+            const { error: normalUploadError } = await supabase.storage
+              .from("video-link-images")
+              .upload(normalFilePath, link.normalImageFile);
+
+            if (normalUploadError) throw normalUploadError;
+
+            const { data: normalUrlData } = supabase.storage
+              .from("video-link-images")
+              .getPublicUrl(normalFilePath);
+
+            normalImageUrl = normalUrlData.publicUrl;
           }
+
+          // Upload hover state image if it's a File object
+          if (link.hoverImageFile) {
+            const hoverFileExt = link.hoverImageFile.name.split(".").pop();
+            const hoverFilePath = `${userId}/${sessionData.id}/images/${link.id}_hover.${hoverFileExt}`;
+
+            const { error: hoverUploadError } = await supabase.storage
+              .from("video-link-images")
+              .upload(hoverFilePath, link.hoverImageFile);
+
+            if (hoverUploadError) throw hoverUploadError;
+
+            const { data: hoverUrlData } = supabase.storage
+              .from("video-link-images")
+              .getPublicUrl(hoverFilePath);
+
+            hoverImageUrl = hoverUrlData.publicUrl;
+          }
+
+          // Resolve destination video ID
+          let destinationVideoId = null;
+          if (
+            (link.link_type === "video" || link.link_type === "form") &&
+            link.destination_video_id
+          ) {
+            destinationVideoId = uploadedVideos[link.destination_video_id];
+          }
+
+          linkInserts.push({
+            video_id: videoDbId,
+            timestamp_seconds: link.timestamp_seconds,
+            label: link.label,
+            url: link.link_type === "url" ? link.url : null,
+            destination_video_id: destinationVideoId,
+            link_type: link.link_type,
+            position_x: link.position_x || 20,
+            position_y: link.position_y || 20,
+            normal_state_image: normalImageUrl,
+            hover_state_image: hoverImageUrl,
+            normal_image_width: link.normal_image_width,
+            normal_image_height: link.normal_image_height,
+            duration_ms: link.duration_ms,
+            hover_image_width: link.hover_image_width,
+            hover_image_height: link.hover_image_height,
+            form_data: link.link_type === "form" ? link.form_data : null,
+          });
         }
+
+        const { error: linksError } = await supabase
+          .from("video_links")
+          .insert(linkInserts);
+
+        if (linksError) throw linksError;
       }
 
-      // Upload solutions first
+      // PHASE 4: Upload navigation video links - ADDED FROM INTERACTIVE SESSION
+      if (
+        navigationVideoDbId &&
+        navigationButtonVideoLinks &&
+        navigationButtonVideoLinks.length > 0
+      ) {
+        const navLinkInserts = [];
+
+        for (const link of navigationButtonVideoLinks) {
+          let normalImageUrl = link.normal_state_image;
+          let hoverImageUrl = link.hover_state_image;
+
+          // Upload normal state image if it's a File object
+          if (link.normalImageFile) {
+            const normalFileExt = link.normalImageFile.name.split(".").pop();
+            const normalFilePath = `${userId}/${sessionData.id}/navigation/images/${link.id}_normal.${normalFileExt}`;
+
+            const { error: normalUploadError } = await supabase.storage
+              .from("video-link-images")
+              .upload(normalFilePath, link.normalImageFile);
+
+            if (normalUploadError) throw normalUploadError;
+
+            const { data: normalUrlData } = supabase.storage
+              .from("video-link-images")
+              .getPublicUrl(normalFilePath);
+
+            normalImageUrl = normalUrlData.publicUrl;
+          }
+
+          // Upload hover state image if it's a File object
+          if (link.hoverImageFile) {
+            const hoverFileExt = link.hoverImageFile.name.split(".").pop();
+            const hoverFilePath = `${userId}/${sessionData.id}/navigation/images/${link.id}_hover.${hoverFileExt}`;
+
+            const { error: hoverUploadError } = await supabase.storage
+              .from("video-link-images")
+              .upload(hoverFilePath, link.hoverImageFile);
+
+            if (hoverUploadError) throw hoverUploadError;
+
+            const { data: hoverUrlData } = supabase.storage
+              .from("video-link-images")
+              .getPublicUrl(hoverFilePath);
+
+            hoverImageUrl = hoverUrlData.publicUrl;
+          }
+
+          // Resolve destination video ID for navigation video links
+          let destinationVideoId = null;
+          if (
+            (link.link_type === "video" || link.link_type === "form") &&
+            link.destination_video_id
+          ) {
+            destinationVideoId = uploadedVideos[link.destination_video_id];
+          }
+
+          navLinkInserts.push({
+            video_id: navigationVideoDbId,
+            timestamp_seconds: link.timestamp_seconds,
+            label: link.label,
+            url: link.link_type === "url" ? link.url : null,
+            destination_video_id: destinationVideoId,
+            link_type: link.link_type,
+            position_x: link.position_x || 20,
+            position_y: link.position_y || 20,
+            normal_state_image: normalImageUrl,
+            hover_state_image: hoverImageUrl,
+            normal_image_width: link.normal_image_width,
+            normal_image_height: link.normal_image_height,
+            duration_ms: link.duration_ms,
+            hover_image_width: link.hover_image_width,
+            hover_image_height: link.hover_image_height,
+            form_data: link.link_type === "form" ? link.form_data : null,
+          });
+        }
+
+        const { error: navLinksError } = await supabase
+          .from("video_links")
+          .insert(navLinkInserts);
+
+        if (navLinksError) throw navLinksError;
+      }
+
+      // PHASE 5: Upload solutions
       const uploadedSolutions: Record<string, string> = {};
       for (const solution of solutions) {
         let solutionData: any = {
@@ -666,7 +878,7 @@ export default function SelectionSessionForm() {
         } else if (solution.category_id === 4) {
           if (solution.videoFile) {
             const fileExt = solution.videoFile.name.split(".").pop();
-            const filePath = `${user.id}/${
+            const filePath = `${userId}/${
               sessionData.id
             }/solutions/${uuidv4()}.${fileExt}`;
 
@@ -697,7 +909,7 @@ export default function SelectionSessionForm() {
         uploadedSolutions[solution.id] = dbSolution.id;
       }
 
-      // Create answer combinations after all answers and solutions are uploaded
+      // PHASE 6: Create answer combinations after all answers and solutions are uploaded
       for (const combination of combinations) {
         if (!combination.solution_id) continue;
 
@@ -730,11 +942,41 @@ export default function SelectionSessionForm() {
         }
       }
 
+      toast.success(
+        <div className="flex items-center space-x-3">
+          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+            <Check className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <p className="font-medium">Session Created!</p>
+            <p className="text-sm text-gray-500">
+              Your have successfully created a session.
+            </p>
+          </div>
+        </div>,
+        { id: toastId, duration: 3000 }
+      );
+
       // Redirect to sessions page
       router.push("/sessions");
+      showToast("success", "Selection Session created successfully!");
     } catch (error) {
+      toast.error(
+        <div className="flex items-center space-x-3">
+          <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+            <X className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <p className="font-medium">Save Failed</p>
+            <p className="text-sm text-gray-500">
+              There was an error saving your session.
+            </p>
+          </div>
+        </div>,
+        { id: toastId, duration: 5000 }
+      );
       console.error("Error creating session:", error);
-      alert("Failed to create session. Please try again.");
+      showToast("error", "Error creating Selection Session");
     } finally {
       setIsLoading(false);
     }
@@ -807,20 +1049,30 @@ export default function SelectionSessionForm() {
                   required
                 />
               </div>
+
+              {/* ADDED COMPANY SELECTION FROM INTERACTIVE SESSION */}
               <div className="space-y-1">
                 <Label
-                  htmlFor="userId"
-                  className="text-sm font-medium text-[#242B42]"
+                  htmlFor="company"
+                  className="text-sm font-medium text-gray-700"
                 >
-                  Session Type
+                  Associated Company
                 </Label>
-                <Input
-                  id="userId"
-                  value={"Selection Based"}
-                  disabled
-                  className="h-10 bg-[#EEEEEE] text-[#242B42] font-medium"
-                  required
-                />
+                <Select
+                  value={selectedCompanyId}
+                  onValueChange={(id) => setSelectedCompanyId(id)}
+                >
+                  <SelectTrigger className="h-10 w-1/2">
+                    <SelectValue placeholder="Select a company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {comapnies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.first_name || company.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -884,7 +1136,7 @@ export default function SelectionSessionForm() {
 
                     {video.isExpanded && (
                       <div className="p-4 space-y-4 bg-white">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 gap-4">
                           <VideoUploadWithLinks
                             key={video.id}
                             video={video}
@@ -1001,6 +1253,33 @@ export default function SelectionSessionForm() {
                   Add Video
                 </Button>
               </div>
+            </div>
+
+            {/* ADDED NAVIGATION BUTTON SECTION FROM INTERACTIVE SESSION */}
+            <NavigationButtonSection
+              navigationButtonImage={navigationButtonImage}
+              navigationButtonVideo={navigationButtonVideo}
+              navigationButtonVideoUrl={navigationButtonVideoUrl}
+              navigationButtonVideoTitle={navigationButtonVideoTitle}
+              navigationButtonVideoDuration={navigationButtonVideoDuration}
+              navigationButtonVideoLinks={navigationButtonVideoLinks}
+              availableVideos={availableVideos}
+              onImageChange={handleNavigationImageChange}
+              onVideoChange={handleNavigationVideoChange}
+              onVideoTitleChange={handleNavigationVideoTitleChange}
+              onVideoLinksChange={handleNavigationVideoLinksChange}
+            />
+
+            {/* ADDED SHOW PLAY BUTTON SWITCH FROM INTERACTIVE SESSION */}
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={showPlayButton}
+                onCheckedChange={setShowPlayButton}
+                id="show-play-button"
+              />
+              <Label htmlFor="show-play-button">
+                Show play/pause button (iFrame)
+              </Label>
             </div>
 
             {/* Answer Combinations Section */}
@@ -1120,10 +1399,11 @@ export default function SelectionSessionForm() {
                   type="submit"
                   disabled={
                     isLoading ||
-                    !hasAtLeastOneVideo ||
-                    solutions.length === 0 ||
-                    (combinations.length > 0 &&
-                      combinations.some((c) => !c.solution_id))
+                    !hasAtLeastOneVideo 
+                    // ||
+                    // solutions.length === 0 ||
+                    // (combinations.length > 0 &&
+                    //   combinations.some((c) => !c.solution_id))
                   }
                   className="h-10 px-6"
                 >

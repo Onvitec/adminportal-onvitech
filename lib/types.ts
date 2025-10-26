@@ -12,6 +12,8 @@ export type VideoType = {
   freezeAtEnd?: boolean;
   destination_video_id: string | null;
   is_navigation_video?: boolean;
+  question?: any;
+  isExpanded?: boolean;
 };
 export type VideoLink = {
   id: string;

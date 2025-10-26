@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,10 +35,22 @@ import {
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
 import { cn, solutionCategories } from "@/lib/utils";
-import { Solution, SolutionCategory } from "@/lib/types";
+import {
+  Solution,
+  SolutionCategory,
+  UserType,
+  VideoLink,
+  VideoType,
+} from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
 import { Loader } from "@/components/Loader";
 import { VideoUploadWithLinks } from "@/components/forms/videoo-upload";
+import { toast } from "sonner";
+import { showToast } from "@/components/toast";
+import Link from "next/link";
+import Heading from "@/components/Heading";
+import { Switch } from "@/components/ui/switch";
+import { NavigationButtonSection } from "@/components/navigation-button-section";
 
 type Answer = {
   id: string;
@@ -50,16 +62,6 @@ type Question = {
   id: string;
   question_text: string;
   answers: Answer[];
-  db_id?: string;
-};
-
-type Video = {
-  id: string;
-  title: string;
-  file: File | null;
-  url: string;
-  question: Question | null;
-  isExpanded: boolean;
   db_id?: string;
 };
 
@@ -75,9 +77,78 @@ export default function EditSelectionSession({
   const [solutions, setSolutions] = useState<Solution[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(false);
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [editingSolutionId, setEditingSolutionId] = useState<string | null>(null);
-  const [editingSolutionDraft, setEditingSolutionDraft] = useState<Solution | null>(null);
+  const [videos, setVideos] = useState<VideoType[]>([]);
+  const [editingSolutionId, setEditingSolutionId] = useState<string | null>(
+    null
+  );
+  const [editingSolutionDraft, setEditingSolutionDraft] =
+    useState<Solution | null>(null);
+  const [comapnies, setCompanies] = useState<UserType[] | []>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [showPlayButton, setShowPlayButton] = useState(true);
+
+  // Navigation button states - ADDED FROM INTERACTIVE EDIT
+  const [navigationButtonImage, setNavigationButtonImage] =
+    useState<File | null>(null);
+  const [navigationButtonImageUrl, setNavigationButtonImageUrl] = useState("");
+  const [navigationButtonVideo, setNavigationButtonVideo] =
+    useState<File | null>(null);
+  const [navigationButtonVideoUrl, setNavigationButtonVideoUrl] = useState("");
+  const [navigationButtonVideoTitle, setNavigationButtonVideoTitle] =
+    useState("");
+  const [existingNavigationImageUrl, setExistingNavigationImageUrl] =
+    useState("");
+  const [existingNavigationVideoUrl, setExistingNavigationVideoUrl] =
+    useState("");
+  const [navigationButtonVideoLinks, setNavigationButtonVideoLinks] = useState<
+    VideoLink[]
+  >([]);
+  const [navigationButtonVideoDuration, setNavigationButtonVideoDuration] =
+    useState(0);
+
+  // Generate available videos list for video link destinations
+  const availableVideos = videos.map((video) => ({
+    id: video.id,
+    title: video.title,
+  }));
+
+  // Navigation Handlers - ADDED FROM INTERACTIVE EDIT
+  const handleNavigationImageChange = useCallback((file: File | null) => {
+    setNavigationButtonImage(file);
+  }, []);
+
+  const handleNavigationVideoChange = useCallback((file: File | null) => {
+    setNavigationButtonVideo(file);
+    if (file) {
+      setNavigationButtonVideoTitle(
+        file.name.split(".")[0] || "Navigation Video"
+      );
+    } else {
+      setNavigationButtonVideoUrl("");
+    }
+  }, []);
+
+  const handleNavigationVideoTitleChange = useCallback((title: string) => {
+    setNavigationButtonVideoTitle(title);
+  }, []);
+
+  const handleNavigationVideoLinksChange = useCallback((links: VideoLink[]) => {
+    setNavigationButtonVideoLinks(links);
+  }, []);
+
+  const handleRemoveNavigationImage = useCallback(() => {
+    setNavigationButtonImage(null);
+    setExistingNavigationImageUrl("");
+    setNavigationButtonImageUrl("");
+  }, []);
+
+  const handleRemoveNavigationVideo = useCallback(() => {
+    setNavigationButtonVideo(null);
+    setExistingNavigationVideoUrl("");
+    setNavigationButtonVideoUrl("");
+    setNavigationButtonVideoTitle("");
+    setNavigationButtonVideoLinks([]);
+  }, []);
 
   useEffect(() => {
     const fetchSessionData = async () => {
@@ -94,52 +165,199 @@ export default function EditSelectionSession({
           throw sessionError || new Error("Session not found");
 
         setSessionName(sessionData.title);
+        setShowPlayButton(sessionData.showPlayButton);
+        setSelectedCompanyId(sessionData.associated_with);
 
-        // Get videos for this session
+        // Set navigation button data if exists - ADDED FROM INTERACTIVE EDIT
+        if (sessionData.navigation_button_image_url) {
+          setExistingNavigationImageUrl(
+            sessionData.navigation_button_image_url
+          );
+          setNavigationButtonImageUrl(sessionData.navigation_button_image_url);
+        }
+        if (sessionData.navigation_button_video_url) {
+          setExistingNavigationVideoUrl(
+            sessionData.navigation_button_video_url
+          );
+          setNavigationButtonVideoUrl(sessionData.navigation_button_video_url);
+        }
+        if (sessionData.navigation_button_video_title) {
+          setNavigationButtonVideoTitle(
+            sessionData.navigation_button_video_title
+          );
+        }
+
+        // Get videos for this session FIRST
         const { data: videosData, error: videosError } = await supabase
           .from("videos")
           .select(
             `
-            *,
-            questions:questions(
-              *,
-              answers:answers(*)
-            )
-          `
+        *,
+        questions:questions(
+          *,
+          answers:answers(*)
+        )
+      `
           )
           .eq("session_id", sessionId)
+          .eq("is_navigation_video", false) // Only regular videos
           .order("order_index", { ascending: true });
 
         if (videosError) throw videosError;
 
-        // Process videos to match our structure
-        const videosWithQuestions: Video[] = videosData.map((video) => {
-          const videoObj: Video = {
-            id: uuidv4(),
-            db_id: video.id,
-            title: video.title,
-            file: null,
-            url: video.url,
-            question: null,
-            isExpanded: true,
-          };
-
-          if (video.questions && video.questions.length > 0) {
-            const question = video.questions[0];
-            videoObj.question = {
+        // First pass: Create video objects without links
+        const videosWithQuestions: VideoType[] = await Promise.all(
+          videosData.map(async (video) => {
+            const videoObj: VideoType = {
               id: uuidv4(),
-              db_id: question.id,
-              question_text: question.question_text,
-              answers: question.answers.map((answer: any) => ({
-                id: uuidv4(),
-                db_id: answer.id,
-                answer_text: answer.answer_text,
-              })),
+              db_id: video.id,
+              title: video.title,
+              file: null,
+              url: video.url,
+              question: null,
+              isExpanded: true,
+              destination_video_id: null,
+              duration: video.duration || 0,
+              links: [], // Will be populated in second pass
             };
+
+            return videoObj;
+          })
+        );
+
+        // ✅ CREATE VIDEO ID MAP EARLY
+        const videoIdMap: Record<string, string> = {};
+        videosWithQuestions.forEach((v) => {
+          if (v.db_id) {
+            videoIdMap[v.db_id] = v.id;
+          }
+        });
+
+        // ✅ NOW get navigation video data AFTER creating videoIdMap
+        const { data: navigationVideoData, error: navVideoError } =
+          await supabase
+            .from("videos")
+            .select("*")
+            .eq("session_id", sessionId)
+            .eq("is_navigation_video", true)
+            .maybeSingle();
+
+        // ✅ Add navigation video to mapping if it exists
+        if (navigationVideoData?.id) {
+          videoIdMap[navigationVideoData.id] = "navigation-video";
+        }
+
+        // ✅ NOW process navigation video links WITH access to videoIdMap
+        if (!navVideoError && navigationVideoData) {
+          setExistingNavigationVideoUrl(navigationVideoData.url);
+          setNavigationButtonVideoUrl(navigationVideoData.url);
+          setNavigationButtonVideoTitle(navigationVideoData.title);
+          setNavigationButtonVideoDuration(navigationVideoData.duration);
+
+          // Fetch navigation video links
+          const { data: navLinksData, error: navLinksError } = await supabase
+            .from("video_links")
+            .select("*")
+            .eq("video_id", navigationVideoData.id)
+            .order("timestamp_seconds", { ascending: true });
+
+          if (!navLinksError && navLinksData) {
+            // ✅ NOW videoIdMap is available for mapping
+            const mappedNavLinks = navLinksData.map((link) => ({
+              id: link.id.toString(),
+              timestamp_seconds: link.timestamp_seconds,
+              label: link.label,
+              url: link.url || undefined,
+              video_id: link.video_id,
+              destination_video_id: link.destination_video_id
+                ? videoIdMap[link.destination_video_id] ||
+                  link.destination_video_id
+                : undefined,
+              link_type:
+                (link.link_type as "url" | "video" | "form") ||
+                (link.url ? "url" : "video"),
+              position_x: link.position_x || 20,
+              position_y: link.position_y || 20,
+              duration_ms: link.duration_ms,
+              normal_state_image: link.normal_state_image || undefined,
+              hover_state_image: link.hover_state_image || undefined,
+              normal_image_width: link.normal_image_width || undefined,
+              normal_image_height: link.normal_image_height || undefined,
+              hover_image_width: link.hover_image_width || undefined,
+              hover_image_height: link.hover_image_height || undefined,
+              form_data: link.form_data || undefined,
+            }));
+
+            setNavigationButtonVideoLinks(mappedNavLinks);
+          }
+        }
+
+        // ✅ Continue with the rest of your code (second pass, third pass, etc.)
+        // Second pass: Fetch links and questions with proper ID mapping
+        for (const video of videosWithQuestions) {
+          // Get links for this video
+          const { data: linksData, error: linksError } = await supabase
+            .from("video_links")
+            .select("*")
+            .eq("video_id", video.db_id)
+            .order("timestamp_seconds", { ascending: true });
+
+          if (!linksError && linksData && linksData.length > 0) {
+            video.links = linksData.map((link) => ({
+              id: link.id.toString(),
+              timestamp_seconds: link.timestamp_seconds,
+              label: link.label,
+              url: link.url || undefined,
+              video_id: link.video_id,
+              destination_video_id: link.destination_video_id
+                ? videoIdMap[link.destination_video_id] ||
+                  link.destination_video_id
+                : undefined,
+              link_type:
+                (link.link_type as "url" | "video" | "form") ||
+                (link.url ? "url" : "video"),
+              position_x: link.position_x || 20,
+              position_y: link.position_y || 20,
+              duration_ms: link.duration_ms,
+              normal_state_image: link.normal_state_image || undefined,
+              hover_state_image: link.hover_state_image || undefined,
+              normal_image_width: link.normal_image_width || undefined,
+              normal_image_height: link.normal_image_height || undefined,
+              hover_image_width: link.hover_image_width || undefined,
+              hover_image_height: link.hover_image_height || undefined,
+              form_data: link.form_data || undefined,
+            }));
           }
 
-          return videoObj;
-        });
+          // Get question for this video
+          const { data: questionData, error: questionError } = await supabase
+            .from("questions")
+            .select("*")
+            .eq("video_id", video.db_id)
+            .maybeSingle();
+
+          if (!questionError && questionData) {
+            // Get answers for this question
+            const { data: answersData, error: answersError } = await supabase
+              .from("answers")
+              .select("*")
+              .eq("question_id", questionData.id)
+              .order("created_at", { ascending: true });
+
+            if (!answersError && answersData) {
+              video.question = {
+                id: uuidv4(),
+                db_id: questionData.id,
+                question_text: questionData.question_text,
+                answers: answersData.map((answer: any) => ({
+                  id: uuidv4(),
+                  db_id: answer.id,
+                  answer_text: answer.answer_text,
+                })),
+              };
+            }
+          }
+        }
 
         setVideos(videosWithQuestions);
 
@@ -152,16 +370,18 @@ export default function EditSelectionSession({
         if (solutionsError) throw solutionsError;
 
         if (solutionsData && solutionsData.length > 0) {
-          setSolutions(solutionsData.map(sol => ({
-            id: sol.id,
-            category_id: sol.category_id,
-            session_id: sol.session_id,
-            form_data: sol.form_data,
-            emailTarget: sol.email_content,
-            emailContent: sol.email_content,
-            link_url: sol.link_url,
-            video_url: sol.video_url,
-          })));
+          setSolutions(
+            solutionsData.map((sol) => ({
+              id: sol.id,
+              category_id: sol.category_id,
+              session_id: sol.session_id,
+              form_data: sol.form_data,
+              emailTarget: sol.email_content,
+              emailContent: sol.email_content,
+              link_url: sol.link_url,
+              video_url: sol.video_url,
+            }))
+          );
         }
       } catch (error) {
         console.error("Error fetching session data:", error);
@@ -171,6 +391,20 @@ export default function EditSelectionSession({
       }
     };
 
+    const fetchCompanies = async () => {
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("is_company", true);
+
+      if (error) {
+        console.error("Error fetching companies:", error);
+        return;
+      }
+      setCompanies(data || []);
+    };
+
+    fetchCompanies();
     fetchSessionData();
   }, [sessionId, router]);
 
@@ -184,6 +418,9 @@ export default function EditSelectionSession({
         url: "",
         question: null,
         isExpanded: true,
+        duration: 0,
+        links: [],
+        destination_video_id: null,
       },
     ]);
   };
@@ -204,15 +441,30 @@ export default function EditSelectionSession({
     );
   };
 
-  const handleFileChange = (videoId: string, file: File | null) => {
-    setVideos(
-      videos.map((v) =>
-        v.id === videoId
-          ? { ...v, file, title: file?.name.split(".")[0] || v.title }
-          : v
-      )
-    );
-  };
+  const handleFileChange = useCallback(
+    (videoId: string, file: File | null, duration: number) => {
+      setVideos(
+        videos.map((v) =>
+          v.id === videoId
+            ? {
+                ...v,
+                file,
+                duration,
+                title: file?.name.split(".")[0] || v.title,
+              }
+            : v
+        )
+      );
+    },
+    [videos]
+  );
+
+  const handleLinksChange = useCallback(
+    (videoId: string, links: VideoLink[]) => {
+      setVideos(videos.map((v) => (v.id === videoId ? { ...v, links } : v)));
+    },
+    [videos]
+  );
 
   const addQuestion = (videoId: string) => {
     setVideos(
@@ -286,7 +538,7 @@ export default function EditSelectionSession({
               ...v,
               question: {
                 ...v.question,
-                answers: v.question.answers.map((a) =>
+                answers: v.question.answers.map((a: any) =>
                   a.id === answerId ? { ...a, answer_text } : a
                 ),
               },
@@ -304,7 +556,9 @@ export default function EditSelectionSession({
               ...v,
               question: {
                 ...v.question,
-                answers: v.question.answers.filter((a) => a.id !== answerId),
+                answers: v.question.answers.filter(
+                  (a: any) => a.id !== answerId
+                ),
               },
             }
           : v
@@ -315,6 +569,19 @@ export default function EditSelectionSession({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    const toastId = toast.loading(
+      <div className="flex items-center space-x-3">
+        <div>
+          <p className="font-medium">Saving Session</p>
+          <p className="text-sm text-gray-500">
+            Please wait while we save your changes...
+          </p>
+        </div>
+      </div>,
+      {
+        duration: Infinity,
+      }
+    );
 
     try {
       // Get current user
@@ -328,6 +595,8 @@ export default function EditSelectionSession({
         .from("sessions")
         .update({
           title: sessionName,
+          showPlayButton: showPlayButton,
+          associated_with: selectedCompanyId,
         })
         .eq("id", sessionId);
 
@@ -338,9 +607,13 @@ export default function EditSelectionSession({
         .filter((v) => v.db_id)
         .map((v) => v.db_id) as string[];
 
-      // Delete videos that were removed
+      // Delete videos that were removed (excluding navigation videos)
       const { data: existingVideos, error: existingVideosError } =
-        await supabase.from("videos").select("id").eq("session_id", sessionId);
+        await supabase
+          .from("videos")
+          .select("id")
+          .eq("session_id", sessionId)
+          .eq("is_navigation_video", false);
 
       if (existingVideosError) throw existingVideosError;
 
@@ -365,7 +638,7 @@ export default function EditSelectionSession({
         await supabase.from("videos").delete().eq("id", videoId);
       }
 
-      // Process videos (update existing or create new)
+      // First pass: Process all regular videos and create uploadedVideos mapping
       const uploadedVideos: Record<string, string> = {};
 
       for (const [index, video] of videos.entries()) {
@@ -378,7 +651,7 @@ export default function EditSelectionSession({
           const filePath = `${user.id}/${sessionId}/${video.id}.${fileExt}`;
 
           // Delete old file if exists
-          if (video.url) {
+          if (video.url && video.db_id) {
             const oldFilePath = video.url.split("/").slice(3).join("/");
             await supabase.storage.from("videos").remove([oldFilePath]);
           }
@@ -406,6 +679,8 @@ export default function EditSelectionSession({
               title: video.title || video.file?.name || video.title,
               url: videoUrl,
               order_index: index,
+              duration: video.duration,
+              is_navigation_video: false,
             })
             .eq("id", videoDbId);
 
@@ -420,6 +695,8 @@ export default function EditSelectionSession({
               session_id: sessionId,
               is_interactive: false,
               order_index: index,
+              duration: video.duration,
+              is_navigation_video: false,
             })
             .select()
             .single();
@@ -431,8 +708,437 @@ export default function EditSelectionSession({
 
         // Store mapping of temporary ID to actual DB ID
         uploadedVideos[video.id] = videoDbId!;
+      }
 
-        // Handle questions and answers
+      // Handle navigation video - ADDED FROM INTERACTIVE EDIT
+      let navigationVideoDbId: string | null = null;
+      let finalNavigationImageUrl = existingNavigationImageUrl;
+
+      // Upload new navigation button image if provided
+      if (navigationButtonImage) {
+        const imageFileExt = navigationButtonImage.name.split(".").pop();
+        const imageFilePath = `${user.id}/${sessionId}/navigation-button.${imageFileExt}`;
+
+        // Delete old image if exists
+        if (existingNavigationImageUrl) {
+          const oldImagePath = existingNavigationImageUrl
+            .split("/")
+            .slice(3)
+            .join("/");
+          await supabase.storage
+            .from("navigation-images")
+            .remove([oldImagePath]);
+        }
+
+        const { data: imageUploadData, error: imageUploadError } =
+          await supabase.storage
+            .from("navigation-images")
+            .upload(imageFilePath, navigationButtonImage);
+
+        if (imageUploadError) throw imageUploadError;
+
+        const { data: imageUrlData } = supabase.storage
+          .from("navigation-images")
+          .getPublicUrl(imageFilePath);
+
+        finalNavigationImageUrl = imageUrlData.publicUrl;
+      }
+
+      // Handle navigation video
+      if (navigationButtonVideo || existingNavigationVideoUrl) {
+        // Check if navigation video already exists
+        const { data: existingNavVideo, error: navVideoCheckError } =
+          await supabase
+            .from("videos")
+            .select("id, url")
+            .eq("session_id", sessionId)
+            .eq("is_navigation_video", true)
+            .maybeSingle();
+
+        if (navVideoCheckError) throw navVideoCheckError;
+
+        let navigationVideoUrl = existingNavigationVideoUrl;
+        let navigationVideoDuration = 0;
+
+        // Handle new navigation video upload
+        if (navigationButtonVideo) {
+          const videoFileExt = navigationButtonVideo.name.split(".").pop();
+          const videoFilePath = `${user.id}/${sessionId}/navigation-video.${videoFileExt}`;
+
+          // Delete old video file if exists
+          if (existingNavVideo?.url) {
+            const oldVideoPath = existingNavVideo.url
+              .split("/")
+              .slice(3)
+              .join("/");
+            await supabase.storage.from("videos").remove([oldVideoPath]);
+          }
+
+          // Upload new video file
+          const { data: videoUploadData, error: videoUploadError } =
+            await supabase.storage
+              .from("videos")
+              .upload(videoFilePath, navigationButtonVideo);
+
+          if (videoUploadError) throw videoUploadError;
+
+          const { data: videoUrlData } = supabase.storage
+            .from("videos")
+            .getPublicUrl(videoFilePath);
+
+          navigationVideoUrl = videoUrlData.publicUrl;
+          navigationVideoDuration = navigationButtonVideoDuration || 0;
+        } else {
+          // Use existing video duration if no new file uploaded
+          navigationVideoDuration = navigationButtonVideoDuration || 0;
+        }
+
+        // Create or update navigation video record
+        if (existingNavVideo) {
+          // Update existing navigation video
+          const { error: navVideoError } = await supabase
+            .from("videos")
+            .update({
+              title: navigationButtonVideoTitle,
+              url: navigationVideoUrl,
+              duration: navigationVideoDuration,
+              freezeAtEnd: true,
+            })
+            .eq("id", existingNavVideo.id);
+
+          if (navVideoError) throw navVideoError;
+          navigationVideoDbId = existingNavVideo.id;
+        } else {
+          // Create new navigation video
+          const { data: navVideoData, error: navVideoError } = await supabase
+            .from("videos")
+            .insert({
+              title: navigationButtonVideoTitle,
+              url: navigationVideoUrl,
+              session_id: sessionId,
+              is_interactive: false,
+              order_index: -1,
+              duration: navigationVideoDuration,
+              freezeAtEnd: true,
+              destination_video_id: null,
+              is_navigation_video: true,
+            })
+            .select()
+            .single();
+
+          if (navVideoError || !navVideoData) throw navVideoError;
+          navigationVideoDbId = navVideoData.id;
+        }
+
+        // Add navigation video to uploadedVideos mapping for link destination resolution
+        uploadedVideos["navigation-video"] = navigationVideoDbId as string;
+      } else {
+        // Remove navigation video if both were deleted
+        const { data: existingNavVideo, error: navVideoCheckError } =
+          await supabase
+            .from("videos")
+            .select("id, url")
+            .eq("session_id", sessionId)
+            .eq("is_navigation_video", true)
+            .maybeSingle();
+
+        if (!navVideoCheckError && existingNavVideo) {
+          // Delete video file
+          if (existingNavVideo.url) {
+            const oldVideoPath = existingNavVideo.url
+              .split("/")
+              .slice(3)
+              .join("/");
+            await supabase.storage.from("videos").remove([oldVideoPath]);
+          }
+
+          // Delete video record
+          await supabase.from("videos").delete().eq("id", existingNavVideo.id);
+        }
+      }
+
+      // Update session with navigation button data
+      await supabase
+        .from("sessions")
+        .update({
+          navigation_button_image_url: finalNavigationImageUrl,
+          navigation_button_video_id: navigationVideoDbId,
+          navigation_button_video_title: navigationButtonVideoTitle,
+        })
+        .eq("id", sessionId);
+
+      // Second pass: Handle video links with proper destination mapping and image uploads
+      for (const video of videos) {
+        const videoDbId = uploadedVideos[video.id];
+
+        // Delete all existing links for this video first
+        await supabase.from("video_links").delete().eq("video_id", videoDbId);
+
+        if (video.links && video.links.length > 0) {
+          const linkInserts = [];
+
+          for (const link of video.links) {
+            let normalImageUrl = link.normal_state_image;
+            let hoverImageUrl = link.hover_state_image;
+
+            // Upload normal state image if it's a new File object
+            if (link.normalImageFile) {
+              const normalFileExt = link.normalImageFile.name.split(".").pop();
+              const normalFilePath = `${user.id}/${sessionId}/images/${link.id}_normal.${normalFileExt}`;
+
+              // Delete old normal image if exists
+              if (link.normal_state_image) {
+                const oldNormalFilePath = link.normal_state_image
+                  .split("/")
+                  .slice(3)
+                  .join("/");
+                await supabase.storage
+                  .from("video-link-images")
+                  .remove([oldNormalFilePath]);
+              }
+
+              const { error: normalUploadError } = await supabase.storage
+                .from("video-link-images")
+                .upload(normalFilePath, link.normalImageFile);
+
+              if (normalUploadError) throw normalUploadError;
+
+              const { data: normalUrlData } = supabase.storage
+                .from("video-link-images")
+                .getPublicUrl(normalFilePath);
+
+              normalImageUrl = normalUrlData.publicUrl;
+            }
+
+            // Upload hover state image if it's a new File object
+            if (link.hoverImageFile) {
+              const hoverFileExt = link.hoverImageFile.name.split(".").pop();
+              const hoverFilePath = `${user.id}/${sessionId}/images/${link.id}_hover.${hoverFileExt}`;
+
+              // Delete old hover image if exists
+              if (link.hover_state_image) {
+                const oldHoverFilePath = link.hover_state_image
+                  .split("/")
+                  .slice(3)
+                  .join("/");
+                await supabase.storage
+                  .from("video-link-images")
+                  .remove([oldHoverFilePath]);
+              }
+
+              const { error: hoverUploadError } = await supabase.storage
+                .from("video-link-images")
+                .upload(hoverFilePath, link.hoverImageFile);
+
+              if (hoverUploadError) throw hoverUploadError;
+
+              const { data: hoverUrlData } = supabase.storage
+                .from("video-link-images")
+                .getPublicUrl(hoverFilePath);
+
+              hoverImageUrl = hoverUrlData.publicUrl;
+            }
+
+            const linkData: any = {
+              video_id: videoDbId,
+              timestamp_seconds: link.timestamp_seconds,
+              label: link.label,
+              link_type: link.link_type,
+              position_x: link.position_x || 20,
+              duration_ms: link.duration_ms,
+              position_y: link.position_y || 20,
+              normal_state_image: normalImageUrl,
+              hover_state_image: hoverImageUrl,
+              normal_image_width: link.normal_image_width,
+              normal_image_height: link.normal_image_height,
+              hover_image_width: link.hover_image_width,
+              hover_image_height: link.hover_image_height,
+              form_data: link.form_data || null,
+            };
+
+            // Handle different link types
+            if (link.link_type === "url") {
+              linkData.url = link.url;
+              linkData.destination_video_id = null;
+            } else if (
+              (link.link_type === "video" || link.link_type === "form") &&
+              link.destination_video_id
+            ) {
+              linkData.url = null;
+              // Map the temporary video ID to the actual database ID
+              const destinationDbId = uploadedVideos[link.destination_video_id];
+              if (destinationDbId) {
+                linkData.destination_video_id = destinationDbId;
+              } else {
+                console.warn(
+                  `Destination video ${link.destination_video_id} not found for link`
+                );
+                linkData.destination_video_id = null;
+              }
+            } else {
+              // For other link types or no destination
+              linkData.url = null;
+              linkData.destination_video_id = null;
+            }
+
+            linkInserts.push(linkData);
+          }
+
+          const { error: linksError } = await supabase
+            .from("video_links")
+            .insert(linkInserts);
+
+          if (linksError) {
+            console.error("Error inserting video links:", linksError);
+            throw linksError;
+          }
+        }
+      }
+
+      // Handle navigation video links - ADDED FROM INTERACTIVE EDIT
+      if (navigationVideoDbId && navigationButtonVideoLinks.length > 0) {
+        // Delete existing navigation video links
+        await supabase
+          .from("video_links")
+          .delete()
+          .eq("video_id", navigationVideoDbId);
+
+        const navLinkInserts = [];
+
+        for (const link of navigationButtonVideoLinks) {
+          let normalImageUrl = link.normal_state_image;
+          let hoverImageUrl = link.hover_state_image;
+
+          // Upload normal state image if it's a new File object
+          if (link.normalImageFile) {
+            const normalFileExt = link.normalImageFile.name.split(".").pop();
+            const normalFilePath = `${user.id}/${sessionId}/navigation/images/${link.id}_normal.${normalFileExt}`;
+
+            // Delete old normal image if exists
+            if (link.normal_state_image) {
+              const oldNormalFilePath = link.normal_state_image
+                .split("/")
+                .slice(3)
+                .join("/");
+              await supabase.storage
+                .from("video-link-images")
+                .remove([oldNormalFilePath]);
+            }
+
+            const { error: normalUploadError } = await supabase.storage
+              .from("video-link-images")
+              .upload(normalFilePath, link.normalImageFile);
+
+            if (normalUploadError) throw normalUploadError;
+
+            const { data: normalUrlData } = supabase.storage
+              .from("video-link-images")
+              .getPublicUrl(normalFilePath);
+
+            normalImageUrl = normalUrlData.publicUrl;
+          }
+
+          // Upload hover state image if it's a new File object
+          if (link.hoverImageFile) {
+            const hoverFileExt = link.hoverImageFile.name.split(".").pop();
+            const hoverFilePath = `${user.id}/${sessionId}/navigation/images/${link.id}_hover.${hoverFileExt}`;
+
+            // Delete old hover image if exists
+            if (link.hover_state_image) {
+              const oldHoverFilePath = link.hover_state_image
+                .split("/")
+                .slice(3)
+                .join("/");
+              await supabase.storage
+                .from("video-link-images")
+                .remove([oldHoverFilePath]);
+            }
+
+            const { error: hoverUploadError } = await supabase.storage
+              .from("video-link-images")
+              .upload(hoverFilePath, link.hoverImageFile);
+
+            if (hoverUploadError) throw hoverUploadError;
+
+            const { data: hoverUrlData } = supabase.storage
+              .from("video-link-images")
+              .getPublicUrl(hoverFilePath);
+
+            hoverImageUrl = hoverUrlData.publicUrl;
+          }
+
+          // Resolve destination video ID for navigation video links
+          let destinationVideoId = null;
+          if (
+            (link.link_type === "video" || link.link_type === "form") &&
+            link.destination_video_id
+          ) {
+            destinationVideoId = uploadedVideos[link.destination_video_id];
+            if (!destinationVideoId) {
+              console.warn(
+                `Destination video ${link.destination_video_id} not found for navigation video link`
+              );
+            }
+          }
+
+          const navLinkData: any = {
+            video_id: navigationVideoDbId,
+            timestamp_seconds: link.timestamp_seconds,
+            label: link.label,
+            link_type: link.link_type,
+            position_x: link.position_x || 20,
+            position_y: link.position_y || 20,
+            duration_ms: link.duration_ms,
+            normal_state_image: normalImageUrl,
+            hover_state_image: hoverImageUrl,
+            normal_image_width: link.normal_image_width,
+            normal_image_height: link.normal_image_height,
+            hover_image_width: link.hover_image_width,
+            hover_image_height: link.hover_image_height,
+            form_data: link.link_type === "form" ? link.form_data : null,
+          };
+
+          // Handle different link types for navigation video
+          if (link.link_type === "url") {
+            navLinkData.url = link.url;
+            navLinkData.destination_video_id = null;
+          } else if (link.link_type === "video" || link.link_type === "form") {
+            navLinkData.url = null;
+            navLinkData.destination_video_id = destinationVideoId;
+          } else {
+            navLinkData.url = null;
+            navLinkData.destination_video_id = null;
+          }
+
+          navLinkInserts.push(navLinkData);
+        }
+
+        const { error: navLinksError } = await supabase
+          .from("video_links")
+          .insert(navLinkInserts);
+
+        if (navLinksError) {
+          console.error(
+            "Error inserting navigation video links:",
+            navLinksError
+          );
+          throw navLinksError;
+        }
+      } else if (
+        navigationVideoDbId &&
+        navigationButtonVideoLinks.length === 0
+      ) {
+        // If no links but navigation video exists, delete all existing links
+        await supabase
+          .from("video_links")
+          .delete()
+          .eq("video_id", navigationVideoDbId);
+      }
+
+      // Third pass: Handle questions and answers
+      for (const video of videos) {
+        const videoDbId = uploadedVideos[video.id];
+
         if (video.question) {
           if (video.question.db_id) {
             // Update existing question
@@ -448,8 +1154,8 @@ export default function EditSelectionSession({
 
             // Process answers
             const existingAnswerIds = video.question.answers
-              .filter((a) => a.db_id)
-              .map((a) => a.db_id) as string[];
+              .filter((a: any) => a.db_id)
+              .map((a: any) => a.db_id) as string[];
 
             // Delete answers that were removed
             const { data: existingAnswers } = await supabase
@@ -535,17 +1241,20 @@ export default function EditSelectionSession({
       }
 
       // Handle solutions
-      const existingSolutionIds = solutions.map(s => s.id);
-      
+      const existingSolutionIds = solutions.map((s) => s.id);
+
       // Delete solutions that were removed
-      const { data: existingSolutions, error: existingSolutionsError } = 
-        await supabase.from("solutions").select("id").eq("session_id", sessionId);
-      
+      const { data: existingSolutions, error: existingSolutionsError } =
+        await supabase
+          .from("solutions")
+          .select("id")
+          .eq("session_id", sessionId);
+
       if (existingSolutionsError) throw existingSolutionsError;
 
       const solutionsToDelete = existingSolutions
-        .filter(s => !existingSolutionIds.includes(s.id))
-        .map(s => s.id);
+        .filter((s) => !existingSolutionIds.includes(s.id))
+        .map((s) => s.id);
 
       for (const solutionId of solutionsToDelete) {
         await supabase.from("solutions").delete().eq("id", solutionId);
@@ -563,13 +1272,16 @@ export default function EditSelectionSession({
         if (solution.category_id === 1) {
           solutionData.form_data = solution.form_data;
         } else if (solution.category_id === 2) {
-          solutionData.email_content = solution.emailContent || solution.emailTarget;
+          solutionData.email_content =
+            solution.emailContent || solution.emailTarget;
         } else if (solution.category_id === 3) {
           solutionData.link_url = solution.link_url;
         } else if (solution.category_id === 4) {
           if (solution.videoFile) {
             const fileExt = solution.videoFile.name.split(".").pop();
-            const filePath = `${user.id}/${sessionId}/solutions/${uuidv4()}.${fileExt}`;
+            const filePath = `${
+              user.id
+            }/${sessionId}/solutions/${uuidv4()}.${fileExt}`;
 
             // Delete old solution video if exists
             if (solution.video_url) {
@@ -602,22 +1314,52 @@ export default function EditSelectionSession({
             .from("solutions")
             .update(solutionData)
             .eq("id", solution.id);
-          
+
           if (solutionError) throw solutionError;
         } else {
           // Create new solution
           const { error: solutionError } = await supabase
             .from("solutions")
             .insert(solutionData);
-          
+
           if (solutionError) throw solutionError;
         }
       }
 
+      toast.success(
+        <div className="flex items-center space-x-3">
+          <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+            <Check className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <p className="font-medium">Session Saved!</p>
+            <p className="text-sm text-gray-500">
+              Your changes have been successfully saved.
+            </p>
+          </div>
+        </div>,
+        { id: toastId, duration: 3000 }
+      );
+
       router.push("/sessions");
+      showToast("success", "Selection Session updated successfully!");
     } catch (error) {
       console.error("Error updating session:", error);
-      alert("Failed to update session. Please try again.");
+      showToast("error", "Error updating Selection Session");
+      toast.error(
+        <div className="flex items-center space-x-3">
+          <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+            <X className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <p className="font-medium">Save Failed</p>
+            <p className="text-sm text-gray-500">
+              There was an error saving your session.
+            </p>
+          </div>
+        </div>,
+        { id: toastId, duration: 5000 }
+      );
     } finally {
       setIsLoading(false);
     }
@@ -630,15 +1372,20 @@ export default function EditSelectionSession({
       id: uuidv4(),
       category_id: selectedCategory,
       session_id: sessionId,
-      form_data: selectedCategory === 1 ? {
-        title: "",
-        elements: [{
-          id: `elem-${Date.now()}`,
-          type: "text",
-          label: "Name",
-          value: "",
-        }]
-      } : null,
+      form_data:
+        selectedCategory === 1
+          ? {
+              title: "",
+              elements: [
+                {
+                  id: `elem-${Date.now()}`,
+                  type: "text",
+                  label: "Name",
+                  value: "",
+                },
+              ],
+            }
+          : null,
       emailTarget: selectedCategory === 2 ? "" : undefined,
       emailContent: selectedCategory === 2 ? "" : undefined,
       link_url: selectedCategory === 3 ? "" : undefined,
@@ -652,7 +1399,7 @@ export default function EditSelectionSession({
   };
 
   const removeSolution = (solutionId: string) => {
-    setSolutions(solutions.filter(s => s.id !== solutionId));
+    setSolutions(solutions.filter((s) => s.id !== solutionId));
     if (editingSolutionId === solutionId) {
       setEditingSolutionId(null);
       setEditingSolutionDraft(null);
@@ -660,7 +1407,7 @@ export default function EditSelectionSession({
   };
 
   const startEditingSolution = (solutionId: string) => {
-    const solutionToEdit = solutions.find(s => s.id === solutionId);
+    const solutionToEdit = solutions.find((s) => s.id === solutionId);
     if (solutionToEdit) {
       setEditingSolutionId(solutionId);
       setEditingSolutionDraft({ ...solutionToEdit });
@@ -675,9 +1422,11 @@ export default function EditSelectionSession({
 
   const saveSolution = () => {
     if (editingSolutionDraft && editingSolutionId) {
-      setSolutions(solutions.map(s => 
-        s.id === editingSolutionId ? { ...editingSolutionDraft } : s
-      ));
+      setSolutions(
+        solutions.map((s) =>
+          s.id === editingSolutionId ? { ...editingSolutionDraft } : s
+        )
+      );
       setEditingSolutionId(null);
       setEditingSolutionDraft(null);
     }
@@ -690,17 +1439,29 @@ export default function EditSelectionSession({
 
   if (isFetching) {
     return (
-      <div className="container mx-auto py-8">
+      <div className="container mx-auto py-8 max-w-4xl">
         <div className="flex justify-center items-center h-64">
-               <div><Loader size="md"/></div>;
-          
+          <div>
+            <Loader size="md" />
+          </div>
         </div>
       </div>
     );
   }
 
+  const hasAtLeastOneVideo = videos.some((video) => video.file || video.url);
+
   return (
-    <div className="container mx-auto py-8">
+    <div className="container mx-auto">
+      <div>
+        <Link href="/sessions">
+          <p className="mt-2 text-[16px] font-normal text-[#5F6D7E] max-w-md cursor-pointer hover:underline">
+            Back to Session Maker
+          </p>
+        </Link>
+
+        <Heading>Edit Session</Heading>
+      </div>
       <form onSubmit={handleSubmit}>
         <Card className="border-none shadow-none px-3">
           <CardHeader className="px-0">
@@ -730,10 +1491,37 @@ export default function EditSelectionSession({
                   required
                 />
               </div>
+
+              {/* ADDED COMPANY SELECTION */}
+              <div className="space-y-1">
+                <Label
+                  htmlFor="company"
+                  className="text-sm font-medium text-gray-700"
+                >
+                  Associated Company
+                </Label>
+                <Select
+                  value={selectedCompanyId}
+                  onValueChange={(id) => setSelectedCompanyId(id)}
+                >
+                  <SelectTrigger className="h-10 w-1/2">
+                    <SelectValue placeholder="Select a company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {comapnies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.first_name || company.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <div className="mt-8">
-              <h3 className="text-lg font-medium mb-4">Videos</h3>
+              <h3 className="text-lg font-medium mb-4">
+                Videos with Questions
+              </h3>
 
               <div className="space-y-4">
                 {videos.map((video) => (
@@ -786,15 +1574,18 @@ export default function EditSelectionSession({
 
                     {video.isExpanded && (
                       <div className="p-4 space-y-4 bg-white">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                          {/* <VideoUploadWithLinks
+                        <div className="grid grid-cols-1 gap-4">
+                          <VideoUploadWithLinks
                             video={video}
-                            moduleId={video.id}
-                            onDelete={() => removeVideo(video.id)}
-                            handleFileChange={(file) =>
-                              handleFileChange(video.id, file)
+                            availableVideos={availableVideos}
+                            onFileChange={(file, duration) =>
+                              handleFileChange(video.id, file, duration)
                             }
-                          /> */}
+                            onLinksChange={(links) =>
+                              handleLinksChange(video.id, links)
+                            }
+                            onDelete={() => removeVideo(video.id)}
+                          />
                         </div>
 
                         {video.question ? (
@@ -813,7 +1604,7 @@ export default function EditSelectionSession({
 
                             <div className="space-y-3">
                               <Label>Answers</Label>
-                              {video.question.answers.map((answer) => (
+                              {video.question.answers.map((answer: any) => (
                                 <div
                                   key={answer.id}
                                   className="grid grid-cols-12 gap-3 items-center"
@@ -901,6 +1692,37 @@ export default function EditSelectionSession({
               </div>
             </div>
 
+            {/* ADDED NAVIGATION BUTTON SECTION */}
+            <NavigationButtonSection
+              navigationButtonImage={navigationButtonImage}
+              navigationButtonVideo={navigationButtonVideo}
+              navigationButtonVideoUrl={navigationButtonVideoUrl}
+              navigationButtonVideoTitle={navigationButtonVideoTitle}
+              navigationButtonVideoDuration={navigationButtonVideoDuration}
+              navigationButtonVideoLinks={navigationButtonVideoLinks}
+              availableVideos={availableVideos}
+              onImageChange={handleNavigationImageChange}
+              onVideoChange={handleNavigationVideoChange}
+              onVideoTitleChange={handleNavigationVideoTitleChange}
+              onVideoLinksChange={handleNavigationVideoLinksChange}
+              onRemoveImage={handleRemoveNavigationImage}
+              onRemoveVideo={handleRemoveNavigationVideo}
+              existingImageUrl={existingNavigationImageUrl}
+              existingVideoUrl={existingNavigationVideoUrl}
+            />
+
+            {/* ADDED SHOW PLAY BUTTON SWITCH */}
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={showPlayButton}
+                onCheckedChange={setShowPlayButton}
+                id="show-play-button"
+              />
+              <Label htmlFor="show-play-button">
+                Show play/pause button (iFrame)
+              </Label>
+            </div>
+
             {/* Solutions Section */}
             <div className="mt-8 border rounded-lg">
               <button
@@ -974,10 +1796,7 @@ export default function EditSelectionSession({
                               >
                                 Cancel
                               </Button>
-                              <Button
-                                onClick={saveSolution}
-                                className="h-10"
-                              >
+                              <Button onClick={saveSolution} className="h-10">
                                 Save
                               </Button>
                             </div>
@@ -995,27 +1814,32 @@ export default function EditSelectionSession({
                                   Form solution
                                 </p>
                               )}
-                              {solution.category_id === 2 && solution.emailTarget && (
-                                <p className="text-sm text-gray-600 truncate">
-                                  Email: {solution.emailTarget}
-                                </p>
-                              )}
-                              {solution.category_id === 3 && solution.link_url && (
-                                <p className="text-sm text-gray-600 truncate">
-                                  Link: {solution.link_url}
-                                </p>
-                              )}
-                              {solution.category_id === 4 && solution.video_url && (
-                                <p className="text-sm text-gray-600 truncate">
-                                  Video solution
-                                </p>
-                              )}
+                              {solution.category_id === 2 &&
+                                solution.emailTarget && (
+                                  <p className="text-sm text-gray-600 truncate">
+                                    Email: {solution.emailTarget}
+                                  </p>
+                                )}
+                              {solution.category_id === 3 &&
+                                solution.link_url && (
+                                  <p className="text-sm text-gray-600 truncate">
+                                    Link: {solution.link_url}
+                                  </p>
+                                )}
+                              {solution.category_id === 4 &&
+                                solution.video_url && (
+                                  <p className="text-sm text-gray-600 truncate">
+                                    Video solution
+                                  </p>
+                                )}
                             </div>
                             <div className="flex gap-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => startEditingSolution(solution.id)}
+                                onClick={() =>
+                                  startEditingSolution(solution.id)
+                                }
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -1050,7 +1874,7 @@ export default function EditSelectionSession({
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || !hasAtLeastOneVideo}
                   className="h-10 px-6"
                 >
                   {isLoading ? "Saving..." : "Save Changes"}
