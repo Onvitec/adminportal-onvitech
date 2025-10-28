@@ -441,7 +441,7 @@ function VideoPlayerWithDraggableImages({
             <div
               key={link.id}
               className="absolute top-0 h-full flex flex-col items-center z-10"
-              // style={{ left: `${(link.timestamp_seconds / duration) * 100}%` }}
+              style={{ left: `${(link.timestamp_seconds / duration) * 100}%` }} // ✅ UNCOMMENT THIS LINE
             >
               <Clock
                 className={`w-3 h-3 ${
@@ -1402,18 +1402,64 @@ function VideoUploadWithLinksComponent({
         open={isModalOpen}
         onOpenChange={(open) => {
           if (!open) {
-            // Use the better comparison function
+            // Check if there are unsaved changes
             const hasChanges = areFormsDifferentFromLinks(
               buttonForms,
               video.links || []
             );
 
             if (hasChanges && buttonForms.length > 0) {
-              unsavedChangesRef.current = buttonForms;
-            } else {
-              unsavedChangesRef.current = [];
+              // Show confirmation dialog before closing
+
+              // User confirmed, clean up blob URLs and reset state
+              buttonForms.forEach((form) => {
+                if (form.normalImagePreview?.startsWith("blob:")) {
+                  URL.revokeObjectURL(form.normalImagePreview);
+                }
+                if (form.hoverImagePreview?.startsWith("blob:")) {
+                  URL.revokeObjectURL(form.hoverImagePreview);
+                }
+              });
+
+              // Reset to original state
+              if (video.links && video.links.length > 0) {
+                setButtonForms(
+                  video.links.map((link) => ({
+                    id: link.id,
+                    label: link.label,
+                    url: link.url || "",
+                    timestamp: link.timestamp_seconds.toString(),
+                    linkType: link.link_type,
+                    destinationVideoId: link.destination_video_id || "",
+                    position_x: link.position_x || 20,
+                    position_y: link.position_y || 20,
+                    duration_ms: link.duration_ms,
+                    normalImageFile: link.normalImageFile || null,
+                    hoverImageFile: link.hoverImageFile || null,
+                    normal_image_width: link.normal_image_width || 100,
+                    normal_image_height: link.normal_image_height || 100,
+                    hover_image_width: link.hover_image_width || 100,
+                    hover_image_height: link.hover_image_height || 100,
+                    normal_state_image: link.normal_state_image,
+                    hover_state_image: link.hover_state_image,
+                    normalImagePreview: link.normalImageFile
+                      ? URL.createObjectURL(link.normalImageFile)
+                      : link.normalImagePreview,
+                    hoverImagePreview: link.hoverImageFile
+                      ? URL.createObjectURL(link.hoverImageFile)
+                      : link.hoverImagePreview,
+                    formData: link.form_data as FormSolutionData | undefined,
+                  }))
+                );
+              } else {
+                setButtonForms([]);
+              }
             }
+
+            // Clear unsaved changes reference
+            unsavedChangesRef.current = [];
           }
+
           setIsModalOpen(open);
           if (!open) {
             setIsEditMode(false);

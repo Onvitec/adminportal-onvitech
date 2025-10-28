@@ -83,3 +83,14 @@ export const exportLeadToPDF = (lead: any) => {
   // Save PDF
   doc.save(`${lead.form_title || "lead"}-${lead.id}.pdf`);
 };
+
+
+export function formatTimestamp(seconds:number) {
+  const mins = Math.floor(seconds / 60);
+  const secs = (seconds % 60).toFixed(1); // keeps .5 etc.
+
+  if (mins > 0) {
+    return `${mins}m ${secs}s`;
+  }
+  return `${secs}s`;
+}

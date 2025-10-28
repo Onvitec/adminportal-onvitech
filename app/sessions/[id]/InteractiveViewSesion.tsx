@@ -34,6 +34,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
 import Heading from "@/components/Heading";
+import { formatTimestamp } from "@/lib/helper";
 
 type ViewVideo = {
   id: string;
@@ -383,75 +384,92 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                             Video Links ({video.links.length})
                           </Label>
                           <p className="text-sm text-neutral-500">
-                            Interactive links that appear at specific timestamps during video playback
+                            Interactive links that appear at specific timestamps
+                            during video playback
                           </p>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {video.links.map((link) => (
-                              <div
-                                key={link.id}
-                                className="flex items-start gap-3 p-4 border border-neutral-200 rounded-lg bg-white hover:bg-neutral-50 transition-colors"
-                              >
-                                {link.normal_state_image && (
-                                  <img
-                                    src={link.normal_state_image}
-                                    alt={link.label}
-                                    className="w-16 h-16 object-cover rounded-md flex-shrink-0"
-                                  />
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <span className="font-medium text-sm text-neutral-900 truncate">
-                                      {link.label}
-                                    </span>
-                                    <span
-                                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getLinkTypeColor(
-                                        link.link_type
-                                      )}`}
-                                    >
-                                      {getLinkTypeIcon(link.link_type)}
-                                      {link.link_type}
-                                    </span>
-                                  </div>
-                                  
-                                  <div className="space-y-1 text-xs text-neutral-600">
-                                    <div className="flex items-center gap-1">
-                                      <Clock className="h-3 w-3" />
-                                      Appears at: {formatTime(link.timestamp_seconds)}
+
+                          <div className="overflow-x-auto flex gap-4">
+                            {video.links.map((link) => {
+                              const appearsAt = formatTimestamp(
+                                link.timestamp_seconds
+                              );
+                              const durationSeconds = link.duration_ms
+                                ? `${(link.duration_ms / 1000).toFixed(1)}s`
+                                : null;
+
+                              return (
+                                <div
+                                  key={link.id}
+                                  className="flex items-start gap-3 p-4 border border-neutral-200 rounded-lg bg-white hover:bg-neutral-50 transition-colors"
+                                >
+                                  {link.normal_state_image && (
+                                    <img
+                                      src={link.normal_state_image}
+                                      alt={link.label}
+                                      className="w-16 h-16 object-cover rounded-md flex-shrink-0"
+                                    />
+                                  )}
+
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <span className="font-medium text-sm text-neutral-900 truncate">
+                                        {link.label}
+                                      </span>
+                                      <span
+                                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getLinkTypeColor(
+                                          link.link_type
+                                        )}`}
+                                      >
+                                        {getLinkTypeIcon(link.link_type)}
+                                        {link.link_type}
+                                      </span>
                                     </div>
-                                    
-                                    <div className="flex items-center gap-1">
-                                      📍 Position: ({link.position_x}%, {link.position_y}%)
+
+                                    <div className="space-y-1 text-xs text-neutral-600">
+                                      <div className="flex items-center gap-1">
+                                        <Clock className="h-3 w-3" />
+                                        Appears at: {appearsAt}
+                                      </div>
+
+                                      <div className="flex items-center gap-1">
+                                        📍 Position: ({link.position_x}%,{" "}
+                                        {link.position_y}%)
+                                      </div>
+
+                                      {durationSeconds && (
+                                        <div className="flex items-center gap-1">
+                                          ⏱️ Duration: {durationSeconds}
+                                        </div>
+                                      )}
+
+                                      {link.link_type === "url" && link.url && (
+                                        <div className="truncate">
+                                          🔗 URL: {link.url}
+                                        </div>
+                                      )}
+
+                                      {link.link_type === "video" &&
+                                        link.destination_video_title && (
+                                          <div className="flex items-center gap-1">
+                                            <Video className="h-3 w-3" />
+                                            Destination:{" "}
+                                            {link.destination_video_title}
+                                          </div>
+                                        )}
+
+                                      {link.link_type === "form" &&
+                                        link.form_data && (
+                                          <div className="flex items-center gap-1">
+                                            📋 Form:{" "}
+                                            {link.form_data.title ||
+                                              "Custom Form"}
+                                          </div>
+                                        )}
                                     </div>
-
-                                    {link.duration_ms && (
-                                      <div className="flex items-center gap-1">
-                                        ⏱️ Duration: {link.duration_ms}ms
-                                      </div>
-                                    )}
-
-                                    {link.link_type === "url" && link.url && (
-                                      <div className="truncate">
-                                        🔗 URL: {link.url}
-                                      </div>
-                                    )}
-
-                                    {link.link_type === "video" && link.destination_video_title && (
-                                      <div className="flex items-center gap-1">
-                                        <Video className="h-3 w-3" />
-                                        Destination: {link.destination_video_title}
-                                      </div>
-                                    )}
-
-                                    {link.link_type === "form" && link.form_data && (
-                                      <div className="flex items-center gap-1">
-                                        📋 Form: {link.form_data.title || "Custom Form"}
-                                      </div>
-                                    )}
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -489,16 +507,17 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                           </div>
                         </div>
 
-                        {!video.freezeAtEnd && video.destination_video_title && (
-                          <div className="mt-3 p-2 bg-blue-50 rounded-md border border-blue-200">
-                            <div className="text-sm text-blue-800">
-                              Next Video:{" "}
-                              <span className="font-medium">
-                                {video.destination_video_title}
-                              </span>
+                        {!video.freezeAtEnd &&
+                          video.destination_video_title && (
+                            <div className="mt-3 p-2 bg-blue-50 rounded-md border border-blue-200">
+                              <div className="text-sm text-blue-800">
+                                Next Video:{" "}
+                                <span className="font-medium">
+                                  {video.destination_video_title}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
                       </div>
 
                       {/* Question Section */}
@@ -677,7 +696,8 @@ export function InteractiveSessionView({ sessionId }: { sessionId: string }) {
                                         At {formatTime(link.timestamp_seconds)}
                                       </div>
                                       <div className="flex items-center gap-1">
-                                        📍 Position: ({link.position_x}%, {link.position_y}%)
+                                        📍 Position: ({link.position_x}%,{" "}
+                                        {link.position_y}%)
                                       </div>
                                       {link.duration_ms && (
                                         <div className="flex items-center gap-1">
