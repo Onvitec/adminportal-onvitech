@@ -20,7 +20,7 @@ import { useMediaQuery } from "../../hooks/use-media-query";
 import { useRouter } from "next/navigation";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { toast } from 'sonner';
+import { toast } from "sonner";
 import { showToast } from "../toast";
 
 interface DashboardLayoutProps {
@@ -33,7 +33,6 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
     email?: string;
     username?: string;
   } | null>(null);
-  console.log("user", user);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const router = useRouter();
   const pathname = usePathname();
@@ -179,9 +178,7 @@ export function CustomLayout({ children }: DashboardLayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 bg-[#F2F7FC]">
-          {children}
-        </main>
+        <main className="flex-1 p-4 md:p-6 bg-[#F2F7FC]">{children}</main>
       </div>
     </div>
   );

@@ -140,8 +140,7 @@ const UsersTable = () => {
   );
 
   const handleRowClick = (row: UserType) => {
-    console.log("Ckucjed");
-    
+""    
     router.push(`/company-management/${row.id}`);
   };
 

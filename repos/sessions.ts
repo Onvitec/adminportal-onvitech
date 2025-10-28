@@ -26,7 +26,6 @@ export const fetchSessions = async () => {
             ) / watchEntries.length
           : 0;
 
-      console.log("SESSION", session);
       return {
         ...session,
         company_name: session.users?.first_name || "—",

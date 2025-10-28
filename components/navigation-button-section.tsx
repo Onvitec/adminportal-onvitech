@@ -66,19 +66,22 @@ export function NavigationButtonSection({
   };
 
   const getImagePreview = () => {
-    if (navigationButtonImage) return URL.createObjectURL(navigationButtonImage);
+    if (navigationButtonImage)
+      return URL.createObjectURL(navigationButtonImage);
     if (existingImageUrl) return existingImageUrl;
     return null;
   };
 
   const getVideoPreview = () => {
-    if (navigationButtonVideo) return URL.createObjectURL(navigationButtonVideo);
+    if (navigationButtonVideo)
+      return URL.createObjectURL(navigationButtonVideo);
     if (existingVideoUrl) return existingVideoUrl;
     return navigationButtonVideoUrl;
   };
 
   // ✅ Check if we have any video content
-  const hasVideoContent = navigationButtonVideo || existingVideoUrl || navigationButtonVideoUrl;
+  const hasVideoContent =
+    navigationButtonVideo || existingVideoUrl || navigationButtonVideoUrl;
 
   // ✅ Stable video data for VideoUploadWithLinks
   const videoData = useMemo(
@@ -273,14 +276,23 @@ export function NavigationButtonSection({
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      handleVideoUpload(file, 0);
-
+                      // ✅ Calculate duration properly
                       const videoElement = document.createElement("video");
                       videoElement.preload = "metadata";
+
                       videoElement.onloadedmetadata = function () {
                         window.URL.revokeObjectURL(videoElement.src);
-                        onVideoChange(file, Math.round(videoElement.duration));
+                        const duration = Math.round(videoElement.duration);
+
+                        handleVideoUpload(file, duration);
                       };
+
+                      videoElement.onerror = function () {
+                        console.error("Error loading video metadata");
+                        // Fallback: upload without duration, it can be calculated later
+                        handleVideoUpload(file, 0);
+                      };
+
                       videoElement.src = URL.createObjectURL(file);
                     }
                   }}

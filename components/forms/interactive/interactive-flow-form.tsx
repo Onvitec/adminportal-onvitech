@@ -172,6 +172,7 @@ export default function InteractiveSessionForm() {
 
       if (file === null) {
         setNavigationButtonVideoUrl("");
+        setNavigationButtonVideoDuration(0);
       }
     },
     []

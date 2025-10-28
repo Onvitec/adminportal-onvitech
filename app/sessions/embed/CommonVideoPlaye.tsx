@@ -327,6 +327,7 @@ export function CommonVideoPlayer({
   const videoRef = useRef<HTMLVideoElement>(null);
   const videoContainerRef = useRef<HTMLDivElement>(null);
   const mouseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isAtLastFrame, setIsAtLastFrame] = useState(false);
 
   // Video rect state for precise positioning
   const [videoRect, setVideoRect] = useState<{
@@ -598,6 +599,7 @@ export function CommonVideoPlayer({
         setIsPlaying(false);
         setShowControls(true);
         // Don't show freeze controls for navigation videos
+        setIsAtLastFrame(true);
       } else {
         setIsPlaying(false);
         setShowControls(true);
@@ -605,6 +607,10 @@ export function CommonVideoPlayer({
       }
     }
   };
+  // Reset isAtLastFrame when video changes or restarts
+  useEffect(() => {
+    setIsAtLastFrame(false);
+  }, [currentVideo]);
 
   const handleRestartVideo = () => {
     if (videoRef.current && currentVideo) {
@@ -612,6 +618,7 @@ export function CommonVideoPlayer({
       videoRef.current.play();
       setIsPlaying(true);
       setShowFreezeControls(false);
+       setIsAtLastFrame(false); 
       setMouseActive(true);
       resetMouseTimeout();
 
@@ -679,10 +686,9 @@ export function CommonVideoPlayer({
       {/* CRITICAL FIX: Only show navigation button when conditions are met */}
       {shouldShowNavigationButton() && (
         <div
-          className="absolute z-30 cursor-pointer transition-transform duration-200 hover:scale-110"
+          className="absolute z-30 cursor-pointer transition-transform duration-200"
           style={getNavigationButtonPosition()}
           onClick={onNavigationButtonClick}
-          title={`Play: ${navigationButton!.video_title}`}
         >
           <div className="relative">
             <img
@@ -727,41 +733,43 @@ export function CommonVideoPlayer({
         </div>
       )}
 
-      {!isPlaying && !showFreezeControls && (
-        <div
-          className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${
-            mouseActive || !isPlaying ? "opacity-100" : "opacity-0"
-          }`}
-          onClick={togglePlayPause}
-        >
+      {!isPlaying &&
+        !showFreezeControls &&
+        !(isNavigationVideo && isAtLastFrame) && (
           <div
-            className={`bg-white/30 ${
-              !sessionShowPlayButton && "opacity-0"
-            } backdrop-blur-sm rounded-full p-4 shadow-lg border border-white/60 flex items-center justify-center transform transition-all duration-300 hover:scale-110`}
+            className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${
+              mouseActive || !isPlaying ? "opacity-100" : "opacity-0"
+            }`}
+            onClick={togglePlayPause}
           >
-            {isPlaying ? (
-              <div className="w-10 h-10 flex items-center justify-center">
-                <div className="w-2 h-8 bg-white mx-1"></div>
-                <div className="w-2 h-8 bg-white mx-1"></div>
-              </div>
-            ) : (
-              <div className="">
-                <svg
-                  className="w-10 h-10 text-white"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-            )}
+            <div
+              className={`bg-white/30 ${
+                !sessionShowPlayButton && "opacity-0"
+              } backdrop-blur-sm rounded-full p-4 shadow-lg border border-white/60 flex items-center justify-center transform transition-all duration-300 hover:scale-110`}
+            >
+              {isPlaying ? (
+                <div className="w-10 h-10 flex items-center justify-center">
+                  <div className="w-2 h-8 bg-white mx-1"></div>
+                  <div className="w-2 h-8 bg-white mx-1"></div>
+                </div>
+              ) : (
+                <div className="">
+                  <svg
+                    className="w-10 h-10 text-white"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Form Display */}
       {currentForm && onFormSubmit && onFormCancel && (
