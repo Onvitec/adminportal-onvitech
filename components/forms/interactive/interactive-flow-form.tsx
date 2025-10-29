@@ -201,23 +201,25 @@ export default function InteractiveSessionForm() {
     );
   };
 
-  // In your parent component
   const handleFileChange = useCallback(
     (videoId: string, file: File | null, duration: number) => {
       setVideos(
-        videos.map((v) =>
-          v.id === videoId
-            ? {
-                ...v,
-                file,
-                duration,
-                title: file?.name.split(".")[0] || v.title,
-              }
-            : v
-        )
+        (
+          prevVideos //
+        ) =>
+          prevVideos.map((v) =>
+            v.id === videoId
+              ? {
+                  ...v,
+                  file,
+                  duration,
+                  title: file?.name.split(".")[0] || v.title,
+                }
+              : v
+          )
       );
     },
-    [videos]
+    []
   );
 
   const handleLinksChange = useCallback(
@@ -950,7 +952,6 @@ export default function InteractiveSessionForm() {
                           size="sm"
                           onClick={() => removeVideo(video.id)}
                           className="h-8 w-8 p-0 text-gray-500 hover:text-gray-900"
-                          disabled={videos.length === 1}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
