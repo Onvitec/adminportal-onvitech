@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
-import { solutionCategories } from "@/lib/utils";
+import { safeUpload, solutionCategories } from "@/lib/utils";
 import { VideoUploadWithLinks } from "../videoo-upload";
 import { Solution, SolutionCategory, UserType, VideoLink } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
@@ -454,19 +454,17 @@ export default function InteractiveSessionForm() {
       let finalNavigationImageUrl = "";
 
       if (navigationButtonVideo) {
-        const videoFileExt = navigationButtonVideo.name.split(".").pop();
-        const videoFilePath = `${userId}/${sessionData.id}/navigation-video.${videoFileExt}`;
-
-        const { data: videoUploadData, error: videoUploadError } =
-          await supabase.storage
-            .from("navigation-videos")
-            .upload(videoFilePath, navigationButtonVideo);
-
-        if (videoUploadError) throw videoUploadError;
+        const { data: uploadData, filePath } = await safeUpload(
+          navigationButtonVideo,
+          "navigation-videos",
+          "navigation-video",
+          userId,
+          sessionData.id
+        );
 
         const { data: videoUrlData } = supabase.storage
           .from("navigation-videos")
-          .getPublicUrl(videoFilePath);
+          .getPublicUrl(filePath);
 
         // Create navigation video record
         const { data: navVideoData, error: navVideoError } = await supabase
@@ -490,21 +488,19 @@ export default function InteractiveSessionForm() {
         navigationVideoDbId = navVideoData.id;
       }
 
-      // Upload navigation button image if provided
+      // Navigation image upload in create form
       if (navigationButtonImage) {
-        const imageFileExt = navigationButtonImage.name.split(".").pop();
-        const imageFilePath = `${userId}/${sessionData.id}/navigation-button.${imageFileExt}`;
-
-        const { data: imageUploadData, error: imageUploadError } =
-          await supabase.storage
-            .from("navigation-images")
-            .upload(imageFilePath, navigationButtonImage);
-
-        if (imageUploadError) throw imageUploadError;
+        const { data: uploadData, filePath } = await safeUpload(
+          navigationButtonImage,
+          "navigation-images",
+          "navigation-button",
+          userId,
+          sessionData.id
+        );
 
         const { data: imageUrlData } = supabase.storage
           .from("navigation-images")
-          .getPublicUrl(imageFilePath);
+          .getPublicUrl(filePath);
 
         finalNavigationImageUrl = imageUrlData.publicUrl;
       }

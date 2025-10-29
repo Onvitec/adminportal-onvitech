@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
-
+import { supabase } from "./supabase";
+import { uuid } from 'uuidv4';
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
@@ -10,6 +11,53 @@ export const solutionCategories = [
   { id: 3, name: "Link" },
   { id: 4, name: "Video Solution" },
 ];
+
+export const safeUpload = async (
+  file: File,
+  bucket: string,
+  basePath: string,
+  userId: string,
+  sessionId: string
+) => {
+  const fileExt = file.name.split(".").pop();
+  const uniqueId = uuid();
+  const filePath = `${userId}/${sessionId}/${basePath}-${uniqueId}.${fileExt}`;
+
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, file, { upsert: false });
+
+    if (error) throw error;
+    return { data, filePath };
+  } catch (error: any) {
+    if (error.statusCode === "409" || error.message?.includes("Duplicate")) {
+      // Retry with timestamp-based unique name
+      const timestamp = Date.now();
+      const retryFilePath = `${userId}/${sessionId}/${basePath}-${timestamp}.${fileExt}`;
+
+      const { data, error: retryError } = await supabase.storage
+        .from(bucket)
+        .upload(retryFilePath, file);
+
+      if (retryError) throw retryError;
+      return { data, filePath: retryFilePath };
+    }
+    throw error;
+  }
+};
+
+export const deleteFileByUrl = async (fileUrl: string, bucket: string) => {
+  if (!fileUrl) return;
+
+  try {
+    const filePath = fileUrl.split("/").slice(3).join("/");
+    await supabase.storage.from(bucket).remove([filePath]);
+  } catch (error) {
+    console.warn("Failed to delete file:", error);
+    // Don't throw - failing to delete old files shouldn't break the main flow
+  }
+};
 
 export const buildEmailTemplate = (
   title: string,

@@ -35,7 +35,12 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/lib/supabase";
 import { v4 as uuidv4 } from "uuid";
-import { cn, solutionCategories } from "@/lib/utils";
+import {
+  cn,
+  deleteFileByUrl,
+  safeUpload,
+  solutionCategories,
+} from "@/lib/utils";
 import { Solution, SolutionCategory, UserType, VideoLink } from "@/lib/types";
 import { SolutionCard } from "@/components/SolutionCard";
 import { toast } from "sonner";
@@ -458,6 +463,11 @@ export default function EditInteractiveSession({
   // Navigation Button Handlers
   const handleNavigationImageChange = useCallback((file: File | null) => {
     setNavigationButtonImage(file);
+    if (file) {
+      // Clear existing URLs when new file is selected
+      setExistingNavigationImageUrl("");
+      setNavigationButtonImageUrl("");
+    }
   }, []);
 
   const handleNavigationVideoChange = useCallback((file: File | null) => {
@@ -803,32 +813,27 @@ export default function EditInteractiveSession({
       let navigationVideoDbId: string | null = null;
       let finalNavigationImageUrl = existingNavigationImageUrl;
 
-      // Upload new navigation button image if provided
+      // Navigation image upload in edit form
       if (navigationButtonImage) {
-        const imageFileExt = navigationButtonImage.name.split(".").pop();
-        const imageFilePath = `${user.id}/${sessionId}/navigation-button.${imageFileExt}`;
-
-        // Delete old image if exists
+        // Delete old image first
         if (existingNavigationImageUrl) {
-          const oldImagePath = existingNavigationImageUrl
-            .split("/")
-            .slice(3)
-            .join("/");
-          await supabase.storage
-            .from("navigation-images")
-            .remove([oldImagePath]);
+          await deleteFileByUrl(
+            existingNavigationImageUrl,
+            "navigation-images"
+          );
         }
 
-        const { data: imageUploadData, error: imageUploadError } =
-          await supabase.storage
-            .from("navigation-images")
-            .upload(imageFilePath, navigationButtonImage);
-
-        if (imageUploadError) throw imageUploadError;
+        const { data: uploadData, filePath } = await safeUpload(
+          navigationButtonImage,
+          "navigation-images",
+          "navigation-button",
+          user.id,
+          sessionId
+        );
 
         const { data: imageUrlData } = supabase.storage
           .from("navigation-images")
-          .getPublicUrl(imageFilePath);
+          .getPublicUrl(filePath);
 
         finalNavigationImageUrl = imageUrlData.publicUrl;
       }
@@ -851,31 +856,18 @@ export default function EditInteractiveSession({
 
         // Handle new navigation video upload
         if (navigationButtonVideo) {
-          const videoFileExt = navigationButtonVideo.name.split(".").pop();
-          const videoFilePath = `${user.id}/${sessionId}/navigation-video.${videoFileExt}`;
-
-          // Delete old video file if exists
-          if (existingNavVideo?.url) {
-            const oldVideoPath = existingNavVideo.url
-              .split("/")
-              .slice(3)
-              .join("/");
-            await supabase.storage
-              .from("navigation-videos")
-              .remove([oldVideoPath]);
-          }
-
-          // Upload new video file
-          const { data: videoUploadData, error: videoUploadError } =
-            await supabase.storage
-              .from("navigation-videos")
-              .upload(videoFilePath, navigationButtonVideo);
-
-          if (videoUploadError) throw videoUploadError;
+          // ✅ USE safeUpload FOR NAVIGATION VIDEO
+          const { data: uploadData, filePath } = await safeUpload(
+            navigationButtonVideo,
+            "navigation-videos",
+            "navigation-video",
+            user.id,
+            sessionId
+          );
 
           const { data: videoUrlData } = supabase.storage
             .from("navigation-videos")
-            .getPublicUrl(videoFilePath);
+            .getPublicUrl(filePath);
 
           navigationVideoUrl = videoUrlData.publicUrl;
           navigationVideoDuration = navigationButtonVideoDuration;

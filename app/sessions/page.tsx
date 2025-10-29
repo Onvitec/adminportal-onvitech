@@ -14,6 +14,7 @@ import { IframeModal } from "@/components/Modal/IframeModal";
 import { showToast } from "@/components/toast";
 import CreateSessionModal from "@/components/Modal/CreateSessionModal";
 import { Session } from "inspector/promises";
+import { RefreshCw } from "lucide-react";
 
 const FILTERS = [
   { label: "All", key: "all" },
@@ -275,30 +276,21 @@ export default function SessionsTable() {
           )}
 
           {/* Refresh Button */}
-          <button
+            <button
             onClick={loadSessions}
             disabled={loading}
             className={`inline-flex items-center gap-2 justify-center bg-white border border-gray-300 text-[#2C3444] px-3 py-[10px] rounded-md text-[14px] hover:bg-gray-100 transition ${
               loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
             }`}
             title="Refresh Sessions"
-          >
-            Refresh
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              strokeWidth={1.5}
-              stroke="currentColor"
-              className={`h-5 w-5 ${loading ? "animate-spin" : ""}`}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M16.023 9.348h4.992v-.001M3 15.75a9 9 0 0115.364-6.364L21 9.347M8.977 14.652H3v.001m18-6.304A9 9 0 016.636 18.75L3 14.653"
-              />
-            </svg>
-          </button>
+            Refresh
+            <RefreshCw
+              className={`h-4 w-4 transform transition ${
+              loading ? "animate-spin" : ""
+              }`}
+            />
+            </button>
 
           {/* Create New Session */}
           <button
