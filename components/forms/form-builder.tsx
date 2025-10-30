@@ -30,7 +30,7 @@ export type FormElement = {
 export type FormSolutionData = {
   title?: string;
   elements: FormElement[];
-  email?:string;
+  email?: string;
 };
 
 interface EnhancedFormBuilderProps {
@@ -156,30 +156,6 @@ export function EnhancedFormBuilder({
         />
       </div> */}
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        <Button type="button" size="sm" onClick={() => addElement("text")}>
-          <Plus className="h-4 w-4 mr-2" /> Text Field
-        </Button>
-        <Button type="button" size="sm" onClick={() => addElement("email")}>
-          <Plus className="h-4 w-4 mr-2" /> Email Field
-        </Button>
-        <Button type="button" size="sm" onClick={() => addElement("number")}>
-          <Plus className="h-4 w-4 mr-2" /> Number Field
-        </Button>
-        <Button type="button" size="sm" onClick={() => addElement("textarea")}>
-          <Plus className="h-4 w-4 mr-2" /> Text Area
-        </Button>
-        <Button type="button" size="sm" onClick={() => addElement("dropdown")}>
-          <Plus className="h-4 w-4 mr-2" /> Dropdown
-        </Button>
-        <Button type="button" size="sm" onClick={() => addElement("checkbox")}>
-          <Plus className="h-4 w-4 mr-2" /> Checkbox Group
-        </Button>
-        <Button type="button" size="sm" onClick={() => addElement("radio")}>
-          <Plus className="h-4 w-4 mr-2" /> Radio Group
-        </Button>
-      </div>
-
       <div className="space-y-4">
         {formData.elements.map((element) => (
           <div
@@ -282,6 +258,29 @@ export function EnhancedFormBuilder({
             )}
           </div>
         ))}
+      </div>
+      <div className="flex flex-wrap gap-2 mb-4">
+        <Button type="button" size="sm" onClick={() => addElement("text")}>
+          <Plus className="h-4 w-4 mr-2" /> Text Field
+        </Button>
+        <Button type="button" size="sm" onClick={() => addElement("email")}>
+          <Plus className="h-4 w-4 mr-2" /> Email Field
+        </Button>
+        <Button type="button" size="sm" onClick={() => addElement("number")}>
+          <Plus className="h-4 w-4 mr-2" /> Number Field
+        </Button>
+        <Button type="button" size="sm" onClick={() => addElement("textarea")}>
+          <Plus className="h-4 w-4 mr-2" /> Text Area
+        </Button>
+        <Button type="button" size="sm" onClick={() => addElement("dropdown")}>
+          <Plus className="h-4 w-4 mr-2" /> Dropdown
+        </Button>
+        <Button type="button" size="sm" onClick={() => addElement("checkbox")}>
+          <Plus className="h-4 w-4 mr-2" /> Checkbox Group
+        </Button>
+        <Button type="button" size="sm" onClick={() => addElement("radio")}>
+          <Plus className="h-4 w-4 mr-2" /> Radio Group
+        </Button>
       </div>
 
       <div className="p-4 border border-dashed border-green-400 rounded-lg bg-green-50">

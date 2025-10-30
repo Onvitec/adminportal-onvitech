@@ -65,6 +65,19 @@ function FormDisplay({
     setFormValues((prev) => ({ ...prev, [elementId]: sanitizedValue }));
   };
 
+  const handleNumberChange = (elementId: string, value: string) => {
+    // Remove any negative signs, commas, or other non-numeric characters except decimal point
+    const cleanValue = value.replace(/[^-0-9.]/g, '');
+    
+    // Remove negative signs completely
+    const positiveValue = cleanValue.replace(/-/g, '');
+    
+    // If empty string, set as empty, otherwise use the positive number
+    const finalValue = positiveValue === '' ? '' : positiveValue;
+    
+    setFormValues((prev) => ({ ...prev, [elementId]: finalValue }));
+  };
+
   const handleCheckboxChange = (
     elementId: string,
     optionId: string,
@@ -127,7 +140,7 @@ function FormDisplay({
         formatted: formattedValues,
       },
     };
-
+           
     onSubmit(finalPayload);
   };
 
@@ -135,7 +148,6 @@ function FormDisplay({
     switch (element.type) {
       case "text":
       case "email":
-      case "number":
         return (
           <Input
             id={element.id}
@@ -143,6 +155,25 @@ function FormDisplay({
             placeholder={element.placeholder}
             value={formValues[element.id] || ""}
             onChange={(e) => handleInputChange(element.id, e.target.value)}
+            className="w-full bg-white/80 backdrop-blur-sm"
+          />
+        );
+      case "number":
+        return (
+          <Input
+            id={element.id}
+            type="text" // Use text type to have full control
+            inputMode="decimal" // Show numeric keyboard on mobile
+            placeholder={element.placeholder}
+            value={formValues[element.id] || ""}
+            onChange={(e) => handleNumberChange(element.id, e.target.value)}
+            onWheel={(e) => e.currentTarget.blur()} // Prevent scroll wheel changes
+            onKeyDown={(e) => {
+              // Prevent negative sign, 'e' (scientific notation), and comma
+              if (['-', 'e', 'E', ','].includes(e.key)) {
+                e.preventDefault();
+              }
+            }}
             className="w-full bg-white/80 backdrop-blur-sm"
           />
         );
@@ -154,7 +185,7 @@ function FormDisplay({
             rows={8}
             value={formValues[element.id] || ""}
             onChange={(e) => handleInputChange(element.id, e.target.value)}
-            className="w-full  bg-white/80 backdrop-blur-sm"
+            className="w-full bg-white/80 backdrop-blur-sm"
           />
         );
 
@@ -618,7 +649,7 @@ export function CommonVideoPlayer({
       videoRef.current.play();
       setIsPlaying(true);
       setShowFreezeControls(false);
-       setIsAtLastFrame(false); 
+      setIsAtLastFrame(false);
       setMouseActive(true);
       resetMouseTimeout();
 
@@ -733,43 +764,41 @@ export function CommonVideoPlayer({
         </div>
       )}
 
-      {!isPlaying &&
-        !showFreezeControls &&
-        !(isNavigationVideo && isAtLastFrame) && (
+      {!isPlaying && !isNavigationVideo && !showFreezeControls && (
+        <div
+          className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${
+            mouseActive || !isPlaying ? "opacity-100" : "opacity-0"
+          }`}
+          onClick={togglePlayPause}
+        >
           <div
-            className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${
-              mouseActive || !isPlaying ? "opacity-100" : "opacity-0"
-            }`}
-            onClick={togglePlayPause}
+            className={`bg-white/30 ${
+              !sessionShowPlayButton && "opacity-0"
+            } backdrop-blur-sm rounded-full p-4 shadow-lg border border-white/60 flex items-center justify-center transform transition-all duration-300 hover:scale-110`}
           >
-            <div
-              className={`bg-white/30 ${
-                !sessionShowPlayButton && "opacity-0"
-              } backdrop-blur-sm rounded-full p-4 shadow-lg border border-white/60 flex items-center justify-center transform transition-all duration-300 hover:scale-110`}
-            >
-              {isPlaying ? (
-                <div className="w-10 h-10 flex items-center justify-center">
-                  <div className="w-2 h-8 bg-white mx-1"></div>
-                  <div className="w-2 h-8 bg-white mx-1"></div>
-                </div>
-              ) : (
-                <div className="">
-                  <svg
-                    className="w-10 h-10 text-white"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </div>
-              )}
-            </div>
+            {isPlaying ? (
+              <div className="w-10 h-10 flex items-center justify-center">
+                <div className="w-2 h-8 bg-white mx-1"></div>
+                <div className="w-2 h-8 bg-white mx-1"></div>
+              </div>
+            ) : (
+              <div className="">
+                <svg
+                  className="w-10 h-10 text-white"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+      )}
 
       {/* Form Display */}
       {currentForm && onFormSubmit && onFormCancel && (

@@ -29,6 +29,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { VideoLink, VideoType } from "@/lib/types";
 import { EnhancedFormBuilder, FormSolutionData } from "./form-builder";
+import { toast } from "sonner";
 
 // Enhanced Video Player Component with image support
 function VideoPlayerWithDraggableImages({
@@ -1013,7 +1014,7 @@ function VideoUploadWithLinksComponent({
               // Initialize form data if switching to form type
               if (!updated.formData) {
                 updated.formData = {
-                  title: "Contact Form",
+                  title: "",
                   elements: [
                     {
                       id: `elem-${Date.now()}`,
@@ -1539,8 +1540,8 @@ function VideoUploadWithLinksComponent({
 
                     <div className="flex gap-3 items-center justify-center">
                       {/* Timestamp */}
-                      <div className="flex flex-col gap-2 w-28">
-                        <Label className="font-bold">Timestamp </Label>
+                      <div className="flex flex-col gap-2 w-36 relative min-h-[70px]">
+                        <Label className="font-bold">Timestamp</Label>
                         <Input
                           type="number"
                           step="0.1"
@@ -1586,14 +1587,14 @@ function VideoUploadWithLinksComponent({
                           }
                         />
                         {hasError(index, "timestamp") && (
-                          <p className="text-red-500 text-xs">
-                            Valid timestamp required
+                          <p className="text-red-500 text-xs mt-1 absolute -bottom-2 left-0">
+                            timestamp required
                           </p>
                         )}
                       </div>
 
                       {/* Duration */}
-                      <div className="flex flex-col gap-2 w-28">
+                      <div className="flex flex-col gap-2 w-36 relative min-h-[70px]">
                         <Label className="font-bold">Duration</Label>
                         <Input
                           type="number"
@@ -1650,7 +1651,7 @@ function VideoUploadWithLinksComponent({
                       </div>
 
                       {/* Image Label */}
-                      <div className="flex flex-col gap-2 flex-1">
+                      <div className="flex flex-col gap-2 flex-1 relative min-h-[70px]">
                         <Label className="font-bold">Image Label</Label>
                         <Input
                           placeholder="Add Image label"
@@ -1663,7 +1664,7 @@ function VideoUploadWithLinksComponent({
                           }
                         />
                         {hasError(index, "label") && (
-                          <p className="text-red-500 text-xs">
+                          <p className="text-red-500 text-xs mt-1 absolute -bottom-2 left-0">
                             Label is required
                           </p>
                         )}

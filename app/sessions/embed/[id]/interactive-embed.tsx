@@ -911,9 +911,9 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
 
         const message_html = buildEmailTemplate(data.title, {
           ...data.values.formatted,
-          userJourney: journeySummary,
-          sessionName: sessionName,
-          completedAt: new Date().toLocaleString(),
+          "User Journey": journeySummary,
+          "Session Name": sessionName,
+          "Completed At": new Date().toLocaleString(),
         });
 
         const res = await fetch("/api/send-email", {
