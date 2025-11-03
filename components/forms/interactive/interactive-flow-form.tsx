@@ -165,18 +165,24 @@ export default function InteractiveSessionForm() {
     setNavigationButtonImage(file);
   }, []);
 
-  const handleNavigationVideoChange = useCallback(
-    (file: File | null, duration: number) => {
-      setNavigationButtonVideo(file);
-      setNavigationButtonVideoDuration(duration);
+const handleNavigationVideoChange = useCallback(
+  (file: File | null, duration: number) => {
+    setNavigationButtonVideo(file);
+    setNavigationButtonVideoDuration(duration);
 
-      if (file === null) {
-        setNavigationButtonVideoUrl("");
-        setNavigationButtonVideoDuration(0);
-      }
-    },
-    []
-  );
+    // Also update the video title when a new file is selected
+    if (file) {
+      setNavigationButtonVideoTitle(file.name.split('.')[0] || "Navigation Video");
+    }
+
+    if (file === null) {
+      setNavigationButtonVideoUrl("");
+      setNavigationButtonVideoDuration(0);
+      setNavigationButtonVideoTitle("");
+    }
+  },
+  []
+);
 
   const handleNavigationVideoTitleChange = useCallback((title: string) => {
     setNavigationButtonVideoTitle(title);

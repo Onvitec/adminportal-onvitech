@@ -283,7 +283,7 @@ function FormDisplay({
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
           {/* Scrollable fields */}
-          <div className="flex-1 overflow-y-auto pr-2 space-y-4 hide-scrollbar">
+          <div className="flex-1 pr-2 space-y-4 hide-scrollbar">
             {formData.elements.map((element) => (
               <div key={element.id} className="space-y-2">
                 <Label htmlFor={element.id} className="text-white">

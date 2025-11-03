@@ -594,65 +594,98 @@ export default function SelectionViewSession({
                     </div>
 
                     {/* Navigation Video Links */}
-                    {navigationButton.video_links.length > 0 && (
-                      <div className="space-y-3">
-                        <Label className="text-sm font-medium text-neutral-700">
-                          Navigation Video Links (
-                          {navigationButton.video_links.length})
-                        </Label>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                          {navigationButton.video_links.map((link) => (
-                            <div
-                              key={link.id}
-                              className="flex items-start gap-3 p-4 border border-neutral-200 rounded-lg bg-white"
-                            >
-                              {link.normal_state_image && (
-                                <img
-                                  src={link.normal_state_image}
-                                  alt={link.label}
-                                  className="w-16 h-16 object-cover rounded-md flex-shrink-0"
-                                />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span className="font-medium text-sm text-neutral-900">
-                                    {link.label}
-                                  </span>
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getLinkTypeColor(
-                                      link.link_type
-                                    )}`}
+                   {navigationButton.video_links.length > 0 && (
+                          <div className="space-y-3">
+                            <Label className="text-sm font-medium text-neutral-700">
+                              Navigation Video Links (
+                              {navigationButton.video_links.length})
+                            </Label>
+                            <div className="flex gap-4 w-max pb-2">
+                              {navigationButton.video_links.map((link) => {
+                                const appearsAt = formatTimestamp(
+                                  link.timestamp_seconds
+                                );
+                                const durationSeconds = link.duration_ms
+                                  ? `${(link.duration_ms / 1000).toFixed(1)}s`
+                                  : null;
+
+                                return (
+                                  <div
+                                    key={link.id}
+                                    className="w-[420px] flex-shrink-0 flex items-start gap-3 p-4 border border-neutral-200 rounded-lg bg-white hover:bg-neutral-50 transition-colors"
                                   >
-                                    {getLinkTypeIcon(link.link_type)}
-                                    {link.link_type}
-                                  </span>
-                                </div>
-                                <div className="space-y-1 text-xs text-neutral-600">
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    At {formatTime(link.timestamp_seconds)}
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    📍 Position: ({link.position_x}%,{" "}
-                                    {link.position_y}%)
-                                  </div>
-                                  {link.duration_ms && (
-                                    <div className="flex items-center gap-1">
-                                      ⏱️ Duration: {link.duration_ms}ms
+                                    {link.normal_state_image && (
+                                      <img
+                                        src={link.normal_state_image}
+                                        alt={link.label}
+                                        className="w-16 h-16 object-cover rounded-md flex-shrink-0"
+                                      />
+                                    )}
+
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <span className="font-medium text-sm text-neutral-900 truncate">
+                                          {link.label}
+                                        </span>
+                                        <span
+                                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getLinkTypeColor(
+                                            link.link_type
+                                          )}`}
+                                        >
+                                          {getLinkTypeIcon(link.link_type)}
+                                          {link.link_type}
+                                        </span>
+                                      </div>
+
+                                      <div className="space-y-1 text-xs text-neutral-600">
+                                        <div className="flex items-center gap-1">
+                                          <Clock className="h-3 w-3" />
+                                          Appears at: {appearsAt}
+                                        </div>
+
+                                        <div className="flex items-center gap-1">
+                                          📍 Position: ({link.position_x}%,{" "}
+                                          {link.position_y}%)
+                                        </div>
+
+                                        {durationSeconds && (
+                                          <div className="flex items-center gap-1">
+                                            ⏱️ Duration: {durationSeconds}
+                                          </div>
+                                        )}
+
+                                        {link.link_type === "url" &&
+                                          link.url && (
+                                            <div className="truncate">
+                                              🔗 URL: {link.url}
+                                            </div>
+                                          )}
+
+                                        {link.link_type === "video" &&
+                                          link.destination_video_title && (
+                                            <div className="flex items-center gap-1">
+                                              <Video className="h-3 w-3" />
+                                              Destination:{" "}
+                                              {link.destination_video_title}
+                                            </div>
+                                          )}
+
+                                        {link.link_type === "form" &&
+                                          link.form_data && (
+                                            <div className="flex items-center gap-1">
+                                              📋 Form:{" "}
+                                              {link.form_data.title ||
+                                                "Custom Form"}
+                                            </div>
+                                          )}
+                                      </div>
                                     </div>
-                                  )}
-                                  {link.link_type === "url" && link.url && (
-                                    <div className="truncate">
-                                      🔗 {link.url}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
+                                  </div>
+                                );
+                              })}
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                          </div>
+                        )}
                   </div>
                 </div>
               </div>

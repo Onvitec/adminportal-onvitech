@@ -470,17 +470,24 @@ export default function EditInteractiveSession({
     }
   }, []);
 
-  const handleNavigationVideoChange = useCallback((file: File | null) => {
-    setNavigationButtonVideo(file);
-    if (file) {
-      setNavigationButtonVideoTitle(
-        file.name.split(".")[0] || "Navigation Video"
-      );
-    } else {
-      // ✅ Clear URL states when file is removed
-      setNavigationButtonVideoUrl("");
-    }
-  }, []);
+  const handleNavigationVideoChange = useCallback(
+    (file: File | null, duration: number) => {
+      // ✅ Add duration parameter
+      setNavigationButtonVideo(file);
+      setNavigationButtonVideoDuration(duration);
+
+      if (file) {
+        setNavigationButtonVideoTitle(
+          file.name.split(".")[0] || "Navigation Video"
+        );
+      } else {
+        // ✅ Clear URL states when file is removed
+        setNavigationButtonVideoUrl("");
+        setNavigationButtonVideoDuration(0); // ✅ Clear duration too
+      }
+    },
+    []
+  );
 
   const handleNavigationVideoTitleChange = useCallback((title: string) => {
     setNavigationButtonVideoTitle(title);
@@ -1893,15 +1900,15 @@ export default function EditInteractiveSession({
               navigationButtonVideo={navigationButtonVideo}
               navigationButtonVideoUrl={navigationButtonVideoUrl}
               navigationButtonVideoTitle={navigationButtonVideoTitle}
-              navigationButtonVideoDuration={navigationButtonVideoDuration}
+              navigationButtonVideoDuration={navigationButtonVideoDuration} // ✅ Make sure this is passed
               navigationButtonVideoLinks={navigationButtonVideoLinks}
               availableVideos={availableVideos}
               onImageChange={handleNavigationImageChange}
-              onVideoChange={handleNavigationVideoChange}
+              onVideoChange={handleNavigationVideoChange} // ✅ This now receives duration
               onVideoTitleChange={handleNavigationVideoTitleChange}
               onVideoLinksChange={handleNavigationVideoLinksChange}
-              onRemoveImage={handleRemoveNavigationImage} // ✅ Pass remove handlers
-              onRemoveVideo={handleRemoveNavigationVideo} // ✅ Pass remove handlers
+              onRemoveImage={handleRemoveNavigationImage}
+              onRemoveVideo={handleRemoveNavigationVideo}
               existingImageUrl={existingNavigationImageUrl}
               existingVideoUrl={existingNavigationVideoUrl}
             />
