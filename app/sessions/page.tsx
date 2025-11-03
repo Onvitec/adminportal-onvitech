@@ -13,7 +13,6 @@ import { ConfirmModal } from "@/components/Modal/confirmDelete";
 import { IframeModal } from "@/components/Modal/IframeModal";
 import { showToast } from "@/components/toast";
 import CreateSessionModal from "@/components/Modal/CreateSessionModal";
-import { Session } from "inspector/promises";
 import { RefreshCw } from "lucide-react";
 
 const FILTERS = [
@@ -276,21 +275,21 @@ export default function SessionsTable() {
           )}
 
           {/* Refresh Button */}
-            <button
+          <button
             onClick={loadSessions}
             disabled={loading}
             className={`inline-flex items-center gap-2 justify-center bg-white border border-gray-300 text-[#2C3444] px-3 py-[10px] rounded-md text-[14px] hover:bg-gray-100 transition ${
               loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
             }`}
             title="Refresh Sessions"
-            >
+          >
             Refresh
             <RefreshCw
               className={`h-4 w-4 transform transition ${
-              loading ? "animate-spin" : ""
+                loading ? "animate-spin" : ""
               }`}
             />
-            </button>
+          </button>
 
           {/* Create New Session */}
           <button

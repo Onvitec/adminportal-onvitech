@@ -1187,70 +1187,75 @@ function VideoUploadWithLinksComponent({
     });
     setButtonForms([]);
     setFormErrors({});
-    onLinksChange([]);
+    // onLinksChange([]);
     unsavedChangesRef.current = [];
   }, [buttonForms, onLinksChange]);
 
   const handleSaveButton = useCallback(async () => {
     setIsUploading(true);
 
-    // Validate all forms
-    const errors = validateForms(buttonForms);
-    setFormErrors(errors);
+    // Validate all forms (only if there are forms)
+    if (buttonForms.length > 0) {
+      const errors = validateForms(buttonForms);
+      setFormErrors(errors);
 
-    if (Object.keys(errors).length > 0) {
-      setIsUploading(false);
-      return;
+      if (Object.keys(errors).length > 0) {
+        setIsUploading(false);
+        return;
+      }
     }
 
     try {
       const updatedLinks: VideoLink[] = [];
 
-      for (const formData of buttonForms) {
-        const ts = parseFloat(formData.timestamp);
+      // Only process forms if they exist
+      if (buttonForms.length > 0) {
+        for (const formData of buttonForms) {
+          const ts = parseFloat(formData.timestamp);
 
-        const linkData: VideoLink = {
-          id: formData.id ?? Math.random().toString(36).substr(2, 9),
-          timestamp_seconds: ts,
-          label: formData.label.trim(),
-          link_type: formData.linkType,
-          position_x: formData.position_x,
-          position_y: formData.position_y,
-          duration_ms: formData.duration_ms,
-          normal_state_image: formData.normal_state_image,
-          hover_state_image: formData.hover_state_image,
-          normal_image_width: formData.normal_image_width,
-          normal_image_height: formData.normal_image_height,
-          hover_image_width: formData.hover_image_width,
-          hover_image_height: formData.hover_image_height,
-          normalImageFile: formData.normalImageFile,
-          hoverImageFile: formData.hoverImageFile,
-          normalImagePreview: formData.normalImagePreview,
-          hoverImagePreview: formData.hoverImagePreview,
-        };
+          const linkData: VideoLink = {
+            id: formData.id ?? Math.random().toString(36).substr(2, 9),
+            timestamp_seconds: ts,
+            label: formData.label.trim(),
+            link_type: formData.linkType,
+            position_x: formData.position_x,
+            position_y: formData.position_y,
+            duration_ms: formData.duration_ms,
+            normal_state_image: formData.normal_state_image,
+            hover_state_image: formData.hover_state_image,
+            normal_image_width: formData.normal_image_width,
+            normal_image_height: formData.normal_image_height,
+            hover_image_width: formData.hover_image_width,
+            hover_image_height: formData.hover_image_height,
+            normalImageFile: formData.normalImageFile,
+            hoverImageFile: formData.hoverImageFile,
+            normalImagePreview: formData.normalImagePreview,
+            hoverImagePreview: formData.hoverImagePreview,
+          };
 
-        if (formData.linkType === "url") {
-          linkData.url = formData.url.startsWith("http")
-            ? formData.url
-            : `https://${formData.url}`;
-        } else if (
-          formData.linkType === "video" ||
-          formData.linkType === "form"
-        ) {
-          linkData.destination_video_id = formData.destinationVideoId;
+          if (formData.linkType === "url") {
+            linkData.url = formData.url.startsWith("http")
+              ? formData.url
+              : `https://${formData.url}`;
+          } else if (
+            formData.linkType === "video" ||
+            formData.linkType === "form"
+          ) {
+            linkData.destination_video_id = formData.destinationVideoId;
+          }
+
+          if (formData.linkType === "form") {
+            linkData.form_data = formData.formData as any;
+          }
+
+          updatedLinks.push(linkData);
         }
-
-        if (formData.linkType === "form") {
-          linkData.form_data = formData.formData as any;
-        }
-
-        updatedLinks.push(linkData);
       }
 
-      // Clear unsaved changes FIRST
+      // Clear unsaved changes reference
       unsavedChangesRef.current = [];
 
-      // Then update parent
+      // Then update parent (this could be an empty array if all buttons were deleted)
       onLinksChange(updatedLinks);
 
       // Close modal
@@ -1588,7 +1593,7 @@ function VideoUploadWithLinksComponent({
                         />
                         {hasError(index, "timestamp") && (
                           <p className="text-red-500 text-xs mt-1 absolute -bottom-2 left-0">
-                            timestamp required
+                            Timestamp required
                           </p>
                         )}
                       </div>

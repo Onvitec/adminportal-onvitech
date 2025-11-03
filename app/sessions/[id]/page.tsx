@@ -157,7 +157,6 @@ export default function SessionViewPage() {
             <div>
               <Loader size="md" />
             </div>
-            ;
           </div>
         </div>
       </div>
