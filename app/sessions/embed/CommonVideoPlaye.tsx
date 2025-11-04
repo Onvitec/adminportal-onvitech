@@ -394,7 +394,7 @@ export function CommonVideoPlayer({
     isNavigationVideo,
   ]);
 
-    // PERFECT Video rect calculation (object-cover: fill container, no letterboxing)
+    // PERFECT Video rect calculation (fit within container, preserve AR, NO UPSCALING)
     const calculateVideoRect = useCallback(() => {
       const video = videoRef.current;
       const container = videoContainerRef.current;
@@ -410,14 +410,39 @@ export function CommonVideoPlayer({
       const containerW = containerRect.width;
       const containerH = containerRect.height;
 
-      // With object-cover, the video fills the container; overlays should anchor to container edges
+      const videoAR = vW / vH;
+      const containerAR = containerW / containerH;
+
+      // Fit inside container without exceeding native resolution
+      let fitW: number;
+      let fitH: number;
+      if (containerAR > videoAR) {
+        // Bound by height
+        const heightBound = Math.min(containerH, vH);
+        fitH = heightBound;
+        fitW = heightBound * videoAR;
+      } else {
+        // Bound by width
+        const widthBound = Math.min(containerW, vW);
+        fitW = widthBound;
+        fitH = widthBound / videoAR;
+      }
+
+      // Final clamp
+      const actualVideoWidth = Math.min(fitW, vW);
+      const actualVideoHeight = Math.min(fitH, vH);
+
+      // Center inside container (letterbox/pillarbox if needed)
+      const offsetLeft = (containerW - actualVideoWidth) / 2;
+      const offsetTop = (containerH - actualVideoHeight) / 2;
+
       const rect = {
-        width: containerW,
-        height: containerH,
-        left: 0,
-        top: 0,
-        scaleX: vW ? containerW / vW : undefined,
-        scaleY: vH ? containerH / vH : undefined,
+        width: actualVideoWidth,
+        height: actualVideoHeight,
+        left: offsetLeft,
+        top: offsetTop,
+        scaleX: vW ? actualVideoWidth / vW : undefined,
+        scaleY: vH ? actualVideoHeight / vH : undefined,
       };
 
     setVideoRect(rect);
@@ -730,9 +755,13 @@ export function CommonVideoPlayer({
           muted
           playsInline
           src={currentVideo.url}
-          className={`w-full h-full object-cover rounded-2xl cursor-pointer`}
+          className={`object-contain rounded-2xl cursor-pointer`}
           style={{
-            // Fill the container completely; rely on object-cover for aspect ratio
+            // Prevent upscaling beyond the video's natural resolution
+            width: videoRect ? `${videoRect.width}px` : undefined,
+            height: videoRect ? `${videoRect.height}px` : undefined,
+            maxWidth: videoRef.current?.videoWidth || undefined,
+            maxHeight: videoRef.current?.videoHeight || undefined,
           }}
           controls={false}
           onClick={togglePlayPause}
