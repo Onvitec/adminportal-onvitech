@@ -57,7 +57,10 @@ function VideoPlayerWithDraggableImages({
     height: number;
     left: number;
     top: number;
+    scaleX?: number;
+    scaleY?: number;
   } | null>(null);
+  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
 
   // Calculate actual video dimensions within container
   const calculateVideoRect = useCallback(() => {
@@ -66,30 +69,37 @@ function VideoPlayerWithDraggableImages({
     if (!video || !container || video.videoWidth === 0) return null;
 
     const containerRect = container.getBoundingClientRect();
-    const videoAspect = video.videoWidth / video.videoHeight;
-    const containerAspect = containerRect.width / containerRect.height;
+    const vW = video.videoWidth;
+    const vH = video.videoHeight;
+    const aspect = vW / vH;
 
-    let actualVideoWidth, actualVideoHeight, offsetLeft, offsetTop;
+    // Fallbacks for early render when container height may be 0
+    if (containerRect.width === 0) return null;
 
-    if (containerAspect > videoAspect) {
-      // Container is wider, video height matches container
-      actualVideoHeight = containerRect.height;
-      actualVideoWidth = actualVideoHeight * videoAspect;
-      offsetLeft = (containerRect.width - actualVideoWidth) / 2;
-      offsetTop = 0;
-    } else {
-      // Container is taller, video width matches container
-      actualVideoWidth = containerRect.width;
-      actualVideoHeight = actualVideoWidth / videoAspect;
-      offsetLeft = 0;
-      offsetTop = (containerRect.height - actualVideoHeight) / 2;
+    // Start with width-constrained sizing (object-contain behavior)
+    let actualVideoWidth = Math.min(containerRect.width, vW);
+    let actualVideoHeight = actualVideoWidth / aspect;
+
+    // If container height is defined and width-based height exceeds it, clamp by height
+    if (containerRect.height > 0 && actualVideoHeight > containerRect.height) {
+      actualVideoHeight = Math.min(containerRect.height, vH);
+      actualVideoWidth = actualVideoHeight * aspect;
     }
+
+    // Center within container
+    const offsetLeft = (containerRect.width - actualVideoWidth) / 2;
+    const offsetTop = containerRect.height > 0
+      ? (containerRect.height - actualVideoHeight) / 2
+      : 0;
 
     const rect = {
       width: actualVideoWidth,
       height: actualVideoHeight,
       left: offsetLeft,
       top: offsetTop,
+      // Scale relative to the video's natural pixel dimensions
+      scaleX: vW ? actualVideoWidth / vW : undefined,
+      scaleY: vH ? actualVideoHeight / vH : undefined,
     };
 
     setVideoRect(rect);
@@ -102,12 +112,15 @@ function VideoPlayerWithDraggableImages({
 
     const updateDuration = () => setDuration(video.duration);
     const updateTime = () => setCurrentTime(video.currentTime);
+    const updateNaturalSize = () => setNaturalSize({ width: video.videoWidth, height: video.videoHeight });
 
     video.addEventListener("loadedmetadata", updateDuration);
+    video.addEventListener("loadedmetadata", updateNaturalSize);
     video.addEventListener("timeupdate", updateTime);
 
     return () => {
       video.removeEventListener("loadedmetadata", updateDuration);
+      video.removeEventListener("loadedmetadata", updateNaturalSize);
       video.removeEventListener("timeupdate", updateTime);
     };
   }, [videoUrl]);
@@ -260,18 +273,27 @@ function VideoPlayerWithDraggableImages({
 
   const getImageDimensions = useCallback(
     (link: VideoLink, isHovered: boolean) => {
-      if (isHovered && (link.hover_image_width || link.hover_image_height)) {
+      const baseWidth = isHovered && (link.hover_image_width || link.hover_image_height)
+        ? (link.hover_image_width || 100)
+        : (link.normal_image_width || 100);
+      const baseHeight = isHovered && (link.hover_image_height || link.hover_image_width)
+        ? (link.hover_image_height || 100)
+        : (link.normal_image_height || 100);
+
+      // Scale overlay dimensions proportionally to the rendered video size
+      if (videoRect?.scaleX && videoRect?.scaleY) {
         return {
-          width: link.hover_image_width || 100,
-          height: link.hover_image_height || 100,
+          width: Math.round(baseWidth * videoRect.scaleX),
+          height: Math.round(baseHeight * videoRect.scaleY),
         };
       }
+
       return {
-        width: link.normal_image_width || 100,
-        height: link.normal_image_height || 100,
+        width: baseWidth,
+        height: baseHeight,
       };
     },
-    []
+    [videoRect]
   );
 
   // Convert percentage position to actual pixels based on videoRect
@@ -342,19 +364,23 @@ function VideoPlayerWithDraggableImages({
     <div className="relative flex-1 bg-black rounded-xl video-player-container">
       <div
         ref={videoContainerRef}
-        className="relative w-full"
+        className="relative w-full video-player-container flex items-center justify-center"
         style={{ lineHeight: 0 }}
       >
         <video
           ref={videoRef}
           src={videoUrl}
           controls={!isEditMode}
-          className="w-full h-auto max-h-[500px] object-contain rounded-xl cursor-pointer"
+          className="w-full h-auto object-contain rounded-xl cursor-pointer"
           key={videoUrl}
           muted={isEditMode}
           onLoadStart={() => setTimeout(() => calculateVideoRect(), 100)}
           onCanPlay={() => setTimeout(() => calculateVideoRect(), 100)}
           onResize={() => setTimeout(() => calculateVideoRect(), 100)}
+          style={{
+            maxWidth: naturalSize?.width ? `${naturalSize.width}px` : undefined,
+            maxHeight: naturalSize?.height ? `${naturalSize.height}px` : undefined,
+          }}
         />
 
         {/* Overlay images */}

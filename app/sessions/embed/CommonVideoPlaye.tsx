@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 
 interface CommonVideoPlayerProps {
   currentVideo: VideoType | null;
@@ -67,14 +68,14 @@ function FormDisplay({
 
   const handleNumberChange = (elementId: string, value: string) => {
     // Remove any negative signs, commas, or other non-numeric characters except decimal point
-    const cleanValue = value.replace(/[^-0-9.]/g, '');
-    
+    const cleanValue = value.replace(/[^-0-9.]/g, "");
+
     // Remove negative signs completely
-    const positiveValue = cleanValue.replace(/-/g, '');
-    
+    const positiveValue = cleanValue.replace(/-/g, "");
+
     // If empty string, set as empty, otherwise use the positive number
-    const finalValue = positiveValue === '' ? '' : positiveValue;
-    
+    const finalValue = positiveValue === "" ? "" : positiveValue;
+
     setFormValues((prev) => ({ ...prev, [elementId]: finalValue }));
   };
 
@@ -140,7 +141,7 @@ function FormDisplay({
         formatted: formattedValues,
       },
     };
-           
+
     onSubmit(finalPayload);
   };
 
@@ -170,7 +171,7 @@ function FormDisplay({
             onWheel={(e) => e.currentTarget.blur()} // Prevent scroll wheel changes
             onKeyDown={(e) => {
               // Prevent negative sign, 'e' (scientific notation), and comma
-              if (['-', 'e', 'E', ','].includes(e.key)) {
+              if (["-", "e", "E", ","].includes(e.key)) {
                 e.preventDefault();
               }
             }}
@@ -366,6 +367,8 @@ export function CommonVideoPlayer({
     height: number;
     left: number;
     top: number;
+    scaleX?: number;
+    scaleY?: number;
   } | null>(null);
 
   // CRITICAL: Check if we should show navigation button
@@ -398,28 +401,48 @@ export function CommonVideoPlayer({
     if (!video || !container) return null;
 
     const containerRect = container.getBoundingClientRect();
-    const videoAspect = video.videoWidth / video.videoHeight;
-    const containerAspect = containerRect.width / containerRect.height;
-
-    let actualVideoWidth, actualVideoHeight, offsetLeft, offsetTop;
-
-    if (containerAspect > videoAspect) {
-      actualVideoHeight = containerRect.height;
-      actualVideoWidth = actualVideoHeight * videoAspect;
-      offsetLeft = (containerRect.width - actualVideoWidth) / 2;
-      offsetTop = 0;
-    } else {
-      actualVideoWidth = containerRect.width;
-      actualVideoHeight = actualVideoWidth / videoAspect;
-      offsetLeft = 0;
-      offsetTop = (containerRect.height - actualVideoHeight) / 2;
+    const vW = video.videoWidth || 0;
+    const vH = video.videoHeight || 0;
+    if (!vW || !vH) {
+      return null;
     }
+
+    const containerW = containerRect.width;
+    const containerH = containerRect.height;
+    const videoAR = vW / vH;
+    const containerAR = containerW / containerH;
+
+    // Fit within container while preserving aspect ratio,
+    // but DO NOT upscale beyond the video's natural resolution.
+    let fitW: number;
+    let fitH: number;
+    if (containerAR > videoAR) {
+      // Container is wider relative to its height -> bound by height
+      const heightBound = Math.min(containerH, vH);
+      fitH = heightBound;
+      fitW = heightBound * videoAR;
+    } else {
+      // Container is taller relative to its width -> bound by width
+      const widthBound = Math.min(containerW, vW);
+      fitW = widthBound;
+      fitH = widthBound / videoAR;
+    }
+
+    // Final clamp in case rounding created slight overshoot
+    const actualVideoWidth = Math.min(fitW, vW);
+    const actualVideoHeight = Math.min(fitH, vH);
+
+    // Center the video inside the container
+    const offsetLeft = (containerW - actualVideoWidth) / 2;
+    const offsetTop = (containerH - actualVideoHeight) / 2;
 
     const rect = {
       width: actualVideoWidth,
       height: actualVideoHeight,
       left: offsetLeft,
       top: offsetTop,
+      scaleX: vW ? actualVideoWidth / vW : undefined,
+      scaleY: vH ? actualVideoHeight / vH : undefined,
     };
 
     setVideoRect(rect);
@@ -431,11 +454,11 @@ export function CommonVideoPlayer({
     if (!videoRect) {
       return { right: "20px", top: "20px" };
     }
-
-    const right = 20;
-    const top = 20;
-
-    return { right: `${right}px`, top: `${top}px` };
+    const margin = 20;
+    const buttonSize = 64; // matches w-16 h-16
+    const top = videoRect.top + margin;
+    const left = videoRect.left + videoRect.width - margin - buttonSize;
+    return { left: `${left}px`, top: `${top}px` };
   }, [videoRect]);
 
   // Enhanced video rect calculation with better timing
@@ -547,6 +570,30 @@ export function CommonVideoPlayer({
     [videoRect]
   );
 
+  // Scale overlay image dimensions proportionally with video scaling
+  const getScaledImageDimensions = useCallback(
+    (link: VideoLink) => {
+      const baseWidth =
+        (hoveredLinkId === link.id && link.hover_image_width) ||
+        link.normal_image_width ||
+        100;
+      const baseHeight =
+        (hoveredLinkId === link.id && link.hover_image_height) ||
+        link.normal_image_height ||
+        100;
+
+      if (!videoRect?.scaleX || !videoRect?.scaleY) {
+        return { width: baseWidth, height: baseHeight };
+      }
+
+      return {
+        width: Math.round(baseWidth * videoRect.scaleX),
+        height: Math.round(baseHeight * videoRect.scaleY),
+      };
+    },
+    [videoRect, hoveredLinkId]
+  );
+
   const togglePlayPause = () => {
     if (videoRef.current && currentVideo) {
       const isRestartingFromEnd = videoRef.current.ended || showFreezeControls;
@@ -598,21 +645,8 @@ export function CommonVideoPlayer({
     return link.normal_state_image;
   };
 
-  const getImageDimensions = (link: VideoLink) => {
-    if (
-      hoveredLinkId === link.id &&
-      (link.hover_image_width || link.hover_image_height)
-    ) {
-      return {
-        width: link.hover_image_width || 100,
-        height: link.hover_image_height || 100,
-      };
-    }
-    return {
-      width: link.normal_image_width || 100,
-      height: link.normal_image_height || 100,
-    };
-  };
+  const getImageDimensions = (link: VideoLink) =>
+    getScaledImageDimensions(link);
 
   const handleVideoEnd = () => {
     // CRITICAL FIX: Navigation videos should NOT show freeze controls
@@ -677,8 +711,7 @@ export function CommonVideoPlayer({
 
   return (
     <div
-      ref={videoContainerRef}
-      className="relative flex-1 bg-black rounded-xl video-player-container"
+      className="fixed inset-0 bg-black flex items-center justify-center p-4 sm:p-6 md:p-10"
       onMouseMove={handleMouseMove}
       onMouseEnter={() => {
         setMouseActive(true);
@@ -691,185 +724,196 @@ export function CommonVideoPlayer({
         }
       }}
     >
-      <video
-        ref={videoRef}
-        autoPlay
-        src={currentVideo.url}
-        className="w-full h-auto max-h-[500px] object-contain rounded-xl cursor-pointer"
-        controls={false}
-        onClick={togglePlayPause}
-        onEnded={handleVideoEnd}
-        onPlay={() => {
-          setIsPlaying(true);
-          if (videoRef.current?.currentTime === 0) {
-            onVideoRestart?.();
-          }
-        }}
-        onPause={() => {
-          setIsPlaying(false);
-          setShowControls(true);
-        }}
-        onLoadStart={() => setTimeout(() => calculateVideoRect(), 100)}
-        onCanPlay={() => setTimeout(() => calculateVideoRect(), 100)}
-        onResize={() => setTimeout(() => calculateVideoRect(), 100)}
-      />
+      {/* Inner container adds space and rounded frame; overlays anchor here */}
+      <div
+        ref={videoContainerRef}
+        className="relative w-full h-full rounded-2xl overflow-hidden shadow-xl flex items-center justify-center"
+      >
+        <video
+          ref={videoRef}
+          autoPlay
+          src={currentVideo.url}
+          className={`w-full h-auto object-contain rounded-2xl cursor-pointer`}
+          style={{
+            // Prevent upscaling beyond the video's natural resolution
+            maxWidth: videoRef.current?.videoWidth || undefined,
+            maxHeight: videoRef.current?.videoHeight || undefined,
+          }}
+          controls={false}
+          onClick={togglePlayPause}
+          onEnded={handleVideoEnd}
+          onPlay={() => {
+            setIsPlaying(true);
+            if (videoRef.current?.currentTime === 0) {
+              onVideoRestart?.();
+            }
+          }}
+          onPause={() => {
+            setIsPlaying(false);
+            setShowControls(true);
+          }}
+          onLoadStart={() => setTimeout(() => calculateVideoRect(), 100)}
+          onCanPlay={() => setTimeout(() => calculateVideoRect(), 100)}
+          onResize={() => setTimeout(() => calculateVideoRect(), 100)}
+        />
 
-      {/* CRITICAL FIX: Only show navigation button when conditions are met */}
-      {shouldShowNavigationButton() && (
-        <div
-          className="absolute z-30 cursor-pointer transition-transform duration-200"
-          style={getNavigationButtonPosition()}
-          onClick={onNavigationButtonClick}
-        >
-          <div className="relative">
-            <img
-              src={navigationButton!.image_url}
-              alt="Navigation"
-              className="w-16 h-16 object-contain rounded-lg transition-all"
-              draggable={false}
-            />
-          </div>
-        </div>
-      )}
-
-      {showBackButton && onBackNavigation && !isPlaying && (
-        <div
-          className={`absolute left-4 top-4 z-[999] bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:scale-110 ${
-            showControls ? "opacity-100" : "opacity-0 pointer-events-none"
-          }`}
-          onClick={onBackNavigation}
-        >
-          <ChevronLeft className="w-10 h-10 text-white font-bold" />
-        </div>
-      )}
-
-      {/* Freeze at end controls */}
-      {showFreezeControls && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm z-40">
-          <div className="bg-white/30 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-white/60 text-center max-w-md">
-            <h3 className="text-white text-lg font-semibold mb-4">
-              Video Completed
-            </h3>
-            <p className="text-white mb-6">What would you like to do next?</p>
-            <div className="flex flex-col gap-3">
-              <Button
-                onClick={handleRestartVideo}
-                className="bg-white/30 text-white hover:bg-white/40"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Watch Again
-              </Button>
+        {/* CRITICAL FIX: Only show navigation button when conditions are met */}
+        {shouldShowNavigationButton() && (
+          <div
+            className="absolute z-30 cursor-pointer transition-transform duration-200"
+            style={getNavigationButtonPosition()}
+            onClick={onNavigationButtonClick}
+          >
+            <div className="relative">
+              <Image
+                src={navigationButton!.image_url}
+                alt="Navigation"
+                className="w-16 h-16 object-contain rounded-lg transition-all"
+                draggable={false}
+              />
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {!isPlaying && !isNavigationVideo && !showFreezeControls && (
-        <div
-          className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${
-            mouseActive || !isPlaying ? "opacity-100" : "opacity-0"
-          }`}
-          onClick={togglePlayPause}
-        >
+        {showBackButton && onBackNavigation && !isPlaying && (
           <div
-            className={`bg-white/30 ${
-              !sessionShowPlayButton && "opacity-0"
-            } backdrop-blur-sm rounded-full p-4 shadow-lg border border-white/60 flex items-center justify-center transform transition-all duration-300 hover:scale-110`}
+            className={`absolute left-4 top-4 z-[999] bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:scale-110 ${
+              showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
+            onClick={onBackNavigation}
           >
-            {isPlaying ? (
-              <div className="w-10 h-10 flex items-center justify-center">
-                <div className="w-2 h-8 bg-white mx-1"></div>
-                <div className="w-2 h-8 bg-white mx-1"></div>
-              </div>
-            ) : (
-              <div className="">
-                <svg
-                  className="w-10 h-10 text-white"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </div>
-            )}
+            <ChevronLeft className="w-10 h-10 text-white font-bold" />
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Form Display */}
-      {currentForm && onFormSubmit && onFormCancel && (
-        <FormDisplay
-          formLink={currentFormLink}
-          onFormLoading={onFormLoading}
-          formData={currentForm}
-          onSubmit={onFormSubmit}
-          onCancel={onFormCancel}
-        />
-      )}
-
-      {/* Enhanced Video Link Buttons */}
-      {activeLinks.length > 0 && (
-        <>
-          <AnimatePresence>
-            {activeLinks.map((link) => {
-              const imageUrl = getImageUrl(link);
-              const dimensions = getImageDimensions(link);
-              const position = getImagePosition(link);
-
-              return imageUrl ? (
-                <motion.div
-                  key={link.id}
-                  className="absolute z-10 cursor-pointer transition-transform duration-200 group"
-                  style={{ ...position }}
-                  onClick={() => onVideoLinkClick(link)}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.35, ease: "easeInOut" }}
+        {/* Freeze at end controls */}
+        {showFreezeControls && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm z-40">
+            <div className="bg-white/30 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-white/60 text-center max-w-md">
+              <h3 className="text-white text-lg font-semibold mb-4">
+                Video Completed
+              </h3>
+              <p className="text-white mb-6">What would you like to do next?</p>
+              <div className="flex flex-col gap-3">
+                <Button
+                  onClick={handleRestartVideo}
+                  className="bg-white/30 text-white hover:bg-white/40"
                 >
-                  <div className="relative">
-                    {/* Normal image (always shown) */}
-                    {link.normal_state_image && (
-                      <img
-                        src={link.normal_state_image}
-                        alt={link.label}
-                        style={{
-                          width: `${dimensions.width}px`,
-                          height: `${dimensions.height}px`,
-                        }}
-                        className={`object-cover rounded block ${
-                          link.hover_state_image ? "group-hover:hidden" : ""
-                        }`}
-                        draggable={false}
-                      />
-                    )}
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Watch Again
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
-                    {/* Hover image (optional, only rendered if available) */}
-                    {link.hover_state_image && (
-                      <img
-                        src={link.hover_state_image}
-                        alt={link.label}
-                        style={{
-                          width: `${dimensions.width}px`,
-                          height: `${dimensions.height}px`,
-                        }}
-                        className="object-cover rounded hidden group-hover:block"
-                        draggable={false}
-                      />
-                    )}
-                  </div>
-                </motion.div>
-              ) : null;
-            })}
-          </AnimatePresence>
-        </>
-      )}
+        {!isPlaying && !isNavigationVideo && !showFreezeControls && (
+          <div
+            className={`absolute inset-0 flex items-center justify-center cursor-pointer transition-opacity duration-300 ${
+              mouseActive || !isPlaying ? "opacity-100" : "opacity-0"
+            }`}
+            onClick={togglePlayPause}
+          >
+            <div
+              className={`bg-white/30 ${
+                !sessionShowPlayButton && "opacity-0"
+              } backdrop-blur-sm rounded-full p-4 shadow-lg border border-white/60 flex items-center justify-center transform transition-all duration-300 hover:scale-110`}
+            >
+              {isPlaying ? (
+                <div className="w-10 h-10 flex items-center justify-center">
+                  <div className="w-2 h-8 bg-white mx-1"></div>
+                  <div className="w-2 h-8 bg-white mx-1"></div>
+                </div>
+              ) : (
+                <div className="">
+                  <svg
+                    className="w-10 h-10 text-white"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
-      {children}
+        {/* Form Display */}
+        {currentForm && onFormSubmit && onFormCancel && (
+          <FormDisplay
+            formLink={currentFormLink}
+            onFormLoading={onFormLoading}
+            formData={currentForm}
+            onSubmit={onFormSubmit}
+            onCancel={onFormCancel}
+          />
+        )}
+
+        {/* Enhanced Video Link Buttons */}
+        {activeLinks.length > 0 && (
+          <>
+            <AnimatePresence>
+              {activeLinks.map((link) => {
+                const imageUrl = getImageUrl(link);
+                const dimensions = getImageDimensions(link);
+                const position = getImagePosition(link);
+
+                return imageUrl ? (
+                  <motion.div
+                    key={link.id}
+                    className="absolute z-10 cursor-pointer transition-transform duration-200 group"
+                    style={{ ...position }}
+                    onClick={() => onVideoLinkClick(link)}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.35, ease: "easeInOut" }}
+                  >
+                    <div className="relative">
+                      {/* Normal image (always shown) */}
+                      {link.normal_state_image && (
+                        <img
+                          src={link.normal_state_image}
+                          alt={link.label}
+                          style={{
+                            width: `${dimensions.width}px`,
+                            height: `${dimensions.height}px`,
+                          }}
+                          className={`object-cover rounded block ${
+                            link.hover_state_image ? "group-hover:hidden" : ""
+                          }`}
+                          draggable={false}
+                        />
+                      )}
+
+                      {/* Hover image (optional, only rendered if available) */}
+                      {link.hover_state_image && (
+                        <img
+                          src={link.hover_state_image}
+                          alt={link.label}
+                          style={{
+                            width: `${dimensions.width}px`,
+                            height: `${dimensions.height}px`,
+                          }}
+                          className="object-cover rounded hidden group-hover:block"
+                          draggable={false}
+                        />
+                      )}
+                    </div>
+                  </motion.div>
+                ) : null;
+              })}
+            </AnimatePresence>
+          </>
+        )}
+
+        {children}
+      </div>
     </div>
   );
 }
