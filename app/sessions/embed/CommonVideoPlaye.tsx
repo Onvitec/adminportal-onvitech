@@ -68,14 +68,14 @@ function FormDisplay({
 
   const handleNumberChange = (elementId: string, value: string) => {
     // Remove any negative signs, commas, or other non-numeric characters except decimal point
-    const cleanValue = value.replace(/[^-0-9.]/g, "");
-
+    const cleanValue = value.replace(/[^-0-9.]/g, '');
+    
     // Remove negative signs completely
-    const positiveValue = cleanValue.replace(/-/g, "");
-
+    const positiveValue = cleanValue.replace(/-/g, '');
+    
     // If empty string, set as empty, otherwise use the positive number
-    const finalValue = positiveValue === "" ? "" : positiveValue;
-
+    const finalValue = positiveValue === '' ? '' : positiveValue;
+    
     setFormValues((prev) => ({ ...prev, [elementId]: finalValue }));
   };
 
@@ -141,7 +141,7 @@ function FormDisplay({
         formatted: formattedValues,
       },
     };
-
+           
     onSubmit(finalPayload);
   };
 
@@ -171,7 +171,7 @@ function FormDisplay({
             onWheel={(e) => e.currentTarget.blur()} // Prevent scroll wheel changes
             onKeyDown={(e) => {
               // Prevent negative sign, 'e' (scientific notation), and comma
-              if (["-", "e", "E", ","].includes(e.key)) {
+              if (['-', 'e', 'E', ','].includes(e.key)) {
                 e.preventDefault();
               }
             }}
@@ -394,56 +394,31 @@ export function CommonVideoPlayer({
     isNavigationVideo,
   ]);
 
-  // PERFECT Video rect calculation
-  const calculateVideoRect = useCallback(() => {
-    const video = videoRef.current;
-    const container = videoContainerRef.current;
-    if (!video || !container) return null;
+    // PERFECT Video rect calculation (object-cover: fill container, no letterboxing)
+    const calculateVideoRect = useCallback(() => {
+      const video = videoRef.current;
+      const container = videoContainerRef.current;
+      if (!video || !container) return null;
 
-    const containerRect = container.getBoundingClientRect();
-    const vW = video.videoWidth || 0;
-    const vH = video.videoHeight || 0;
-    if (!vW || !vH) {
-      return null;
-    }
+      const containerRect = container.getBoundingClientRect();
+      const vW = video.videoWidth || 0;
+      const vH = video.videoHeight || 0;
+      if (!vW || !vH) {
+        return null;
+      }
 
-    const containerW = containerRect.width;
-    const containerH = containerRect.height;
-    const videoAR = vW / vH;
-    const containerAR = containerW / containerH;
+      const containerW = containerRect.width;
+      const containerH = containerRect.height;
 
-    // Fit within container while preserving aspect ratio,
-    // but DO NOT upscale beyond the video's natural resolution.
-    let fitW: number;
-    let fitH: number;
-    if (containerAR > videoAR) {
-      // Container is wider relative to its height -> bound by height
-      const heightBound = Math.min(containerH, vH);
-      fitH = heightBound;
-      fitW = heightBound * videoAR;
-    } else {
-      // Container is taller relative to its width -> bound by width
-      const widthBound = Math.min(containerW, vW);
-      fitW = widthBound;
-      fitH = widthBound / videoAR;
-    }
-
-    // Final clamp in case rounding created slight overshoot
-    const actualVideoWidth = Math.min(fitW, vW);
-    const actualVideoHeight = Math.min(fitH, vH);
-
-    // Center the video inside the container
-    const offsetLeft = (containerW - actualVideoWidth) / 2;
-    const offsetTop = (containerH - actualVideoHeight) / 2;
-
-    const rect = {
-      width: actualVideoWidth,
-      height: actualVideoHeight,
-      left: offsetLeft,
-      top: offsetTop,
-      scaleX: vW ? actualVideoWidth / vW : undefined,
-      scaleY: vH ? actualVideoHeight / vH : undefined,
-    };
+      // With object-cover, the video fills the container; overlays should anchor to container edges
+      const rect = {
+        width: containerW,
+        height: containerH,
+        left: 0,
+        top: 0,
+        scaleX: vW ? containerW / vW : undefined,
+        scaleY: vH ? containerH / vH : undefined,
+      };
 
     setVideoRect(rect);
     return rect;
@@ -482,6 +457,7 @@ export function CommonVideoPlayer({
     video.addEventListener("resize", calculateAndSetRect);
 
     window.addEventListener("resize", calculateAndSetRect);
+
 
     const checkContainerSize = () => {
       if (container.getBoundingClientRect().width > 0) {
@@ -544,8 +520,16 @@ export function CommonVideoPlayer({
         videoRef.current.pause();
         setIsPlaying(false);
       } else if (!isPlaying && !isPaused) {
-        videoRef.current.play();
-        setIsPlaying(true);
+        const p = videoRef.current.play();
+        if (p && typeof (p as Promise<void>).catch === "function") {
+          (p as Promise<void>).catch((err) => {
+            console.warn("Autoplay blocked; awaiting user gesture", err);
+            setIsPlaying(false);
+            setShowControls(true);
+          });
+        } else {
+          setIsPlaying(true);
+        }
       }
     }
   }, [isPaused]);
@@ -573,14 +557,8 @@ export function CommonVideoPlayer({
   // Scale overlay image dimensions proportionally with video scaling
   const getScaledImageDimensions = useCallback(
     (link: VideoLink) => {
-      const baseWidth =
-        (hoveredLinkId === link.id && link.hover_image_width) ||
-        link.normal_image_width ||
-        100;
-      const baseHeight =
-        (hoveredLinkId === link.id && link.hover_image_height) ||
-        link.normal_image_height ||
-        100;
+      const baseWidth = (hoveredLinkId === link.id && link.hover_image_width) || link.normal_image_width || 100;
+      const baseHeight = (hoveredLinkId === link.id && link.hover_image_height) || link.normal_image_height || 100;
 
       if (!videoRect?.scaleX || !videoRect?.scaleY) {
         return { width: baseWidth, height: baseHeight };
@@ -603,7 +581,16 @@ export function CommonVideoPlayer({
         setIsPlaying(false);
         setShowControls(true);
       } else {
-        videoRef.current.play();
+        const p = videoRef.current.play();
+        if (p && typeof (p as Promise<void>).catch === "function") {
+          (p as Promise<void>).catch((err) => {
+            console.warn("Autoplay blocked; awaiting user gesture", err);
+            setIsPlaying(false);
+            setShowControls(true);
+          });
+        } else {
+          setIsPlaying(true);
+        }
         setIsPlaying(true);
         setMouseActive(true);
         resetMouseTimeout();
@@ -645,8 +632,7 @@ export function CommonVideoPlayer({
     return link.normal_state_image;
   };
 
-  const getImageDimensions = (link: VideoLink) =>
-    getScaledImageDimensions(link);
+  const getImageDimensions = (link: VideoLink) => getScaledImageDimensions(link);
 
   const handleVideoEnd = () => {
     // CRITICAL FIX: Navigation videos should NOT show freeze controls
@@ -680,7 +666,16 @@ export function CommonVideoPlayer({
   const handleRestartVideo = () => {
     if (videoRef.current && currentVideo) {
       videoRef.current.currentTime = 0;
-      videoRef.current.play();
+      const p = videoRef.current.play();
+      if (p && typeof (p as Promise<void>).catch === "function") {
+        (p as Promise<void>).catch((err) => {
+          console.warn("Autoplay blocked on restart; awaiting user gesture", err);
+          setIsPlaying(false);
+          setShowControls(true);
+        });
+      } else {
+        setIsPlaying(true);
+      }
       setIsPlaying(true);
       setShowFreezeControls(false);
       setIsAtLastFrame(false);
@@ -732,12 +727,12 @@ export function CommonVideoPlayer({
         <video
           ref={videoRef}
           autoPlay
+          muted
+          playsInline
           src={currentVideo.url}
-          className={`w-full h-auto object-contain rounded-2xl cursor-pointer`}
+          className={`w-full h-full object-cover rounded-2xl cursor-pointer`}
           style={{
-            // Prevent upscaling beyond the video's natural resolution
-            maxWidth: videoRef.current?.videoWidth || undefined,
-            maxHeight: videoRef.current?.videoHeight || undefined,
+            // Fill the container completely; rely on object-cover for aspect ratio
           }}
           controls={false}
           onClick={togglePlayPause}
