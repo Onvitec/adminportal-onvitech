@@ -14,10 +14,10 @@ async function EditPage({ params }: { params: any }) {
     .from("sessions")
     .select("*")
     .eq("id", sessionId)
-    .single();
+    .maybeSingle();
 
   if (error || !data) {
-    console.error("Supabase fetch error:", error);
+    console.error("Supabase fetch error:", error ?? { message: "No data returned" });
     return <div>Session not found or error occurred.</div>;
   }
 

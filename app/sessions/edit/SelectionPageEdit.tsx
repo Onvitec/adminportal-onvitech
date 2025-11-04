@@ -276,8 +276,8 @@ export default function EditSelectionSession({
               link_type:
                 (link.link_type as "url" | "video" | "form") ||
                 (link.url ? "url" : "video"),
-              position_x: link.position_x || 20,
-              position_y: link.position_y || 20,
+              position_x: link.position_x ?? 20,
+              position_y: link.position_y ?? 20,
               duration_ms: link.duration_ms,
               normal_state_image: link.normal_state_image || undefined,
               hover_state_image: link.hover_state_image || undefined,
@@ -316,8 +316,8 @@ export default function EditSelectionSession({
               link_type:
                 (link.link_type as "url" | "video" | "form") ||
                 (link.url ? "url" : "video"),
-              position_x: link.position_x || 20,
-              position_y: link.position_y || 20,
+              position_x: link.position_x ?? 20,
+              position_y: link.position_y ?? 20,
               duration_ms: link.duration_ms,
               normal_state_image: link.normal_state_image || undefined,
               hover_state_image: link.hover_state_image || undefined,
@@ -944,9 +944,9 @@ export default function EditSelectionSession({
               timestamp_seconds: link.timestamp_seconds,
               label: link.label,
               link_type: link.link_type,
-              position_x: link.position_x || 20,
+              position_x: link.position_x ?? 20,
               duration_ms: link.duration_ms,
-              position_y: link.position_y || 20,
+              position_y: link.position_y ?? 20,
               normal_state_image: normalImageUrl,
               hover_state_image: hoverImageUrl,
               normal_image_width: link.normal_image_width,

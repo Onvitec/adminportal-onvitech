@@ -848,8 +848,8 @@ function VideoUploadWithLinksComponent({
           form.linkType !== link.link_type ||
           form.url !== (link.url || "") ||
           form.destinationVideoId !== (link.destination_video_id || "") ||
-          form.position_x !== (link.position_x || 20) ||
-          form.position_y !== (link.position_y || 20) ||
+          form.position_x !== (link.position_x ?? 20) ||
+          form.position_y !== (link.position_y ?? 20) ||
           form.duration_ms !== (link.duration_ms || "") ||
           form.normal_image_width !== (link.normal_image_width || 100) ||
           form.normal_image_height !== (link.normal_image_height || 100) ||
@@ -896,8 +896,8 @@ function VideoUploadWithLinksComponent({
             timestamp: link.timestamp_seconds.toString(),
             linkType: link.link_type,
             destinationVideoId: link.destination_video_id || "",
-            position_x: link.position_x || 20,
-            position_y: link.position_y || 20,
+            position_x: link.position_x ?? 20,
+            position_y: link.position_y ?? 20,
             duration_ms: link.duration_ms,
             normalImageFile: link.normalImageFile || null,
             hoverImageFile: link.hoverImageFile || null,
@@ -1077,17 +1077,15 @@ function VideoUploadWithLinksComponent({
               Math.min(timestampValue, maxTimestamp)
             ).toString();
           } else if (field === "position_x") {
-            // Ensure position is within reasonable bounds (0-90%)
-            updated.position_x = Math.max(
-              0,
-              Math.min(90, parseInt(value) || 20)
-            );
+            // Ensure position is within reasonable bounds (0-90%) and preserve zero
+            const n = parseInt(value);
+            const valid = Number.isNaN(n) ? 20 : n;
+            updated.position_x = Math.max(0, Math.min(90, valid));
           } else if (field === "position_y") {
-            // Ensure position is within reasonable bounds (0-90%)
-            updated.position_y = Math.max(
-              0,
-              Math.min(90, parseInt(value) || 20)
-            );
+            // Ensure position is within reasonable bounds (0-90%) and preserve zero
+            const n = parseInt(value);
+            const valid = Number.isNaN(n) ? 20 : n;
+            updated.position_y = Math.max(0, Math.min(90, valid));
           } else if (
             field === "normal_image_width" ||
             field === "normal_image_height"
