@@ -67,14 +67,14 @@ function FormDisplay({
 
   const handleNumberChange = (elementId: string, value: string) => {
     // Remove any negative signs, commas, or other non-numeric characters except decimal point
-    const cleanValue = value.replace(/[^-0-9.]/g, '');
-    
+    const cleanValue = value.replace(/[^-0-9.]/g, "");
+
     // Remove negative signs completely
-    const positiveValue = cleanValue.replace(/-/g, '');
-    
+    const positiveValue = cleanValue.replace(/-/g, "");
+
     // If empty string, set as empty, otherwise use the positive number
-    const finalValue = positiveValue === '' ? '' : positiveValue;
-    
+    const finalValue = positiveValue === "" ? "" : positiveValue;
+
     setFormValues((prev) => ({ ...prev, [elementId]: finalValue }));
   };
 
@@ -140,7 +140,7 @@ function FormDisplay({
         formatted: formattedValues,
       },
     };
-           
+
     onSubmit(finalPayload);
   };
 
@@ -170,7 +170,7 @@ function FormDisplay({
             onWheel={(e) => e.currentTarget.blur()} // Prevent scroll wheel changes
             onKeyDown={(e) => {
               // Prevent negative sign, 'e' (scientific notation), and comma
-              if (['-', 'e', 'E', ','].includes(e.key)) {
+              if (["-", "e", "E", ","].includes(e.key)) {
                 e.preventDefault();
               }
             }}
@@ -360,7 +360,6 @@ export function CommonVideoPlayer({
   const mouseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isAtLastFrame, setIsAtLastFrame] = useState(false);
 
-  // Video rect state for precise positioning
   const [videoRect, setVideoRect] = useState<{
     width: number;
     height: number;
@@ -368,28 +367,186 @@ export function CommonVideoPlayer({
     top: number;
   } | null>(null);
 
-  // CRITICAL: Check if we should show navigation button
-  const shouldShowNavigationButton = useCallback(() => {
-    // Only show navigation button if:
-    // 1. navigationButton prop is provided
-    // 2. onNavigationButtonClick callback is provided
-    // 3. We're not currently showing a form
-    // 4. We're not in freeze controls mode
-    // 5. This is NOT a navigation video
-    return (
-      navigationButton &&
-      onNavigationButtonClick &&
-      !currentForm &&
-      !showFreezeControls &&
-      !isNavigationVideo // ADD THIS: Don't show in navigation video
-    );
-  }, [
-    navigationButton,
-    onNavigationButtonClick,
-    currentForm,
-    showFreezeControls,
-    isNavigationVideo,
-  ]);
+  // SIMPLIFIED: Sync video events with state
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (!videoEl) return;
+
+    const handlePlay = () => {
+      setIsPlaying(true);
+      setShowFreezeControls(false);
+      setIsAtLastFrame(false);
+    };
+
+    const handlePause = () => {
+      setIsPlaying(false);
+      setShowControls(true);
+    };
+
+    // Set up event listeners
+    videoEl.addEventListener("play", handlePlay);
+    videoEl.addEventListener("pause", handlePause);
+
+    // Check initial state after a short delay to account for auto-play
+    const checkInitialState = () => {
+      if (!videoEl.paused) {
+        setIsPlaying(true);
+      }
+    };
+
+    setTimeout(checkInitialState, 100);
+
+    return () => {
+      videoEl.removeEventListener("play", handlePlay);
+      videoEl.removeEventListener("pause", handlePause);
+    };
+  }, []);
+
+  // Handle external pause requests (like forms)
+  useEffect(() => {
+    if (videoRef.current) {
+      if (isPaused) {
+        videoRef.current.pause();
+      } else if (isPlaying && !isPaused) {
+        // Only play if we're supposed to be playing and not paused externally
+        videoRef.current.play().catch((error) => {
+          console.log("Play failed:", error);
+        });
+      }
+    }
+  }, [isPaused, isPlaying]);
+
+  // Reset state when video changes
+  useEffect(() => {
+    setShowFreezeControls(false);
+    setIsAtLastFrame(false);
+    // Don't reset isPlaying here - let the video element control it
+  }, [currentVideo]);
+
+  // Enhanced video rect calculation with better timing
+  useEffect(() => {
+    const video = videoRef.current;
+    const container = videoContainerRef.current;
+    if (!video || !container) return;
+
+    const calculateAndSetRect = () => {
+      setTimeout(() => {
+        calculateVideoRect();
+      }, 100);
+    };
+
+    const resizeObserver = new ResizeObserver(calculateAndSetRect);
+    resizeObserver.observe(container);
+
+    video.addEventListener("loadedmetadata", calculateAndSetRect);
+    video.addEventListener("canplay", calculateAndSetRect);
+    video.addEventListener("loadeddata", calculateAndSetRect);
+
+    window.addEventListener("resize", calculateAndSetRect);
+
+    const checkContainerSize = () => {
+      if (container.getBoundingClientRect().width > 0) {
+        calculateAndSetRect();
+      } else {
+        setTimeout(checkContainerSize, 50);
+      }
+    };
+
+    checkContainerSize();
+
+    return () => {
+      resizeObserver.disconnect();
+      video.removeEventListener("loadedmetadata", calculateAndSetRect);
+      video.removeEventListener("canplay", calculateAndSetRect);
+      video.removeEventListener("loadeddata", calculateAndSetRect);
+      window.removeEventListener("resize", calculateAndSetRect);
+    };
+  }, [currentVideo]);
+
+  // Track timestamps for video links
+  // useEffect(() => {
+  //   const videoEl = videoRef.current;
+  //   if (!videoEl || !currentVideo) return;
+
+  //   const handleTimeUpdate = () => {
+  //     const links = videoLinks[currentVideo.id] || [];
+  //     const currentTime = videoEl.currentTime;
+
+  //     const visibleLinks = links.filter((link) => {
+  //       const startTime = link.timestamp_seconds;
+  //       const durationSeconds = (link.duration_ms || 3000) / 1000;
+  //       const endTime = startTime + durationSeconds;
+
+  //       return currentTime >= startTime && currentTime <= endTime;
+  //     });
+
+  //     setActiveLinks((prev) => {
+  //       if (
+  //         prev.length !== visibleLinks.length ||
+  //         !prev.every((link, i) => link.id === visibleLinks[i]?.id)
+  //       ) {
+  //         return visibleLinks;
+  //       }
+  //       return prev;
+  //     });
+  //   };
+
+  //   videoEl.addEventListener("timeupdate", handleTimeUpdate);
+  //   return () => {
+  //     videoEl.removeEventListener("timeupdate", handleTimeUpdate);
+  //   };
+  // }, [currentVideo, videoLinks]);
+
+  // Track timestamps for video links
+  useEffect(() => {
+    const videoEl = videoRef.current;
+    if (!videoEl || !currentVideo) return;
+
+    const handleTimeUpdate = () => {
+      const links = videoLinks[currentVideo.id] || [];
+      const currentTime = videoEl.currentTime;
+      const videoDuration = videoEl.duration;
+
+      const visibleLinks = links.filter((link) => {
+        const startTime = link.timestamp_seconds;
+        const durationSeconds = (link.duration_ms || 3000) / 1000;
+        const endTime = startTime + durationSeconds;
+
+        // If video has ended or is frozen, keep links that should still be visible
+        if (videoEl.ended || showFreezeControls) {
+          // Show links that started before end AND whose duration extends to/past the end
+          // Use 1 second tolerance to account for timing precision
+          const tolerance = 1.0; // 1 second tolerance
+          const extendsToEnd =
+            currentTime >= startTime &&
+            (endTime >= videoDuration - tolerance ||
+              currentTime <= endTime + tolerance);
+          return extendsToEnd;
+        }
+
+        // Normal behavior: show links within their time range
+        return currentTime >= startTime && currentTime <= endTime;
+      });
+
+      setActiveLinks((prev) => {
+        if (
+          prev.length !== visibleLinks.length ||
+          !prev.every((link, i) => link.id === visibleLinks[i]?.id)
+        ) {
+          return visibleLinks;
+        }
+        return prev;
+      });
+    };
+
+    videoEl.addEventListener("timeupdate", handleTimeUpdate);
+    videoEl.addEventListener("ended", handleTimeUpdate);
+
+    return () => {
+      videoEl.removeEventListener("timeupdate", handleTimeUpdate);
+      videoEl.removeEventListener("ended", handleTimeUpdate);
+    };
+  }, [currentVideo, videoLinks, showFreezeControls]);
 
   // PERFECT Video rect calculation
   const calculateVideoRect = useCallback(() => {
@@ -438,114 +595,22 @@ export function CommonVideoPlayer({
     return { right: `${right}px`, top: `${top}px` };
   }, [videoRect]);
 
-  // Enhanced video rect calculation with better timing
-  useEffect(() => {
-    const video = videoRef.current;
-    const container = videoContainerRef.current;
-    if (!video || !container) return;
-
-    const calculateAndSetRect = () => {
-      setTimeout(() => {
-        calculateVideoRect();
-      }, 100);
-    };
-
-    const resizeObserver = new ResizeObserver(calculateAndSetRect);
-    resizeObserver.observe(container);
-
-    video.addEventListener("loadedmetadata", calculateAndSetRect);
-    video.addEventListener("canplay", calculateAndSetRect);
-    video.addEventListener("loadeddata", calculateAndSetRect);
-    video.addEventListener("resize", calculateAndSetRect);
-
-    window.addEventListener("resize", calculateAndSetRect);
-
-    const checkContainerSize = () => {
-      if (container.getBoundingClientRect().width > 0) {
-        calculateAndSetRect();
-      } else {
-        setTimeout(checkContainerSize, 50);
-      }
-    };
-
-    checkContainerSize();
-
-    return () => {
-      resizeObserver.disconnect();
-      video.removeEventListener("loadedmetadata", calculateAndSetRect);
-      video.removeEventListener("canplay", calculateAndSetRect);
-      video.removeEventListener("loadeddata", calculateAndSetRect);
-      video.removeEventListener("resize", calculateAndSetRect);
-      window.removeEventListener("resize", calculateAndSetRect);
-    };
-  }, [currentVideo, calculateVideoRect]);
-
-  // Track timestamps for video links
-  useEffect(() => {
-    const videoEl = videoRef.current;
-    if (!videoEl || !currentVideo) return;
-
-    const handleTimeUpdate = () => {
-      const links = videoLinks[currentVideo.id] || [];
-      const currentTime = videoEl.currentTime;
-
-      const visibleLinks = links.filter((link) => {
-        const startTime = link.timestamp_seconds;
-        const durationSeconds = (link.duration_ms || 3000) / 1000;
-        const endTime = startTime + durationSeconds;
-
-        return currentTime >= startTime && currentTime <= endTime;
-      });
-
-      setActiveLinks((prev) => {
-        if (
-          prev.length !== visibleLinks.length ||
-          !prev.every((link, i) => link.id === visibleLinks[i]?.id)
-        ) {
-          return visibleLinks;
-        }
-        return prev;
-      });
-    };
-
-    videoEl.addEventListener("timeupdate", handleTimeUpdate);
-    return () => {
-      videoEl.removeEventListener("timeupdate", handleTimeUpdate);
-    };
-  }, [currentVideo, videoLinks]);
-
-  // Handle pausing when form is shown
-  useEffect(() => {
-    if (videoRef.current) {
-      if (isPaused) {
-        videoRef.current.pause();
-        setIsPlaying(false);
-      } else if (!isPlaying && !isPaused) {
-        videoRef.current.play();
-        setIsPlaying(true);
-      }
-    }
-  }, [isPaused]);
-
-  // Reset freeze controls when video changes
-  useEffect(() => {
-    setShowFreezeControls(false);
-  }, [currentVideo]);
-
-  // Get image position
-  const getImagePosition = useCallback(
-    (link: VideoLink) => {
-      if (!videoRect) {
-        return { left: `${link.position_x}%`, top: `${link.position_y}%` };
-      }
-
-      const left = videoRect.left + (link.position_x / 100) * videoRect.width;
-      const top = videoRect.top + (link.position_y / 100) * videoRect.height;
-
-      return { left: `${left}px`, top: `${top}px` };
-    },
-    [videoRect]
-  );
+  // CRITICAL: Check if we should show navigation button
+  const shouldShowNavigationButton = useCallback(() => {
+    return (
+      navigationButton &&
+      onNavigationButtonClick &&
+      !currentForm &&
+      !showFreezeControls &&
+      !isNavigationVideo
+    );
+  }, [
+    navigationButton,
+    onNavigationButtonClick,
+    currentForm,
+    showFreezeControls,
+    isNavigationVideo,
+  ]);
 
   const togglePlayPause = () => {
     if (videoRef.current && currentVideo) {
@@ -553,11 +618,12 @@ export function CommonVideoPlayer({
 
       if (isPlaying) {
         videoRef.current.pause();
-        setIsPlaying(false);
-        setShowControls(true);
+        // Don't manually set isPlaying - let the 'pause' event handle it
       } else {
-        videoRef.current.play();
-        setIsPlaying(true);
+        videoRef.current.play().catch((error) => {
+          console.log("Play failed:", error);
+        });
+        // Don't manually set isPlaying - let the 'play' event handle it
         setMouseActive(true);
         resetMouseTimeout();
         setShowFreezeControls(false);
@@ -614,40 +680,67 @@ export function CommonVideoPlayer({
     };
   };
 
+  const getImagePosition = useCallback(
+    (link: VideoLink) => {
+      if (!videoRect) {
+        return { left: `${link.position_x}%`, top: `${link.position_y}%` };
+      }
+
+      const left = videoRect.left + (link.position_x / 100) * videoRect.width;
+      const top = videoRect.top + (link.position_y / 100) * videoRect.height;
+
+      return { left: `${left}px`, top: `${top}px` };
+    },
+    [videoRect]
+  );
   const handleVideoEnd = () => {
-    // CRITICAL FIX: Navigation videos should NOT show freeze controls
-    // They should freeze at end but keep buttons functional without showing "Video Completed"
     const shouldFreeze =
       !hasQuestions && currentVideo?.freezeAtEnd && !isNavigationVideo;
 
     if (shouldFreeze) {
       setShowFreezeControls(true);
-      setIsPlaying(false);
-      setShowControls(true);
+
+      // Recalculate active links for frozen state
+      const videoEl = videoRef.current;
+      if (videoEl && currentVideo) {
+        const links = videoLinks[currentVideo.id] || [];
+        const currentTime = videoEl.currentTime;
+        const videoDuration = videoEl.duration;
+
+        const frozenLinks = links.filter((link) => {
+          const startTime = link.timestamp_seconds;
+          const durationSeconds = (link.duration_ms || 3000) / 1000;
+          const endTime = startTime + durationSeconds;
+
+          // Use 1 second tolerance for timing precision
+          const tolerance = 1.0;
+
+          // Keep links that:
+          // 1. Started before the end of video
+          // 2. AND either extend to/past video end OR are still within timeframe
+          return (
+            currentTime >= startTime &&
+            (endTime >= videoDuration - tolerance ||
+              currentTime <= endTime + tolerance)
+          );
+        });
+
+        setActiveLinks(frozenLinks);
+      }
     } else {
-      // For navigation videos, just pause and keep buttons functional
       if (isNavigationVideo) {
-        setIsPlaying(false);
-        setShowControls(true);
-        // Don't show freeze controls for navigation videos
         setIsAtLastFrame(true);
       } else {
-        setIsPlaying(false);
-        setShowControls(true);
         onVideoEnd();
       }
     }
   };
-  // Reset isAtLastFrame when video changes or restarts
-  useEffect(() => {
-    setIsAtLastFrame(false);
-  }, [currentVideo]);
-
   const handleRestartVideo = () => {
     if (videoRef.current && currentVideo) {
       videoRef.current.currentTime = 0;
-      videoRef.current.play();
-      setIsPlaying(true);
+      videoRef.current.play().catch((error) => {
+        console.log("Restart play failed:", error);
+      });
       setShowFreezeControls(false);
       setIsAtLastFrame(false);
       setMouseActive(true);
@@ -744,7 +837,7 @@ export function CommonVideoPlayer({
       )}
 
       {/* Freeze at end controls */}
-      {showFreezeControls && (
+      {/* {showFreezeControls && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm z-40">
           <div className="bg-white/30 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-white/60 text-center max-w-md">
             <h3 className="text-white text-lg font-semibold mb-4">
@@ -762,7 +855,8 @@ export function CommonVideoPlayer({
             </div>
           </div>
         </div>
-      )}
+      )} */}
+      {showFreezeControls && <div></div>}
 
       {!isPlaying && !isNavigationVideo && !showFreezeControls && (
         <div
