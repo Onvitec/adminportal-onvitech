@@ -579,6 +579,29 @@ export function CommonVideoPlayer({
     [videoRect]
   );
 
+  // Clamp position so overlays never get cropped by container edges
+  const getClampedImagePosition = useCallback(
+    (link: VideoLink, dims: { width: number; height: number }) => {
+      if (!videoRect) {
+        return { left: `${link.position_x}%`, top: `${link.position_y}%` };
+      }
+
+      let left = videoRect.left + (link.position_x / 100) * videoRect.width;
+      let top = videoRect.top + (link.position_y / 100) * videoRect.height;
+
+      const minLeft = videoRect.left;
+      const maxLeft = videoRect.left + videoRect.width - dims.width;
+      const minTop = videoRect.top;
+      const maxTop = videoRect.top + videoRect.height - dims.height;
+
+      left = Math.max(minLeft, Math.min(left, maxLeft));
+      top = Math.max(minTop, Math.min(top, maxTop));
+
+      return { left: `${left}px`, top: `${top}px` };
+    },
+    [videoRect]
+  );
+
   // Scale overlay image dimensions proportionally with video scaling
   const getScaledImageDimensions = useCallback(
     (link: VideoLink) => {
@@ -885,7 +908,7 @@ export function CommonVideoPlayer({
               {activeLinks.map((link) => {
                 const imageUrl = getImageUrl(link);
                 const dimensions = getImageDimensions(link);
-                const position = getImagePosition(link);
+                const position = getClampedImagePosition(link, dimensions);
 
                 return imageUrl ? (
                   <motion.div
@@ -908,7 +931,7 @@ export function CommonVideoPlayer({
                             width: `${dimensions.width}px`,
                             height: `${dimensions.height}px`,
                           }}
-                          className={`object-cover rounded block ${
+                          className={`object-contain rounded block ${
                             link.hover_state_image ? "group-hover:hidden" : ""
                           }`}
                           draggable={false}
@@ -924,7 +947,7 @@ export function CommonVideoPlayer({
                             width: `${dimensions.width}px`,
                             height: `${dimensions.height}px`,
                           }}
-                          className="object-cover rounded hidden group-hover:block"
+                          className="object-contain rounded hidden group-hover:block"
                           draggable={false}
                         />
                       )}
