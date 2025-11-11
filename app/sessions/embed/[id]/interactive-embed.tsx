@@ -11,7 +11,7 @@ import {
   FormSolutionData,
 } from "@/lib/types";
 import { Questions } from "@/components/icons";
-import { CommonVideoPlayer } from "../CommonVideoPlayer";
+import { CommonVideoPlayer } from "../CommonVideoPlaye";
 import { SolutionDisplay } from "../SolutionDisplay";
 import { buildEmailTemplate } from "@/lib/utils";
 

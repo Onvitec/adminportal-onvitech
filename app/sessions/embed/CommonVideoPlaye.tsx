@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import type { ReactElement } from "react";
 import {
   VideoType,
   VideoLink,
@@ -63,7 +62,8 @@ function FormDisplay({
 
   const handleInputChange = (elementId: string, value: any) => {
     // Convert null/undefined to empty string
-    const sanitizedValue = value === null || value === undefined ? "" : value;
+    const sanitizedValue = value 
+    null || value === undefined ? "" : value;
     setFormValues((prev) => ({ ...prev, [elementId]: sanitizedValue }));
   };
 
@@ -351,7 +351,7 @@ export function CommonVideoPlayer({
   isNavigationVideo = false,
 
   onNavigationButtonClick,
-}: CommonVideoPlayerProps): ReactElement | null {
+}: CommonVideoPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [mouseActive, setMouseActive] = useState(false);
@@ -394,8 +394,8 @@ export function CommonVideoPlayer({
     isNavigationVideo,
   ]);
 
-  // PERFECT Video rect calculation (fit within container, preserve AR, NO UPSCALING)
-  const calculateVideoRect = useCallback(() => {
+    // PERFECT Video rect calculation (fit within container, preserve AR, NO UPSCALING)
+    const calculateVideoRect = useCallback(() => {
       const video = videoRef.current;
       const container = videoContainerRef.current;
       if (!video || !container) return null;
@@ -444,20 +444,6 @@ export function CommonVideoPlayer({
         scaleX: vW ? actualVideoWidth / vW : undefined,
         scaleY: vH ? actualVideoHeight / vH : undefined,
       };
-      setVideoRect(rect);
-  }, []);
-
-  // Navigation button position relative to video rect
-  const getNavigationButtonPosition = useCallback(() => {
-    if (!videoRect) {
-      return { left: "0px", top: "0px" };
-    }
-    const margin = 20;
-    const buttonSize = 64; // matches w-16 h-16
-    const top = videoRect.top + margin;
-    const left = videoRect.left + videoRect.width - margin - buttonSize;
-    return { left: `${left}px`, top: `${top}px` };
-  }, [videoRect]);
   // SIMPLIFIED: Sync video events with state
   useEffect(() => {
     const videoEl = videoRef.current;
@@ -505,6 +491,12 @@ export function CommonVideoPlayer({
         });
       }
     }
+    const margin = 20;
+    const buttonSize = 64; // matches w-16 h-16
+    const top = videoRect.top + margin;
+    const left = videoRect.left + videoRect.width - margin - buttonSize;
+    return { left: `${left}px`, top: `${top}px` };
+  }, [videoRect]);
   }, [isPaused, isPlaying]);
 
   // Reset state when video changes
@@ -659,10 +651,69 @@ export function CommonVideoPlayer({
         }
       }
 
-    }
-  }, [isPaused, isPlaying]);
+  // PERFECT Video rect calculation
+  const calculateVideoRect = useCallback(() => {
+    const video = videoRef.current;
+    const container = videoContainerRef.current;
+    if (!video || !container) return null;
 
-  // (duplicate helpers removed)
+    const containerRect = container.getBoundingClientRect();
+    const videoAspect = video.videoWidth / video.videoHeight;
+    const containerAspect = containerRect.width / containerRect.height;
+
+    let actualVideoWidth, actualVideoHeight, offsetLeft, offsetTop;
+
+    if (containerAspect > videoAspect) {
+      actualVideoHeight = containerRect.height;
+      actualVideoWidth = actualVideoHeight * videoAspect;
+      offsetLeft = (containerRect.width - actualVideoWidth) / 2;
+      offsetTop = 0;
+    } else {
+      actualVideoWidth = containerRect.width;
+      actualVideoHeight = actualVideoWidth / videoAspect;
+      offsetLeft = 0;
+      offsetTop = (containerRect.height - actualVideoHeight) / 2;
+    }
+
+    const rect = {
+      width: actualVideoWidth,
+      height: actualVideoHeight,
+      left: offsetLeft,
+      top: offsetTop,
+    };
+
+    setVideoRect(rect);
+    return rect;
+  }, []);
+
+  // Navigation button position - always top right
+  const getNavigationButtonPosition = useCallback(() => {
+    if (!videoRect) {
+      return { right: "20px", top: "20px" };
+    }
+
+    const right = 20;
+    const top = 20;
+
+    return { right: `${right}px`, top: `${top}px` };
+  }, [videoRect]);
+
+  // CRITICAL: Check if we should show navigation button
+  const shouldShowNavigationButton = useCallback(() => {
+    return (
+      navigationButton &&
+      onNavigationButtonClick &&
+      !currentForm &&
+      !showFreezeControls &&
+      !isNavigationVideo
+    );
+  }, [
+    navigationButton,
+    onNavigationButtonClick,
+    currentForm,
+    showFreezeControls,
+    isNavigationVideo,
+  ]);
 
   // Clamp position so overlays never get cropped by container edges
   const getClampedImagePosition = useCallback(
@@ -938,6 +989,79 @@ export function CommonVideoPlayer({
             </div>
           </div>
         )}
+      <video
+        ref={videoRef}
+        autoPlay
+        src={currentVideo.url}
+        className="w-full h-auto max-h-[500px] object-contain rounded-xl cursor-pointer"
+        controls={false}
+        onClick={togglePlayPause}
+        onEnded={handleVideoEnd}
+        onPlay={() => {
+          setIsPlaying(true);
+          if (videoRef.current?.currentTime === 0) {
+            onVideoRestart?.();
+          }
+        }}
+        onPause={() => {
+          setIsPlaying(false);
+          setShowControls(true);
+        }}
+        onLoadStart={() => setTimeout(() => calculateVideoRect(), 100)}
+        onCanPlay={() => setTimeout(() => calculateVideoRect(), 100)}
+        onResize={() => setTimeout(() => calculateVideoRect(), 100)}
+      />
+
+      {/* CRITICAL FIX: Only show navigation button when conditions are met */}
+      {shouldShowNavigationButton() && (
+        <div
+          className="absolute z-30 cursor-pointer transition-transform duration-200"
+          style={getNavigationButtonPosition()}
+          onClick={onNavigationButtonClick}
+        >
+          <div className="relative">
+            <img
+              src={navigationButton!.image_url}
+              alt="Navigation"
+              className="w-16 h-16 object-contain rounded-lg transition-all"
+              draggable={false}
+            />
+          </div>
+        </div>
+      )}
+
+      {showBackButton && onBackNavigation && !isPlaying && (
+        <div
+          className={`absolute left-4 top-4 z-[999] bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:scale-110 ${
+            showControls ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+          onClick={onBackNavigation}
+        >
+          <ChevronLeft className="w-10 h-10 text-white font-bold" />
+        </div>
+      )}
+
+      {/* Freeze at end controls */}
+      {/* {showFreezeControls && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm z-40">
+          <div className="bg-white/30 backdrop-blur-sm rounded-lg p-6 shadow-lg border border-white/60 text-center max-w-md">
+            <h3 className="text-white text-lg font-semibold mb-4">
+              Video Completed
+            </h3>
+            <p className="text-white mb-6">What would you like to do next?</p>
+            <div className="flex flex-col gap-3">
+              <Button
+                onClick={handleRestartVideo}
+                className="bg-white/30 text-white hover:bg-white/40"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Watch Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      )} */}
+      {showFreezeControls && <div></div>}
 
         {showBackButton && onBackNavigation && !isPlaying && (
           <div
@@ -1081,4 +1205,3 @@ export function CommonVideoPlayer({
     </div>
   );
 }
-  

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
 import { Questions, Answers } from "@/components/icons";
 import { SolutionDisplay } from "../SolutionDisplay";
-import { CommonVideoPlayer } from "../CommonVideoPlayer";
+import { CommonVideoPlayer } from "../CommonVideoPlaye";
 import { buildEmailTemplate } from "@/lib/utils";
 
 type AnswerCombination = {
