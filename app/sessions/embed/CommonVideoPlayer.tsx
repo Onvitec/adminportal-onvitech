@@ -539,12 +539,12 @@ export function CommonVideoPlayer({
     };
   }, [currentVideo, videoLinks]);
 
-  // Handle pausing when form is shown and prevent initial autoplay
+  // Handle pausing when form is shown and prevent initial autoplay (always start paused)
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    // On first render, force paused and show controls; skip autoplay
+    // On first render, force paused and show controls; never autoplay initially
     if (!hasInitializedRef.current) {
       video.pause();
       setIsPlaying(false);
@@ -553,27 +553,14 @@ export function CommonVideoPlayer({
       return;
     }
 
+    // When externally paused (e.g., form overlay), keep paused until user plays
     if (isPaused) {
       video.pause();
       setIsPlaying(false);
       setShowControls(true);
-      return;
     }
-
-    // Only auto-play if explicitly allowed (e.g., when play button overlay is disabled)
-    if (!isPlaying && !isPaused && !sessionShowPlayButton) {
-      const p = video.play();
-      if (p && typeof (p as Promise<void>).catch === "function") {
-        (p as Promise<void>).catch((err) => {
-          console.warn("Autoplay blocked; awaiting user gesture", err);
-          setIsPlaying(false);
-          setShowControls(true);
-        });
-      } else {
-        setIsPlaying(true);
-      }
-    }
-  }, [isPaused, sessionShowPlayButton]);
+    // If not paused, do nothing here — require explicit user gesture to play
+  }, [isPaused]);
 
   // Reset freeze controls when video changes
   useEffect(() => {
