@@ -252,20 +252,12 @@
 //       setCurrentVideo(nextVideo);
 //       setShowQuestions(false);
 
-//       // Reset & attempt autoplay (guarded)
+//       // Reset & autoplay
 //       setTimeout(() => {
 //         if (videoRef.current) {
 //           videoRef.current.currentTime = 0;
-//           const p = videoRef.current.play();
-//           if (p && typeof (p as Promise<void>).catch === "function") {
-//             (p as Promise<void>).catch((err) => {
-//               console.warn("Autoplay blocked; waiting for user gesture", err);
-//               setIsPlaying(false);
-//               setShowControls(true);
-//             });
-//           } else {
-//             setIsPlaying(true);
-//           }
+//           videoRef.current.play();
+//           setIsPlaying(true);
 //           setMouseActive(true);
 //           resetMouseTimeout();
 //         }
@@ -288,20 +280,12 @@
 //       setCurrentVideo(link.destination_video);
 //       setShowQuestions(false);
 
-//       // Reset & attempt autoplay (guarded)
+//       // Reset & autoplay
 //       setTimeout(() => {
 //         if (videoRef.current) {
 //           videoRef.current.currentTime = 0;
-//           const p = videoRef.current.play();
-//           if (p && typeof (p as Promise<void>).catch === "function") {
-//             (p as Promise<void>).catch((err) => {
-//               console.warn("Autoplay blocked; waiting for user gesture", err);
-//               setIsPlaying(false);
-//               setShowControls(true);
-//             });
-//           } else {
-//             setIsPlaying(true);
-//           }
+//           videoRef.current.play();
+//           setIsPlaying(true);
 //           setMouseActive(true);
 //           resetMouseTimeout();
 //         }
@@ -316,16 +300,8 @@
 //         setIsPlaying(false);
 //         setShowControls(true);
 //       } else {
-//         const p = videoRef.current.play();
-//         if (p && typeof (p as Promise<void>).catch === "function") {
-//           (p as Promise<void>).catch((err) => {
-//             console.warn("Autoplay blocked; waiting for user gesture", err);
-//             setIsPlaying(false);
-//             setShowControls(true);
-//           });
-//         } else {
-//           setIsPlaying(true);
-//         }
+//         videoRef.current.play();
+//         setIsPlaying(true);
 //         setMouseActive(true);
 //         resetMouseTimeout();
 //       }

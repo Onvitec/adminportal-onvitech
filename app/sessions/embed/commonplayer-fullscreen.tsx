@@ -442,9 +442,9 @@ export function CommonVideoPlayer({
         return { left: `${link.position_x}%`, top: `${link.position_y}%` };
       }
 
-      // Calculate position relative to the actual rendered video bounds
-      const left = videoRect.left + (link.position_x / 100) * videoRect.width;
-      const top = videoRect.top + (link.position_y / 100) * videoRect.height;
+      // Calculate position based on full container dimensions
+      const left = (link.position_x / 100) * videoRect.width;
+      const top = (link.position_y / 100) * videoRect.height;
 
       return { left: `${left}px`, top: `${top}px` };
     },
@@ -496,16 +496,7 @@ export function CommonVideoPlayer({
         setIsPlaying(false);
         setShowControls(true);
       } else {
-        const p = videoRef.current.play();
-        if (p && typeof (p as Promise<void>).catch === "function") {
-          (p as Promise<void>).catch((err) => {
-            console.warn("Autoplay blocked; awaiting user gesture", err);
-            setIsPlaying(false);
-            setShowControls(true);
-          });
-        } else {
-          setIsPlaying(true);
-        }
+        videoRef.current.play();
         setIsPlaying(true);
         setMouseActive(true);
         resetMouseTimeout();
@@ -554,16 +545,7 @@ export function CommonVideoPlayer({
   const handleRestartVideo = () => {
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
-      const p = videoRef.current.play();
-      if (p && typeof (p as Promise<void>).catch === "function") {
-        (p as Promise<void>).catch((err) => {
-          console.warn("Autoplay blocked on restart; awaiting user gesture", err);
-          setIsPlaying(false);
-          setShowControls(true);
-        });
-      } else {
-        setIsPlaying(true);
-      }
+      videoRef.current.play();
       setIsPlaying(true);
       setShowFreezeControls(false);
       setMouseActive(true);
@@ -603,8 +585,6 @@ export function CommonVideoPlayer({
       <video
         ref={videoRef}
         autoPlay
-        muted
-        playsInline
         src={currentVideo.url}
         className="w-[100vw] min-h-screen object-cover cursor-pointer" // object-cover will crop to fill
         controls={false}
@@ -715,6 +695,7 @@ export function CommonVideoPlayer({
                 className="absolute z-10 cursor-pointer transition-transform duration-200 group"
                 style={{
                   ...position,
+                  transform: "translate(-50%, -50%)", // Center the image
                 }}
                 onClick={() => onVideoLinkClick(link)}
                 title={

@@ -57,10 +57,7 @@ function VideoPlayerWithDraggableImages({
     height: number;
     left: number;
     top: number;
-    scaleX?: number;
-    scaleY?: number;
   } | null>(null);
-  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
 
   // Calculate actual video dimensions within container
   const calculateVideoRect = useCallback(() => {
@@ -69,37 +66,30 @@ function VideoPlayerWithDraggableImages({
     if (!video || !container || video.videoWidth === 0) return null;
 
     const containerRect = container.getBoundingClientRect();
-    const vW = video.videoWidth;
-    const vH = video.videoHeight;
-    const aspect = vW / vH;
+    const videoAspect = video.videoWidth / video.videoHeight;
+    const containerAspect = containerRect.width / containerRect.height;
 
-    // Fallbacks for early render when container height may be 0
-    if (containerRect.width === 0) return null;
+    let actualVideoWidth, actualVideoHeight, offsetLeft, offsetTop;
 
-    // Start with width-constrained sizing (object-contain behavior)
-    let actualVideoWidth = Math.min(containerRect.width, vW);
-    let actualVideoHeight = actualVideoWidth / aspect;
-
-    // If container height is defined and width-based height exceeds it, clamp by height
-    if (containerRect.height > 0 && actualVideoHeight > containerRect.height) {
-      actualVideoHeight = Math.min(containerRect.height, vH);
-      actualVideoWidth = actualVideoHeight * aspect;
+    if (containerAspect > videoAspect) {
+      // Container is wider, video height matches container
+      actualVideoHeight = containerRect.height;
+      actualVideoWidth = actualVideoHeight * videoAspect;
+      offsetLeft = (containerRect.width - actualVideoWidth) / 2;
+      offsetTop = 0;
+    } else {
+      // Container is taller, video width matches container
+      actualVideoWidth = containerRect.width;
+      actualVideoHeight = actualVideoWidth / videoAspect;
+      offsetLeft = 0;
+      offsetTop = (containerRect.height - actualVideoHeight) / 2;
     }
-
-    // Center within container
-    const offsetLeft = (containerRect.width - actualVideoWidth) / 2;
-    const offsetTop = containerRect.height > 0
-      ? (containerRect.height - actualVideoHeight) / 2
-      : 0;
 
     const rect = {
       width: actualVideoWidth,
       height: actualVideoHeight,
       left: offsetLeft,
       top: offsetTop,
-      // Scale relative to the video's natural pixel dimensions
-      scaleX: vW ? actualVideoWidth / vW : undefined,
-      scaleY: vH ? actualVideoHeight / vH : undefined,
     };
 
     setVideoRect(rect);
@@ -112,15 +102,12 @@ function VideoPlayerWithDraggableImages({
 
     const updateDuration = () => setDuration(video.duration);
     const updateTime = () => setCurrentTime(video.currentTime);
-    const updateNaturalSize = () => setNaturalSize({ width: video.videoWidth, height: video.videoHeight });
 
     video.addEventListener("loadedmetadata", updateDuration);
-    video.addEventListener("loadedmetadata", updateNaturalSize);
     video.addEventListener("timeupdate", updateTime);
 
     return () => {
       video.removeEventListener("loadedmetadata", updateDuration);
-      video.removeEventListener("loadedmetadata", updateNaturalSize);
       video.removeEventListener("timeupdate", updateTime);
     };
   }, [videoUrl]);
@@ -273,27 +260,18 @@ function VideoPlayerWithDraggableImages({
 
   const getImageDimensions = useCallback(
     (link: VideoLink, isHovered: boolean) => {
-      const baseWidth = isHovered && (link.hover_image_width || link.hover_image_height)
-        ? (link.hover_image_width || 100)
-        : (link.normal_image_width || 100);
-      const baseHeight = isHovered && (link.hover_image_height || link.hover_image_width)
-        ? (link.hover_image_height || 100)
-        : (link.normal_image_height || 100);
-
-      // Scale overlay dimensions proportionally to the rendered video size
-      if (videoRect?.scaleX && videoRect?.scaleY) {
+      if (isHovered && (link.hover_image_width || link.hover_image_height)) {
         return {
-          width: Math.round(baseWidth * videoRect.scaleX),
-          height: Math.round(baseHeight * videoRect.scaleY),
+          width: link.hover_image_width || 100,
+          height: link.hover_image_height || 100,
         };
       }
-
       return {
-        width: baseWidth,
-        height: baseHeight,
+        width: link.normal_image_width || 100,
+        height: link.normal_image_height || 100,
       };
     },
-    [videoRect]
+    []
   );
 
   // Convert percentage position to actual pixels based on videoRect
@@ -364,23 +342,19 @@ function VideoPlayerWithDraggableImages({
     <div className="relative flex-1 bg-black rounded-xl video-player-container">
       <div
         ref={videoContainerRef}
-        className="relative w-full video-player-container flex items-center justify-center"
+        className="relative w-full"
         style={{ lineHeight: 0 }}
       >
         <video
           ref={videoRef}
           src={videoUrl}
           controls={!isEditMode}
-          className="w-full h-auto object-contain rounded-xl cursor-pointer"
+          className="w-full h-auto max-h-[500px] object-contain rounded-xl cursor-pointer"
           key={videoUrl}
           muted={isEditMode}
           onLoadStart={() => setTimeout(() => calculateVideoRect(), 100)}
           onCanPlay={() => setTimeout(() => calculateVideoRect(), 100)}
           onResize={() => setTimeout(() => calculateVideoRect(), 100)}
-          style={{
-            maxWidth: naturalSize?.width ? `${naturalSize.width}px` : undefined,
-            maxHeight: naturalSize?.height ? `${naturalSize.height}px` : undefined,
-          }}
         />
 
         {/* Overlay images */}
@@ -848,8 +822,8 @@ function VideoUploadWithLinksComponent({
           form.linkType !== link.link_type ||
           form.url !== (link.url || "") ||
           form.destinationVideoId !== (link.destination_video_id || "") ||
-          form.position_x !== (link.position_x ?? 20) ||
-          form.position_y !== (link.position_y ?? 20) ||
+          form.position_x !== (link.position_x || 20) ||
+          form.position_y !== (link.position_y || 20) ||
           form.duration_ms !== (link.duration_ms || "") ||
           form.normal_image_width !== (link.normal_image_width || 100) ||
           form.normal_image_height !== (link.normal_image_height || 100) ||
@@ -896,8 +870,8 @@ function VideoUploadWithLinksComponent({
             timestamp: link.timestamp_seconds.toString(),
             linkType: link.link_type,
             destinationVideoId: link.destination_video_id || "",
-            position_x: link.position_x ?? 20,
-            position_y: link.position_y ?? 20,
+            position_x: link.position_x || 20,
+            position_y: link.position_y || 20,
             duration_ms: link.duration_ms,
             normalImageFile: link.normalImageFile || null,
             hoverImageFile: link.hoverImageFile || null,
@@ -1077,15 +1051,17 @@ function VideoUploadWithLinksComponent({
               Math.min(timestampValue, maxTimestamp)
             ).toString();
           } else if (field === "position_x") {
-            // Ensure position is within reasonable bounds (0-90%) and preserve zero
-            const n = parseInt(value);
-            const valid = Number.isNaN(n) ? 20 : n;
-            updated.position_x = Math.max(0, Math.min(90, valid));
+            // Ensure position is within reasonable bounds (0-90%)
+            updated.position_x = Math.max(
+              0,
+              Math.min(90, parseInt(value) || 20)
+            );
           } else if (field === "position_y") {
-            // Ensure position is within reasonable bounds (0-90%) and preserve zero
-            const n = parseInt(value);
-            const valid = Number.isNaN(n) ? 20 : n;
-            updated.position_y = Math.max(0, Math.min(90, valid));
+            // Ensure position is within reasonable bounds (0-90%)
+            updated.position_y = Math.max(
+              0,
+              Math.min(90, parseInt(value) || 20)
+            );
           } else if (
             field === "normal_image_width" ||
             field === "normal_image_height"
