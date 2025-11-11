@@ -11,7 +11,7 @@ import {
   FormSolutionData,
 } from "@/lib/types";
 import { Questions } from "@/components/icons";
-import { CommonVideoPlayer } from "../CommonVideoPlayer";
+import { CommonVideoPlayer } from "../CommonVideoPlaye";
 import { SolutionDisplay } from "../SolutionDisplay";
 import { buildEmailTemplate } from "@/lib/utils";
 
@@ -1082,15 +1082,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
               const videoEl = document.querySelector("video");
               if (videoEl) {
                 videoEl.currentTime = 0;
-                // Ensure muted inline autoplay where possible
-                // @ts-ignore
-                videoEl.muted = true;
-                const p = (videoEl as HTMLVideoElement).play();
-                if (p && typeof (p as Promise<void>).catch === "function") {
-                  (p as Promise<void>).catch((err) => {
-                    console.warn("Autoplay blocked; waiting for user gesture", err);
-                  });
-                }
+                videoEl.play();
               }
             }
           }}

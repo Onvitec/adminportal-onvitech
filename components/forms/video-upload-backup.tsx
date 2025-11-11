@@ -1,329 +1,323 @@
-import { VideoLink } from "@/lib/types";
-import { Clock } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// import { useState, useRef, useEffect, memo, useCallback, useMemo } from "react";
+// import { Input } from "@/components/ui/input";
+// import { Label } from "@/components/ui/label";
+// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+// import {
+//   Plus,
+//   Trash2,
+//   Clock,
+//   Move,
+//   Eye,
+//   EyeOff,
+//   Upload,
+//   X,
+// } from "lucide-react";
+// import {
+//   Dialog,
+//   DialogContent,
+//   DialogHeader,
+//   DialogTitle,
+//   DialogFooter,
+// } from "@/components/ui/dialog";
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from "@/components/ui/select";
+// import { Button } from "@/components/ui/button";
+// import { VideoLink, VideoType } from "@/lib/types";
+// import { EnhancedFormBuilder, FormSolutionData } from "./form-builder";
 
-// Enhanced Video Player Component with image support
-export function VideoPlayerWithDraggableImages({
-  videoUrl,
-  links,
-  isEditMode = false,
-  onImageMove,
-  showPreview = false,
-}: {
-  videoUrl: string;
-  links: VideoLink[];
-  isEditMode?: boolean;
-  onImageMove?: (linkId: string, x: number, y: number) => void;
-  showPreview?: boolean;
-}) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const videoContainerRef = useRef<HTMLDivElement>(null);
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [isDragging, setIsDragging] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [hoveredImageId, setHoveredImageId] = useState<string | null>(null);
+// // Enhanced Video Player Component with image support
+// function VideoPlayerWithDraggableImages({
+//   videoUrl,
+//   links,
+//   isEditMode = false,
+//   onImageMove,
+//   showPreview = false,
+// }: {
+//   videoUrl: string;
+//   links: VideoLink[];
+//   isEditMode?: boolean;
+//   onImageMove?: (linkId: string, x: number, y: number) => void;
+//   showPreview?: boolean;
+// }) {
+//   const videoRef = useRef<HTMLVideoElement>(null);
+//   const videoContainerRef = useRef<HTMLDivElement>(null);
+//   const [duration, setDuration] = useState(0);
+//   const [currentTime, setCurrentTime] = useState(0);
+//   const [isDragging, setIsDragging] = useState<string | null>(null);
+//   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+//   const [hoveredImageId, setHoveredImageId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+//   useEffect(() => {
+//     const video = videoRef.current;
+//     if (!video) return;
 
-    const updateDuration = () => setDuration(video.duration);
-    const updateTime = () => setCurrentTime(video.currentTime);
+//     const updateDuration = () => setDuration(video.duration);
+//     const updateTime = () => setCurrentTime(video.currentTime);
 
-    video.addEventListener("loadedmetadata", updateDuration);
-    video.addEventListener("timeupdate", updateTime);
+//     video.addEventListener("loadedmetadata", updateDuration);
+//     video.addEventListener("timeupdate", updateTime);
 
-    return () => {
-      video.removeEventListener("loadedmetadata", updateDuration);
-      video.removeEventListener("timeupdate", updateTime);
-    };
-  }, [videoUrl]);
+//     return () => {
+//       video.removeEventListener("loadedmetadata", updateDuration);
+//       video.removeEventListener("timeupdate", updateTime);
+//     };
+//   }, [videoUrl]);
 
-  const seekToTime = useCallback((time: number) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = time;
-    }
-  }, []);
+//   const seekToTime = useCallback((time: number) => {
+//     if (videoRef.current) {
+//       videoRef.current.currentTime = time;
+//     }
+//   }, []);
 
-  const formatTime = useCallback((seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, "0")}`;
-  }, []);
+//   const formatTime = useCallback((seconds: number): string => {
+//     const mins = Math.floor(seconds / 60);
+//     const secs = Math.floor(seconds % 60);
+//     return `${mins}:${secs.toString().padStart(2, "0")}`;
+//   }, []);
 
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent, linkId: string) => {
-      if (!isEditMode) return;
+//   const handleMouseDown = useCallback(
+//     (e: React.MouseEvent, linkId: string) => {
+//       if (!isEditMode) return;
 
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragging(linkId);
+//       e.preventDefault();
+//       e.stopPropagation();
+//       setIsDragging(linkId);
 
-      const image = e.currentTarget as HTMLElement;
-      const rect = image.getBoundingClientRect();
-      setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
-    },
-    [isEditMode]
-  );
+//       const image = e.currentTarget as HTMLElement;
+//       const rect = image.getBoundingClientRect();
+//       setDragOffset({
+//         x: e.clientX - rect.left,
+//         y: e.clientY - rect.top,
+//       });
+//     },
+//     [isEditMode]
+//   );
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isDragging || !videoContainerRef.current || !onImageMove) return;
+//   const handleMouseMove = useCallback(
+//     (e: MouseEvent) => {
+//       if (!isDragging || !videoContainerRef.current || !onImageMove) return;
 
-      const containerRect = videoContainerRef.current.getBoundingClientRect();
-      const x =
-        ((e.clientX - containerRect.left - dragOffset.x) /
-          containerRect.width) *
-        100;
-      const y =
-        ((e.clientY - containerRect.top - dragOffset.y) /
-          containerRect.height) *
-        100;
+//       const containerRect = videoContainerRef.current.getBoundingClientRect();
+//       const x =
+//         ((e.clientX - containerRect.left - dragOffset.x) /
+//           containerRect.width) *
+//         100;
+//       const y =
+//         ((e.clientY - containerRect.top - dragOffset.y) /
+//           containerRect.height) *
+//         100;
 
-      // Constrain to container bounds
-      const constrainedX = Math.max(0, Math.min(100, x));
-      const constrainedY = Math.max(0, Math.min(100, y));
+//       // Constrain to container bounds
+//       const constrainedX = Math.max(0, Math.min(85, x));
+//       const constrainedY = Math.max(0, Math.min(85, y));
 
-      onImageMove(isDragging, constrainedX, constrainedY);
-    },
-    [isDragging, dragOffset, onImageMove]
-  );
+//       onImageMove(isDragging, constrainedX, constrainedY);
+//     },
+//     [isDragging, dragOffset, onImageMove]
+//   );
 
-  const handleMouseUp = useCallback(() => {
-    setIsDragging(null);
-    setDragOffset({ x: 0, y: 0 });
-  }, []);
+//   const handleMouseUp = useCallback(() => {
+//     setIsDragging(null);
+//     setDragOffset({ x: 0, y: 0 });
+//   }, []);
 
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
+//   useEffect(() => {
+//     if (isDragging) {
+//       document.addEventListener("mousemove", handleMouseMove);
+//       document.addEventListener("mouseup", handleMouseUp);
 
-      return () => {
-        document.removeEventListener("mousemove", handleMouseMove);
-        document.removeEventListener("mouseup", handleMouseUp);
-      };
-    }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+//       return () => {
+//         document.removeEventListener("mousemove", handleMouseMove);
+//         document.removeEventListener("mouseup", handleMouseUp);
+//       };
+//     }
+//   }, [isDragging, handleMouseMove, handleMouseUp]);
 
-  const handleImageClick = useCallback(
-    (link: VideoLink, e: React.MouseEvent) => {
-      if (isDragging || isEditMode) {
-        e.preventDefault();
-        return;
-      }
+//   const handleImageClick = useCallback(
+//     (link: VideoLink, e: React.MouseEvent) => {
+//       if (isDragging || isEditMode) {
+//         e.preventDefault();
+//         return;
+//       }
 
-      if (link.link_type === "url" && link.url) {
-        window.open(link.url, "_blank");
-      }
-    },
-    [isDragging, isEditMode]
-  );
+//       if (link.link_type === "url" && link.url) {
+//         window.open(link.url, "_blank");
+//       }
+//     },
+//     [isDragging, isEditMode]
+//   );
 
-  // Filter links based on current time or show all in preview mode
-  const visibleLinks = useMemo(() => {
-    if (showPreview || isEditMode) {
-      return links;
-    }
-    return links.filter((link) => currentTime >= link.timestamp_seconds);
-  }, [links, currentTime, showPreview, isEditMode]);
+//   // Filter links based on current time or show all in preview mode
+//   const visibleLinks = useMemo(() => {
+//     if (showPreview || isEditMode) {
+//       return links;
+//     }
+//     return links.filter((link) => currentTime >= link.timestamp_seconds);
+//   }, [links, currentTime, showPreview, isEditMode]);
 
-  // Get the appropriate image URL - prioritize preview URLs for editing, then database URLs
-  const getImageUrl = useCallback((link: VideoLink, isHovered: boolean) => {
-    if (isHovered && (link.hoverImagePreview || link.hover_state_image)) {
-      return link.hoverImagePreview || link.hover_state_image;
-    }
-    return link.normalImagePreview || link.normal_state_image;
-  }, []);
+//   // Get the appropriate image URL - prioritize preview URLs for editing, then database URLs
+//   const getImageUrl = useCallback((link: VideoLink, isHovered: boolean) => {
+//     if (isHovered && (link.hoverImagePreview || link.hover_state_image)) {
+//       return link.hoverImagePreview || link.hover_state_image;
+//     }
+//     return link.normalImagePreview || link.normal_state_image;
+//   }, []);
 
-  const getImageDimensions = useCallback(
-    (link: VideoLink, isHovered: boolean) => {
-      if (isHovered && (link.hover_image_width || link.hover_image_height)) {
-        return {
-          width: link.hover_image_width || 100,
-          height: link.hover_image_height || 100,
-        };
-      }
-      return {
-        width: link.normal_image_width || 100,
-        height: link.normal_image_height || 100,
-      };
-    },
-    []
-  );
+//   const getImageDimensions = useCallback(
+//     (link: VideoLink, isHovered: boolean) => {
+//       if (isHovered && (link.hover_image_width || link.hover_image_height)) {
+//         return {
+//           width: link.hover_image_width || 100,
+//           height: link.hover_image_height || 100,
+//         };
+//       }
+//       return {
+//         width: link.normal_image_width || 100,
+//         height: link.normal_image_height || 100,
+//       };
+//     },
+//     []
+//   );
 
-  return (
-    <div className="relative">
-      <div
-        ref={videoContainerRef}
-        className="relative inline-block w-full video-container"
-      >
-        <style jsx>{`
-          .video-container {
-            position: relative;
-            width: 100%;
-            height: auto;
-            aspect-ratio: 16 / 9;
-          }
-          .video-container :global(.button-overlay) {
-            position: absolute;
-          }
-          /* Handle fullscreen mode */
-          .video-container:fullscreen :global(.button-overlay) {
-            left: var(--button-x-pos) !important;
-            top: var(--button-y-pos) !important;
-          }
-          /* Handle webkit fullscreen */
-          .video-container:-webkit-full-screen :global(.button-overlay) {
-            left: var(--button-x-pos) !important;
-            top: var(--button-y-pos) !important;
-          }
-          /* Handle Mozilla fullscreen */
-          .video-container:-moz-full-screen :global(.button-overlay) {
-            left: var(--button-x-pos) !important;
-            top: var(--button-y-pos) !important;
-          }
-        `}</style>
-        <video
-          ref={videoRef}
-          src={videoUrl}
-          controls={!isEditMode}
-          className="w-full h-auto max-h-96 rounded-lg"
-          key={videoUrl}
-          muted={isEditMode}
-          preload="metadata"
-        />
+//   return (
+//     <div className="relative">
+//       <div ref={videoContainerRef} className="relative inline-block w-full">
+//         <video
+//           ref={videoRef}
+//           src={videoUrl}
+//           controls={!isEditMode}
+//           className="w-full h-auto max-h-96 rounded-lg"
+//           key={videoUrl}
+//           muted={isEditMode}
+//         />
 
-        {/* Overlay images */}
-        {visibleLinks.map((link) => {
-          const isHovered = hoveredImageId === link.id;
-          const imageUrl = getImageUrl(link, isHovered);
-          const dimensions = getImageDimensions(link, isHovered);
+//         {/* Overlay images */}
+//         {visibleLinks.map((link) => {
+//           const isHovered = hoveredImageId === link.id;
+//           const imageUrl = getImageUrl(link, isHovered);
+//           const dimensions = getImageDimensions(link, isHovered);
 
-          return imageUrl ? (
-            <div
-              key={link.id}
-              className={`button-overlay absolute z-10 transition-all duration-200 ${
-                isEditMode
-                  ? "cursor-move border-2 border-yellow-400 shadow-lg"
-                  : "cursor-pointer"
-              } ${isDragging === link.id ? "opacity-70 scale-105" : ""} ${
-                showPreview ? "opacity-90" : ""
-              }`}
-              style={{
-                position: "absolute",
-                left: `${link.position_x}%`,
-                top: `${link.position_y}%`,
-                transform: isDragging === link.id ? "scale(1.05)" : "none",
-                pointerEvents: isEditMode ? "auto" : "auto",
-                // Use CSS variables as string literals to avoid TypeScript errors
-                ["--button-x-pos" as string]: `${link.position_x}%`,
-                ["--button-y-pos" as string]: `${link.position_y}%`,
-              }}
-              onMouseDown={(e) => handleMouseDown(e, link.id)}
-              onClick={(e) => handleImageClick(link, e)}
-              onMouseEnter={() => {
-                if (link.hoverImagePreview || link.hover_state_image) {
-                  setHoveredImageId(link.id);
-                }
-              }}
-              onMouseLeave={() => setHoveredImageId(null)}
-              title={
-                isEditMode ? `Drag to reposition • ${link.label}` : link.label
-              }
-            >
-              <img
-                src={imageUrl}
-                alt={link.label}
-                style={{
-                  width: `${dimensions.width}px`,
-                  height: `${dimensions.height}px`,
-                }}
-                className=" rounded "
-                draggable={false}
-              />
-              {showPreview && (
-                <div className="absolute -bottom-6 left-0 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                  @{formatTime(link.timestamp_seconds)}
-                </div>
-              )}
-            </div>
-          ) : null;
-        })}
+//           return imageUrl ? (
+//             <div
+//               key={link.id}
+//               className={`absolute z-10 transition-all duration-200 ${
+//                 isEditMode
+//                   ? "cursor-move border-2 border-yellow-400 shadow-lg"
+//                   : "cursor-pointer"
+//               } ${isDragging === link.id ? "opacity-70 scale-105" : ""} ${
+//                 showPreview ? "opacity-90" : ""
+//               }`}
+//               style={{
+//                 left: `${link.position_x}%`,
+//                 top: `${link.position_y}%`,
+//                 transform: isDragging === link.id ? "scale(1.05)" : "none",
+//                 pointerEvents: isEditMode ? "auto" : "auto",
+//               }}
+//               onMouseDown={(e) => handleMouseDown(e, link.id)}
+//               onClick={(e) => handleImageClick(link, e)}
+//               onMouseEnter={() => {
+//                 if (link.hoverImagePreview || link.hover_state_image) {
+//                   setHoveredImageId(link.id);
+//                 }
+//               }}
+//               onMouseLeave={() => setHoveredImageId(null)}
+//               title={
+//                 isEditMode ? `Drag to reposition • ${link.label}` : link.label
+//               }
+//             >
+//               <img
+//                 src={imageUrl}
+//                 alt={link.label}
+//                 style={{
+//                   width: `${dimensions.width}px`,
+//                   height: `${dimensions.height}px`,
+//                 }}
+//                 className=" rounded "
+//                 draggable={false}
+//               />
+//               {showPreview && (
+//                 <div className="absolute -bottom-6 left-0 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+//                   @{formatTime(link.timestamp_seconds)}
+//                 </div>
+//               )}
+//             </div>
+//           ) : null;
+//         })}
 
-        {/* Edit mode overlay */}
-        {isEditMode && (
-          <div className="absolute inset-0 bg-blue-100 bg-opacity-20 rounded-lg pointer-events-none">
-            <div className="absolute top-2 left-2 bg-yellow-400 text-black px-2 py-1 text-xs rounded font-medium">
-              Edit Mode: Drag Buttons to reposition
-            </div>
-          </div>
-        )}
-      </div>
+//         {/* Edit mode overlay */}
+//         {isEditMode && (
+//           <div className="absolute inset-0 bg-blue-100 bg-opacity-20 rounded-lg pointer-events-none">
+//             <div className="absolute top-2 left-2 bg-yellow-400 text-black px-2 py-1 text-xs rounded font-medium">
+//               Edit Mode: Drag Buttons to reposition
+//             </div>
+//           </div>
+//         )}
+//       </div>
 
-      {/* Timeline with markers (only show when not in edit mode) */}
-      {duration > 0 && links.length > 0 && !isEditMode && !showPreview && (
-        <div className="relative h-6 mt-2 bg-gray-100 rounded-md overflow-hidden">
-          {/* Current time indicator */}
-          <div
-            className="absolute top-0 w-1 h-full bg-red-500 z-20"
-            style={{ left: `${(currentTime / duration) * 100}%` }}
-          />
+//       {/* Timeline with markers (only show when not in edit mode) */}
+//       {duration > 0 && links.length > 0 && !isEditMode && !showPreview && (
+//         <div className="relative h-6 mt-2 bg-gray-100 rounded-md overflow-hidden">
+//           {/* Current time indicator */}
+//           <div
+//             className="absolute top-0 w-1 h-full bg-red-500 z-20"
+//             style={{ left: `${(currentTime / duration) * 100}%` }}
+//           />
 
-          {links.map((link) => (
-            <div
-              key={link.id}
-              className="absolute top-0 h-full flex flex-col items-center z-10"
-              style={{ left: `${(link.timestamp_seconds / duration) * 100}%` }}
-            >
-              <Clock
-                className={`w-3 h-3 ${
-                  link.link_type === "url"
-                    ? "text-blue-500"
-                    : link.link_type === "video"
-                    ? "text-green-500"
-                    : "text-purple-500"
-                }`}
-              />
-              <div
-                className={`w-px h-3 ${
-                  link.link_type === "url"
-                    ? "bg-blue-500"
-                    : link.link_type === "video"
-                    ? "bg-green-500"
-                    : "bg-purple-500"
-                }`}
-              />
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  seekToTime(link.timestamp_seconds);
-                }}
-                className={`text-xs ${
-                  link.link_type === "url"
-                    ? "text-blue-600 hover:text-blue-800"
-                    : link.link_type === "video"
-                    ? "text-green-600 hover:text-green-800"
-                    : "text-purple-600 hover:text-purple-800"
-                } mt-1 whitespace-nowrap`}
-                title={`${link.label} - ${formatTime(
-                  link.timestamp_seconds
-                )} (${link.link_type})`}
-              >
-                {formatTime(link.timestamp_seconds)}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+//           {links.map((link) => (
+//             <div
+//               key={link.id}
+//               className="absolute top-0 h-full flex flex-col items-center z-10"
+//               style={{ left: `${(link.timestamp_seconds / duration) * 100}%` }}
+//             >
+//               <Clock
+//                 className={`w-3 h-3 ${
+//                   link.link_type === "url"
+//                     ? "text-blue-500"
+//                     : link.link_type === "video"
+//                     ? "text-green-500"
+//                     : "text-purple-500"
+//                 }`}
+//               />
+//               <div
+//                 className={`w-px h-3 ${
+//                   link.link_type === "url"
+//                     ? "bg-blue-500"
+//                     : link.link_type === "video"
+//                     ? "bg-green-500"
+//                     : "bg-purple-500"
+//                 }`}
+//               />
+//               <button
+//                 type="button"
+//                 onClick={(e) => {
+//                   e.stopPropagation();
+//                   seekToTime(link.timestamp_seconds);
+//                 }}
+//                 className={`text-xs ${
+//                   link.link_type === "url"
+//                     ? "text-blue-600 hover:text-blue-800"
+//                     : link.link_type === "video"
+//                     ? "text-green-600 hover:text-green-800"
+//                     : "text-purple-600 hover:text-purple-800"
+//                 } mt-1 whitespace-nowrap`}
+//                 title={`${link.label} - ${formatTime(
+//                   link.timestamp_seconds
+//                 )} (${link.link_type})`}
+//               >
+//                 {formatTime(link.timestamp_seconds)}
+//               </button>
+//             </div>
+//           ))}
+//         </div>
+//       )}
+//     </div>
+//   );
+// }
 
 // // Fixed Image upload component
 // function ImageUploader({

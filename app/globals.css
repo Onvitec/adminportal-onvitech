@@ -146,21 +146,33 @@ html, body {
 }
 
 
+/* Ensure consistent video sizing */
+.video-player-container video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  display: block !important;
+}
 
-/* Video player base styles (embed-safe) */
+.video-player-container {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  line-height: 0; /* Remove extra spacing */
+}/* Consistent video player styling for both components */
 .video-player-container {
   position: relative;
   width: 100%;
-  background: transparent; /* eliminate black screen artifacts */
+  background: black;
   border-radius: 0.75rem;
   overflow: hidden;
-  line-height: 0; /* Remove extra spacing */
 }
 
 .video-player-container video {
   width: 100%;
-  height: auto; /* preserve aspect ratio without forcing height */
-  object-fit: contain; /* strict aspect ratio preservation */
+  height: auto;
+  max-height: 500px;
+  object-fit: contain;
   display: block;
 }
 

@@ -183,8 +183,8 @@ export default function LinearSessionEditForm() {
                   url: link.url || "",
                   destination_video_id: link.destination_video_id || "",
                   link_type: link.link_type as "url" | "video",
-                  position_x: link.position_x ?? 20,
-                  position_y: link.position_y ?? 20,
+                  position_x: link.position_x || 20,
+                  position_y: link.position_y || 20,
                 })),
               };
             })
@@ -699,8 +699,8 @@ export default function LinearSessionEditForm() {
         url: link.link_type === "url" ? link.url : null,
         destination_video_id: destinationVideoId,
         link_type: link.link_type,
-        position_x: link.position_x ?? 20,
-        position_y: link.position_y ?? 20,
+        position_x: link.position_x || 20,
+        position_y: link.position_y || 20,
       };
     });
 

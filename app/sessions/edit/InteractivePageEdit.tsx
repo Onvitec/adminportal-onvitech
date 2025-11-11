@@ -253,8 +253,8 @@ export default function EditInteractiveSession({
               link_type:
                 (link.link_type as "url" | "video" | "form") ||
                 (link.url ? "url" : "video"),
-              position_x: link.position_x ?? 20,
-              position_y: link.position_y ?? 20,
+              position_x: link.position_x || 20,
+              position_y: link.position_y || 20,
               duration_ms: link.duration_ms,
               normal_state_image: link.normal_state_image || undefined,
               hover_state_image: link.hover_state_image || undefined,
@@ -293,8 +293,8 @@ export default function EditInteractiveSession({
               link_type:
                 (link.link_type as "url" | "video" | "form") ||
                 (link.url ? "url" : "video"),
-              position_x: link.position_x ?? 20,
-              position_y: link.position_y ?? 20,
+              position_x: link.position_x || 20,
+              position_y: link.position_y || 20,
               duration_ms: link.duration_ms,
               normal_state_image: link.normal_state_image || undefined,
               hover_state_image: link.hover_state_image || undefined,
@@ -1058,9 +1058,9 @@ export default function EditInteractiveSession({
               timestamp_seconds: link.timestamp_seconds,
               label: link.label,
               link_type: link.link_type,
-              position_x: link.position_x ?? 20,
+              position_x: link.position_x || 20,
               duration_ms: link.duration_ms,
-              position_y: link.position_y ?? 20,
+              position_y: link.position_y || 20,
               normal_state_image: normalImageUrl,
               hover_state_image: hoverImageUrl,
               normal_image_width: link.normal_image_width,
@@ -1195,22 +1195,22 @@ export default function EditInteractiveSession({
             }
           }
 
-            const navLinkData: any = {
-              video_id: navigationVideoDbId,
-              timestamp_seconds: link.timestamp_seconds,
-              label: link.label,
-              link_type: link.link_type,
-              position_x: link.position_x ?? 20,
-              position_y: link.position_y ?? 20,
-              duration_ms: link.duration_ms,
-              normal_state_image: normalImageUrl,
-              hover_state_image: hoverImageUrl,
-              normal_image_width: link.normal_image_width,
-              normal_image_height: link.normal_image_height,
-              hover_image_width: link.hover_image_width,
-              hover_image_height: link.hover_image_height,
-              form_data: link.link_type === "form" ? link.form_data : null,
-            };
+          const navLinkData: any = {
+            video_id: navigationVideoDbId,
+            timestamp_seconds: link.timestamp_seconds,
+            label: link.label,
+            link_type: link.link_type,
+            position_x: link.position_x || 20,
+            position_y: link.position_y || 20,
+            duration_ms: link.duration_ms,
+            normal_state_image: normalImageUrl,
+            hover_state_image: hoverImageUrl,
+            normal_image_width: link.normal_image_width,
+            normal_image_height: link.normal_image_height,
+            hover_image_width: link.hover_image_width,
+            hover_image_height: link.hover_image_height,
+            form_data: link.link_type === "form" ? link.form_data : null,
+          };
 
           // Handle different link types for navigation video
           if (link.link_type === "url") {
