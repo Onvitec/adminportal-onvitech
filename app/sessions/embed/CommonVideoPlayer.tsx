@@ -778,7 +778,6 @@ export function CommonVideoPlayer({
         <video
           ref={videoRef}
           autoPlay
-          muted
           playsInline
           src={currentVideo.url}
           className={`object-contain rounded-2xl cursor-pointer`}
