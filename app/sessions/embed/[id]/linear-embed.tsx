@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { Solution, SolutionCategory, VideoLink, VideoType } from "@/lib/types";
 import React, { useEffect, useState } from "react";
 import { SolutionDisplay } from "../SolutionDisplay";
-import { CommonVideoPlayer } from "../CommonVideoPlaye";
+import { CommonVideoPlayer } from "../CommonVideoPlayer";
 
 type Video = VideoType & {
   links: VideoLink[];

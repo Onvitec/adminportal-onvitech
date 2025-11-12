@@ -252,12 +252,20 @@
 //       setCurrentVideo(nextVideo);
 //       setShowQuestions(false);
 
-//       // Reset & autoplay
+//       // Reset & attempt autoplay (guarded)
 //       setTimeout(() => {
 //         if (videoRef.current) {
 //           videoRef.current.currentTime = 0;
-//           videoRef.current.play();
-//           setIsPlaying(true);
+//           const p = videoRef.current.play();
+//           if (p && typeof (p as Promise<void>).catch === "function") {
+//             (p as Promise<void>).catch((err) => {
+//               console.warn("Autoplay blocked; waiting for user gesture", err);
+//               setIsPlaying(false);
+//               setShowControls(true);
+//             });
+//           } else {
+//             setIsPlaying(true);
+//           }
 //           setMouseActive(true);
 //           resetMouseTimeout();
 //         }
@@ -280,12 +288,20 @@
 //       setCurrentVideo(link.destination_video);
 //       setShowQuestions(false);
 
-//       // Reset & autoplay
+//       // Reset & attempt autoplay (guarded)
 //       setTimeout(() => {
 //         if (videoRef.current) {
 //           videoRef.current.currentTime = 0;
-//           videoRef.current.play();
-//           setIsPlaying(true);
+//           const p = videoRef.current.play();
+//           if (p && typeof (p as Promise<void>).catch === "function") {
+//             (p as Promise<void>).catch((err) => {
+//               console.warn("Autoplay blocked; waiting for user gesture", err);
+//               setIsPlaying(false);
+//               setShowControls(true);
+//             });
+//           } else {
+//             setIsPlaying(true);
+//           }
 //           setMouseActive(true);
 //           resetMouseTimeout();
 //         }
@@ -300,8 +316,16 @@
 //         setIsPlaying(false);
 //         setShowControls(true);
 //       } else {
-//         videoRef.current.play();
-//         setIsPlaying(true);
+//         const p = videoRef.current.play();
+//         if (p && typeof (p as Promise<void>).catch === "function") {
+//           (p as Promise<void>).catch((err) => {
+//             console.warn("Autoplay blocked; waiting for user gesture", err);
+//             setIsPlaying(false);
+//             setShowControls(true);
+//           });
+//         } else {
+//           setIsPlaying(true);
+//         }
 //         setMouseActive(true);
 //         resetMouseTimeout();
 //       }
