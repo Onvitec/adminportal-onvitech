@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "../session-provider";
 import emailjs from "emailjs-com";
+import { Button } from "../ui/button";
 
 interface IframeModalProps {
   sessionId: string;
@@ -18,7 +19,8 @@ export function IframeModal({
   onOpenChange,
   sessionname = "Session",
 }: IframeModalProps) {
-  const [copied, setCopied] = useState(false);
+  const [copiedIframe, setCopiedIframe] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
   const [emailMessage, setEmailMessage] = useState("");
   const [users, setUsers] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
@@ -26,12 +28,15 @@ export function IframeModal({
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [privateUrl, setPrivateUrl] = useState("");
+  const [plainUrl, setPlainUrl] = useState("");
   const { user } = useSession();
 
   useEffect(() => {
     if (typeof window !== "undefined") {
+      const url = `${window.location.origin}/sessions/embed/${sessionId}`;
+      setPlainUrl(url);
       setPrivateUrl(
-        `<iframe src="${window.location.origin}/sessions/embed/${sessionId}" width="100%" height="600px" frameborder="0" allowfullscreen></iframe>`
+        `<iframe src="${url}" width="100%" height="600px" frameborder="0" allowfullscreen></iframe>`
       );
     }
   }, [sessionId]);
@@ -44,11 +49,8 @@ export function IframeModal({
         .select("id, first_name, email")
         .eq("role", "User");
 
-      if (error) {
-        console.error("Error fetching users:", error);
-      } else {
-        setUsers(data || []);
-      }
+      if (error) console.error("Error fetching users:", error);
+      else setUsers(data || []);
       setLoadingUsers(false);
     }
 
@@ -60,14 +62,21 @@ export function IframeModal({
       setEmailMessage("");
       setSelectedUserId("");
       setShared(false);
-      setCopied(false);
+      setCopiedIframe(false);
+      setCopiedUrl(false);
     }
   }, [open]);
 
-  const handleCopy = () => {
+  const handleCopyIframe = () => {
     navigator.clipboard.writeText(privateUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedIframe(true);
+    setTimeout(() => setCopiedIframe(false), 2000);
+  };
+
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(plainUrl);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
   };
 
   const handleShare = async () => {
@@ -86,13 +95,12 @@ export function IframeModal({
     };
 
     try {
-      const result = await emailjs.send(
-        "service_y8vwpg5", // service ID
-        "template_vt3cxj7", // template ID
-        payload, // template variables
-        "dVdABZfh0aukWIT6n" // public key
+      await emailjs.send(
+        "service_y8vwpg5",
+        "template_vt3cxj7",
+        payload,
+        "dVdABZfh0aukWIT6n"
       );
-
       setShared(true);
       setTimeout(() => setShared(false), 1500);
     } catch (error) {
@@ -113,13 +121,12 @@ export function IframeModal({
         onClick={() => onOpenChange(false)}
       />
 
-      {/* Modal container */}
+      {/* Modal */}
       <div className="flex min-h-screen items-center justify-center p-4 text-center">
         <div
           className="relative transform overflow-hidden rounded-xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-[600px]"
-          onClick={(e) => e.stopPropagation()} // Prevent clicks from closing modal
+          onClick={(e) => e.stopPropagation()}
         >
-          {/* Modal content */}
           <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4 space-y-4">
             {/* Header */}
             <div className="text-center sm:text-left flex justify-between items-center">
@@ -151,21 +158,46 @@ export function IframeModal({
 
             <hr className="border-gray-300" />
 
-            {/* Private Link */}
-            <div>
+            {/* Embed Code */}
+            <div className="space-y-2">
               <label className="text-lg font-semibold text-black">
-                Private Link
+                Embed Code
               </label>
-              <p className="text-sm text-gray-500">
-                You can share this link, but only authorized users can access
-                it.
-              </p>
-              <input
-                value={privateUrl}
-                readOnly
-                className="w-full h-10 px-3 py-2 border border-gray-300 rounded-md text-sm mt-2 text-gray-500"
-                onClick={(e) => (e.target as HTMLInputElement).select()}
-              />
+              <div className="flex gap-2">
+                <input
+                  value={privateUrl}
+                  readOnly
+                  className="w-full border border-gray-300 rounded-md px-3 text-sm text-gray-800"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
+                <Button
+                  onClick={handleCopyIframe}
+                  className="min-w-[100px] px-4 bg-[#2C3444] text-white rounded-md disabled:opacity-50 flex items-center justify-center"
+                >
+                  {copiedIframe ? "Copied!" : "Copy"}
+                </Button>
+              </div>
+            </div>
+
+            {/* Direct URL */}
+            <div className="space-y-2">
+              <label className="text-lg font-semibold text-black">
+                Direct URL
+              </label>
+              <div className="flex gap-2">
+                <input
+                  value={plainUrl}
+                  readOnly
+                  className="w-full h-10 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-500"
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                />
+                <Button
+                  onClick={handleCopyUrl}
+                  className="min-w-[100px] px-4 bg-[#2C3444] text-white rounded-md disabled:opacity-50 flex items-center justify-center"
+                >
+                  {copiedUrl ? "Copied!" : "Copy"}
+                </Button>
+              </div>
             </div>
 
             <hr className="border-gray-300" />
@@ -185,13 +217,13 @@ export function IframeModal({
                   <option value="">Select Company...</option>
                   {users.map((user) => (
                     <option key={user.id} value={user.id}>
-                      {user.first_name + "       .......  " + user.email}
+                      {user.first_name + " ....... " + user.email}
                     </option>
                   ))}
                 </select>
                 <button
                   onClick={handleShare}
-                  className="h-10 min-w-[80px] px-4 py-2 bg-[#2C3444] text-white rounded-md disabled:opacity-50"
+                  className="h-10 min-w-[100px] px-4 bg-[#2C3444] text-white rounded-md disabled:opacity-50 flex items-center justify-center"
                   disabled={!selectedUserId || sharing}
                 >
                   {sharing ? "Sharing..." : shared ? "Shared!" : "Share"}
@@ -210,21 +242,6 @@ export function IframeModal({
                 className="w-full h-20 p-2 border border-gray-300 rounded-md text-sm"
                 placeholder="Write a short message..."
               />
-            </div>
-
-            {/* Copy Link */}
-            <div className="flex justify-end">
-              <button
-                onClick={handleCopy}
-                className="h-10 text-sm text-blue-600 flex items-center gap-2 cursor-pointer"
-              >
-                <img
-                  src={"/icons/clipart.png"}
-                  alt="copy"
-                  className="w-4 h-4"
-                />
-                {copied ? "Copied!" : "Copy Link"}
-              </button>
             </div>
           </div>
         </div>
