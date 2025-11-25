@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     });
 
     await transporter.sendMail({
-      from: `"OnviTech"`,
+      from: `"Onvitec"`,
       to: email,
       subject: title,
       html: message_html, // ✅ raw HTML works here

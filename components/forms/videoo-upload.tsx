@@ -636,31 +636,27 @@ function ImageUploader({
             <Input
               type="number"
               min={0}
-              max={500}
               value={width ?? ""}
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === "") {
-                  onDimensionsChange(undefined, height); // ✅ allow clearing
+                  onDimensionsChange(undefined, height); // allow clearing
                   return;
                 }
                 const num = parseInt(val, 10);
                 if (!isNaN(num)) {
-                  onDimensionsChange(num, height);
+                  onDimensionsChange(num, height); // no max limit
                 }
               }}
               onBlur={(e) => {
                 const val = e.target.value;
                 if (val === "") {
-                  onDimensionsChange(undefined, height); // ✅ allow clearing on blur too
+                  onDimensionsChange(undefined, height);
                   return;
                 }
                 const num = parseInt(val, 10);
                 if (!isNaN(num)) {
-                  onDimensionsChange(
-                    Math.min(Math.max(num, 0), 500), // ✅ clamp to 0–500 (removed minimum of 10)
-                    height
-                  );
+                  onDimensionsChange(num, height); // return value as-is (no clamp)
                 }
               }}
               placeholder="Width"
@@ -675,31 +671,27 @@ function ImageUploader({
             <Input
               type="number"
               min={0}
-              max={500}
               value={height ?? ""}
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === "") {
-                  onDimensionsChange(width, undefined); // ✅ allow clearing
+                  onDimensionsChange(width, undefined); // allow clearing
                   return;
                 }
                 const num = parseInt(val, 10);
                 if (!isNaN(num)) {
-                  onDimensionsChange(width, num);
+                  onDimensionsChange(width, num); // no max limit
                 }
               }}
               onBlur={(e) => {
                 const val = e.target.value;
                 if (val === "") {
-                  onDimensionsChange(width, undefined); // ✅ allow clearing on blur too
+                  onDimensionsChange(width, undefined);
                   return;
                 }
                 const num = parseInt(val, 10);
                 if (!isNaN(num)) {
-                  onDimensionsChange(
-                    width,
-                    Math.min(Math.max(num, 0), 500) // ✅ clamp to 0–500 (removed minimum of 10)
-                  );
+                  onDimensionsChange(width, num); // return as-is (no clamp)
                 }
               }}
               placeholder="Height"
@@ -1086,27 +1078,24 @@ function VideoUploadWithLinksComponent({
             const n = parseInt(value);
             const valid = Number.isNaN(n) ? 20 : n;
             updated.position_y = Math.max(0, Math.min(90, valid));
-          } else if (
+          }
+
+          // 🚀 REMOVE SIZE LIMITS (WIDTH/HEIGHT) → store value AS-IS
+          if (
             field === "normal_image_width" ||
-            field === "normal_image_height"
-          ) {
-            // Ensure image dimensions are reasonable
-            const dimensionValue = parseInt(value) || 0;
-            updated[field] = Math.max(0, Math.min(500, dimensionValue));
-          } else if (
+            field === "normal_image_height" ||
             field === "hover_image_width" ||
             field === "hover_image_height"
           ) {
-            // Ensure image dimensions are reasonable
-            const dimensionValue = parseInt(value) || 0;
-            updated[field] = Math.max(0, Math.min(500, dimensionValue));
+            updated[field] =
+              value === null ? undefined : parseInt(value) || (0 as any);
           }
 
           return updated;
         })
       );
 
-      // Clear errors for this field when user starts typing
+      // Clear errors for this field
       if (formErrors[index]?.length > 0) {
         setFormErrors((prev) => {
           const newErrors = { ...prev };
