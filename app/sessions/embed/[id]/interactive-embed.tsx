@@ -505,60 +505,60 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           }
         }
 
-        // Fetch questions for regular videos only
-        const { data: questionsData, error: questionsError } = await supabase
-          .from("questions")
-          .select("*")
-          .in(
-            "video_id",
-            videosData.map((v) => v.id)
-          );
+        // // Fetch questions for regular videos only
+        // const { data: questionsData, error: questionsError } = await supabase
+        //   .from("questions")
+        //   .select("*")
+        //   .in(
+        //     "video_id",
+        //     videosData.map((v) => v.id)
+        //   );
 
-        if (questionsError) throw questionsError;
+        // if (questionsError) throw questionsError;
 
-        // Fetch answers with destination videos
-        const questionsWithAnswers = await Promise.all(
-          (questionsData || []).map(async (question) => {
-            const { data: answersData, error: answersError } = await supabase
-              .from("answers")
-              .select("*")
-              .eq("question_id", question.id);
+        // // Fetch answers with destination videos
+        // const questionsWithAnswers = await Promise.all(
+        //   (questionsData || []).map(async (question) => {
+        //     const { data: answersData, error: answersError } = await supabase
+        //       .from("answers")
+        //       .select("*")
+        //       .eq("question_id", question.id);
 
-            if (answersError) throw answersError;
+        //     if (answersError) throw answersError;
 
-            const answersWithDestinations = await Promise.all(
-              (answersData || []).map(async (answer) => {
-                if (!answer.destination_video_id) {
-                  return { ...answer };
-                }
+        //     const answersWithDestinations = await Promise.all(
+        //       (answersData || []).map(async (answer) => {
+        //         if (!answer.destination_video_id) {
+        //           return { ...answer };
+        //         }
 
-                const { data: videoData, error: videoError } = await supabase
-                  .from("videos")
-                  .select("*")
-                  .eq("id", answer.destination_video_id)
-                  .single();
+        //         const { data: videoData, error: videoError } = await supabase
+        //           .from("videos")
+        //           .select("*")
+        //           .eq("id", answer.destination_video_id)
+        //           .single();
 
-                if (videoError) {
-                  console.error(
-                    "Error fetching destination video:",
-                    videoError
-                  );
-                  return { ...answer };
-                }
+        //         if (videoError) {
+        //           console.error(
+        //             "Error fetching destination video:",
+        //             videoError
+        //           );
+        //           return { ...answer };
+        //         }
 
-                return {
-                  ...answer,
-                  destination_video: videoData,
-                };
-              })
-            );
+        //         return {
+        //           ...answer,
+        //           destination_video: videoData,
+        //         };
+        //       })
+        //     );
 
-            return {
-              ...question,
-              answers: answersWithDestinations,
-            };
-          })
-        );
+        //     return {
+        //       ...question,
+        //       answers: answersWithDestinations,
+        //     };
+        //   })
+        // );
 
         // Fetch video links for regular videos only
         const { data: linksData, error: linksError } = await supabase
@@ -639,7 +639,7 @@ export function InteractiveSessionEmbed({ sessionId }: { sessionId: string }) {
           groupedLinks[link.video_id!].push(link);
         });
         setVideoLinks(groupedLinks);
-        setQuestions(questionsWithAnswers);
+        // setQuestions(questionsWithAnswers);
 
         // ✅ STORE ALL VIDEOS LOOKUP IN STATE FOR USE IN HANDLERS
         setAllVideosLookup(allVideosLookup);

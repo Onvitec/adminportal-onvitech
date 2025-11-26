@@ -148,4 +148,6 @@ export type FormSolutionData = {
   title: string;
   email: string;
   elements: FormElement[];
+  cancelPlaceholder?: string;
+  submitPlaceholder?: string;
 };

@@ -306,37 +306,37 @@ export default function EditInteractiveSession({
             }));
           }
 
-          // Get question for this video
-          const { data: questionData, error: questionError } = await supabase
-            .from("questions")
-            .select("*")
-            .eq("video_id", video.db_id)
-            .maybeSingle();
+          // // Get question for this video
+          // const { data: questionData, error: questionError } = await supabase
+          //   .from("questions")
+          //   .select("*")
+          //   .eq("video_id", video.db_id)
+          //   .maybeSingle();
 
-          if (!questionError && questionData) {
-            // Get answers for this question
-            const { data: answersData, error: answersError } = await supabase
-              .from("answers")
-              .select("*")
-              .eq("question_id", questionData.id)
-              .order("created_at", { ascending: true });
+          // if (!questionError && questionData) {
+          //   // Get answers for this question
+          //   const { data: answersData, error: answersError } = await supabase
+          //     .from("answers")
+          //     .select("*")
+          //     .eq("question_id", questionData.id)
+          //     .order("created_at", { ascending: true });
 
-            if (!answersError && answersData) {
-              video.question = {
-                id: uuidv4(),
-                db_id: questionData.id,
-                question_text: questionData.question_text,
-                answers: answersData.map((answer) => ({
-                  id: uuidv4(),
-                  db_id: answer.id,
-                  answer_text: answer.answer_text,
-                  destination_video_id: answer.destination_video_id
-                    ? videoIdMap[answer.destination_video_id] || ""
-                    : "",
-                })),
-              };
-            }
-          }
+          //   if (!answersError && answersData) {
+          //     video.question = {
+          //       id: uuidv4(),
+          //       db_id: questionData.id,
+          //       question_text: questionData.question_text,
+          //       answers: answersData.map((answer) => ({
+          //         id: uuidv4(),
+          //         db_id: answer.id,
+          //         answer_text: answer.answer_text,
+          //         destination_video_id: answer.destination_video_id
+          //           ? videoIdMap[answer.destination_video_id] || ""
+          //           : "",
+          //       })),
+          //     };
+          //   }
+          // }
         }
 
         // Third pass: Update destination_video_id references to use temporary IDs
@@ -1250,123 +1250,123 @@ export default function EditInteractiveSession({
       }
 
       // Third pass: Handle questions and answers (unchanged from your original code)
-      for (const video of videos) {
-        const videoDbId = uploadedVideos[video.id];
+      // for (const video of videos) {
+      //   const videoDbId = uploadedVideos[video.id];
 
-        if (video.question) {
-          if (video.question.db_id) {
-            // Update existing question
-            const { error: questionError } = await supabase
-              .from("questions")
-              .update({
-                question_text: video.question.question_text,
-                video_id: videoDbId,
-              })
-              .eq("id", video.question.db_id);
+      //   if (video.question) {
+      //     if (video.question.db_id) {
+      //       // Update existing question
+      //       const { error: questionError } = await supabase
+      //         .from("questions")
+      //         .update({
+      //           question_text: video.question.question_text,
+      //           video_id: videoDbId,
+      //         })
+      //         .eq("id", video.question.db_id);
 
-            if (questionError) throw questionError;
+      //       if (questionError) throw questionError;
 
-            // Process answers
-            const existingAnswerIds = video.question.answers
-              .filter((a) => a.db_id)
-              .map((a) => a.db_id) as string[];
+      //       // Process answers
+      //       const existingAnswerIds = video.question.answers
+      //         .filter((a) => a.db_id)
+      //         .map((a) => a.db_id) as string[];
 
-            // Delete answers that were removed
-            const { data: existingAnswers } = await supabase
-              .from("answers")
-              .select("id")
-              .eq("question_id", video.question.db_id);
+      //       // Delete answers that were removed
+      //       const { data: existingAnswers } = await supabase
+      //         .from("answers")
+      //         .select("id")
+      //         .eq("question_id", video.question.db_id);
 
-            if (existingAnswers) {
-              const answersToDelete = existingAnswers
-                .filter((a) => !existingAnswerIds.includes(a.id))
-                .map((a) => a.id);
+      //       if (existingAnswers) {
+      //         const answersToDelete = existingAnswers
+      //           .filter((a) => !existingAnswerIds.includes(a.id))
+      //           .map((a) => a.id);
 
-              for (const answerId of answersToDelete) {
-                await supabase.from("answers").delete().eq("id", answerId);
-              }
-            }
+      //         for (const answerId of answersToDelete) {
+      //           await supabase.from("answers").delete().eq("id", answerId);
+      //         }
+      //       }
 
-            // Update or create answers
-            for (const answer of video.question.answers) {
-              const destinationVideoDbId = answer.destination_video_id
-                ? uploadedVideos[answer.destination_video_id]
-                : null;
+      //       // Update or create answers
+      //       for (const answer of video.question.answers) {
+      //         const destinationVideoDbId = answer.destination_video_id
+      //           ? uploadedVideos[answer.destination_video_id]
+      //           : null;
 
-              if (answer.db_id) {
-                // Update existing answer
-                const { error: answerError } = await supabase
-                  .from("answers")
-                  .update({
-                    answer_text: answer.answer_text,
-                    destination_video_id: destinationVideoDbId,
-                  })
-                  .eq("id", answer.db_id);
+      //         if (answer.db_id) {
+      //           // Update existing answer
+      //           const { error: answerError } = await supabase
+      //             .from("answers")
+      //             .update({
+      //               answer_text: answer.answer_text,
+      //               destination_video_id: destinationVideoDbId,
+      //             })
+      //             .eq("id", answer.db_id);
 
-                if (answerError) throw answerError;
-              } else {
-                // Create new answer
-                const { error: answerError } = await supabase
-                  .from("answers")
-                  .insert({
-                    answer_text: answer.answer_text,
-                    question_id: video.question.db_id,
-                    destination_video_id: destinationVideoDbId,
-                  });
+      //           if (answerError) throw answerError;
+      //         } else {
+      //           // Create new answer
+      //           const { error: answerError } = await supabase
+      //             .from("answers")
+      //             .insert({
+      //               answer_text: answer.answer_text,
+      //               question_id: video.question.db_id,
+      //               destination_video_id: destinationVideoDbId,
+      //             });
 
-                if (answerError) throw answerError;
-              }
-            }
-          } else {
-            // Create new question
-            const { data: questionData, error: questionError } = await supabase
-              .from("questions")
-              .insert({
-                question_text: video.question.question_text,
-                video_id: videoDbId,
-              })
-              .select()
-              .single();
+      //           if (answerError) throw answerError;
+      //         }
+      //       }
+      //     } else {
+      //       // Create new question
+      //       const { data: questionData, error: questionError } = await supabase
+      //         .from("questions")
+      //         .insert({
+      //           question_text: video.question.question_text,
+      //           video_id: videoDbId,
+      //         })
+      //         .select()
+      //         .single();
 
-            if (questionError || !questionData)
-              throw questionError || new Error("Failed to create question");
+      //       if (questionError || !questionData)
+      //         throw questionError || new Error("Failed to create question");
 
-            // Create answers
-            for (const answer of video.question.answers) {
-              const destinationVideoDbId = answer.destination_video_id
-                ? uploadedVideos[answer.destination_video_id]
-                : null;
+      //       // Create answers
+      //       for (const answer of video.question.answers) {
+      //         const destinationVideoDbId = answer.destination_video_id
+      //           ? uploadedVideos[answer.destination_video_id]
+      //           : null;
 
-              const { error: answerError } = await supabase
-                .from("answers")
-                .insert({
-                  answer_text: answer.answer_text,
-                  question_id: questionData.id,
-                  destination_video_id: destinationVideoDbId,
-                });
+      //         const { error: answerError } = await supabase
+      //           .from("answers")
+      //           .insert({
+      //             answer_text: answer.answer_text,
+      //             question_id: questionData.id,
+      //             destination_video_id: destinationVideoDbId,
+      //           });
 
-              if (answerError) throw answerError;
-            }
-          }
-        } else if (video.db_id) {
-          // Check if video had a question before and delete it
-          const { data: existingQuestion, error: questionError } =
-            await supabase
-              .from("questions")
-              .select("id")
-              .eq("video_id", video.db_id)
-              .maybeSingle();
+      //         if (answerError) throw answerError;
+      //       }
+      //     }
+      //   } else if (video.db_id) {
+      //     // Check if video had a question before and delete it
+      //     const { data: existingQuestion, error: questionError } =
+      //       await supabase
+      //         .from("questions")
+      //         .select("id")
+      //         .eq("video_id", video.db_id)
+      //         .maybeSingle();
 
-          if (questionError) throw questionError;
+      //     if (questionError) throw questionError;
 
-          if (existingQuestion) {
-            await supabase
-              .from("questions")
-              .delete()
-              .eq("id", existingQuestion.id);
-          }
-        }
-      }
+      //     if (existingQuestion) {
+      //       await supabase
+      //         .from("questions")
+      //         .delete()
+      //         .eq("id", existingQuestion.id);
+      //     }
+      //   }
+      // }
 
       // Handle solution (unchanged from your original code)
       if (solution) {
@@ -1716,8 +1716,8 @@ export default function EditInteractiveSession({
                           {!video.freezeAtEnd && (
                             <>
                               <p className="text-xs text-red-600 mt-2">
-                                NOTE: If the video has questions, the video will
-                                automatically be paused at the last frame.
+                                {/* NOTE: If the video has questions, the video will
+                                automatically be paused at the last frame. */}
                               </p>
                               <div className="flex gap-3 mt-3 items-center">
                                 <Label>Next Video:</Label>
@@ -1760,7 +1760,7 @@ export default function EditInteractiveSession({
                           )}
                         </div>
 
-                        {video.question ? (
+                        {/* {video.question ? (
                           <div className="space-y-4 mt-4">
                             <div className="space-y-2">
                               <Label>Question</Label>
@@ -1876,7 +1876,7 @@ export default function EditInteractiveSession({
                             <PlusCircle className="h-4 w-4 mr-2" />
                             Add Question
                           </Button>
-                        )}
+                        )} */}
                       </div>
                     )}
                   </div>
@@ -1925,7 +1925,7 @@ export default function EditInteractiveSession({
             </div>
 
             {/* Solution */}
-            <div className="mt-8 border rounded-lg">
+            {/* <div className="mt-8 border rounded-lg">
               <button
                 type="button"
                 className="w-full flex justify-between items-center p-4 cursor-pointer"
@@ -2002,7 +2002,7 @@ export default function EditInteractiveSession({
                   )}
                 </div>
               )}
-            </div>
+            </div> */}
 
             <div className="flex justify-between items-center gap-2 mt-8">
               <div className="flex-1"></div>

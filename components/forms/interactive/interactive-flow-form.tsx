@@ -96,9 +96,10 @@ export default function InteractiveSessionForm() {
     useState(false);
 
   const [userId, setUserId] = useState("");
-  const [solution, setSolution] = useState<Solution | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(false);
+  {/* comment out solution state */}
+  {/* const [solution, setSolution] = useState<Solution | null>(null); */}
+  {/* const [selectedCategory, setSelectedCategory] = useState<number | null>(null); */}
+  {/* const [isSolutionCollapsed, setIsSolutionCollapsed] = useState(false); */}
   const [showPlayButton, setShowPlayButton] = useState(true);
   const [comapnies, setCompanies] = useState<UserType[] | []>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
@@ -165,24 +166,26 @@ export default function InteractiveSessionForm() {
     setNavigationButtonImage(file);
   }, []);
 
-const handleNavigationVideoChange = useCallback(
-  (file: File | null, duration: number) => {
-    setNavigationButtonVideo(file);
-    setNavigationButtonVideoDuration(duration);
+  const handleNavigationVideoChange = useCallback(
+    (file: File | null, duration: number) => {
+      setNavigationButtonVideo(file);
+      setNavigationButtonVideoDuration(duration);
 
-    // Also update the video title when a new file is selected
-    if (file) {
-      setNavigationButtonVideoTitle(file.name.split('.')[0] || "Navigation Video");
-    }
+      // Also update the video title when a new file is selected
+      if (file) {
+        setNavigationButtonVideoTitle(
+          file.name.split(".")[0] || "Navigation Video"
+        );
+      }
 
-    if (file === null) {
-      setNavigationButtonVideoUrl("");
-      setNavigationButtonVideoDuration(0);
-      setNavigationButtonVideoTitle("");
-    }
-  },
-  []
-);
+      if (file === null) {
+        setNavigationButtonVideoUrl("");
+        setNavigationButtonVideoDuration(0);
+        setNavigationButtonVideoTitle("");
+      }
+    },
+    []
+  );
 
   const handleNavigationVideoTitleChange = useCallback((title: string) => {
     setNavigationButtonVideoTitle(title);
@@ -239,44 +242,44 @@ const handleNavigationVideoChange = useCallback(
     []
   );
 
-  const addQuestion = (videoId: string) => {
-    setVideos(
-      videos.map((v) =>
-        v.id === videoId
-          ? {
-              ...v,
-              question: {
-                id: uuidv4(),
-                question_text: "",
-                answers: [
-                  {
-                    id: uuidv4(),
-                    answer_text: "Answer 1",
-                    destination_video_id: "",
-                  },
-                ],
-              },
-            }
-          : v
-      )
-    );
-  };
+  // const addQuestion = (videoId: string) => {
+  //   setVideos(
+  //     videos.map((v) =>
+  //       v.id === videoId
+  //         ? {
+  //             ...v,
+  //             question: {
+  //               id: uuidv4(),
+  //               question_text: "",
+  //               answers: [
+  //                 {
+  //                   id: uuidv4(),
+  //                   answer_text: "Answer 1",
+  //                   destination_video_id: "",
+  //                 },
+  //               ],
+  //             },
+  //           }
+  //         : v
+  //     )
+  //   );
+  // };
 
-  const removeQuestion = (videoId: string) => {
-    setVideos(
-      videos.map((v) => (v.id === videoId ? { ...v, question: null } : v))
-    );
-  };
+  // const removeQuestion = (videoId: string) => {
+  //   setVideos(
+  //     videos.map((v) => (v.id === videoId ? { ...v, question: null } : v))
+  //   );
+  // };
 
-  const updateQuestion = (videoId: string, question_text: string) => {
-    setVideos(
-      videos.map((v) =>
-        v.id === videoId && v.question
-          ? { ...v, question: { ...v.question, question_text } }
-          : v
-      )
-    );
-  };
+  // const updateQuestion = (videoId: string, question_text: string) => {
+  //   setVideos(
+  //     videos.map((v) =>
+  //       v.id === videoId && v.question
+  //         ? { ...v, question: { ...v.question, question_text } }
+  //         : v
+  //     )
+  //   );
+  // };
 
   const addAnswer = (videoId: string) => {
     setVideos(
@@ -736,46 +739,46 @@ const handleNavigationVideoChange = useCallback(
         if (navLinksError) throw navLinksError;
       }
 
-      // Solutions Logic
-      if (solution) {
-        let solutionData: any = {
-          session_id: sessionData.id,
-          category_id: solution.category_id,
-          title: `Solution for ${sessionName}`,
-        };
+      {/* comment out Solutions Logic */}
+      {/* if (solution) { */}
+      {/*   let solutionData: any = { */}
+      {/*     session_id: sessionData.id, */}
+      {/*     category_id: solution.category_id, */}
+      {/*     title: `Solution for ${sessionName}`, */}
+      {/*   }; */}
 
-        // Set appropriate fields based on solution type
-        if (solution.category_id === 1) {
-          solutionData.form_data = solution.form_data;
-        } else if (solution.category_id === 2) {
-          solutionData.email_content = solution.emailTarget;
-        } else if (solution.category_id === 3) {
-          solutionData.link_url = solution.link_url;
-        } else if (solution.category_id === 4) {
-          if (solution.videoFile) {
-            const fileExt = solution.videoFile.name.split(".").pop();
-            const filePath = `${userId}/${
-              sessionData.id
-            }/solutions/${uuidv4()}.${fileExt}`;
+      {/*   // Set appropriate fields based on solution type */}
+      {/*   if (solution.category_id === 1) { */}
+      {/*     solutionData.form_data = solution.form_data; */}
+      {/*   } else if (solution.category_id === 2) { */}
+      {/*     solutionData.email_content = solution.emailTarget; */}
+      {/*   } else if (solution.category_id === 3) { */}
+      {/*     solutionData.link_url = solution.link_url; */}
+      {/*   } else if (solution.category_id === 4) { */}
+      {/*     if (solution.videoFile) { */}
+      {/*       const fileExt = solution.videoFile.name.split(".").pop(); */}
+      {/*       const filePath = `${userId}/${ */}
+      {/*         sessionData.id */}
+      {/*       }/solutions/${uuidv4()}.${fileExt}`; */}
 
-            const { error: uploadError } = await supabase.storage
-              .from("solutions")
-              .upload(filePath, solution.videoFile);
+      {/*       const { error: uploadError } = await supabase.storage */}
+      {/*         .from("solutions") */}
+      {/*         .upload(filePath, solution.videoFile); */}
 
-            if (uploadError) throw uploadError;
+      {/*       if (uploadError) throw uploadError; */}
 
-            const { data: urlData } = supabase.storage
-              .from("solutions")
-              .getPublicUrl(filePath);
+      {/*       const { data: urlData } = supabase.storage */}
+      {/*         .from("solutions") */}
+      {/*         .getPublicUrl(filePath); */}
 
-            solutionData.video_url = urlData.publicUrl;
-          } else if (solution.video_url) {
-            solutionData.video_url = solution.video_url;
-          }
-        }
+      {/*       solutionData.video_url = urlData.publicUrl; */}
+      {/*     } else if (solution.video_url) { */}
+      {/*       solutionData.video_url = solution.video_url; */}
+      {/*     } */}
+      {/*   } */}
 
-        await supabase.from("solutions").insert(solutionData);
-      }
+      {/*   await supabase.from("solutions").insert(solutionData); */}
+      {/* } */}
 
       toast.success(
         <div className="flex items-center space-x-3">
@@ -817,25 +820,26 @@ const handleNavigationVideoChange = useCallback(
     }
   };
 
-  const addSolution = () => {
-    if (!selectedCategory) return;
+  {/* comment out solution functions */}
+  {/* const addSolution = () => { */}
+  {/*   if (!selectedCategory) return; */}
 
-    setSolution({
-      id: uuidv4(),
-      category_id: selectedCategory,
-      session_id: "",
-    });
-  };
+  {/*   setSolution({ */}
+  {/*     id: uuidv4(), */}
+  {/*     category_id: selectedCategory, */}
+  {/*     session_id: "", */}
+  {/*   }); */}
+  {/* }; */}
 
-  const removeSolution = () => {
-    setSolution(null);
-  };
+  {/* const removeSolution = () => { */}
+  {/*   setSolution(null); */}
+  {/* }; */}
 
-  const updateSolution = (updates: Partial<Solution>) => {
-    if (solution) {
-      setSolution({ ...solution, ...updates });
-    }
-  };
+  {/* const updateSolution = (updates: Partial<Solution>) => { */}
+  {/*   if (solution) { */}
+  {/*     setSolution({ ...solution, ...updates }); */}
+  {/*   } */}
+  {/* }; */}
 
   const toggleFreezeAtEnd = (videoId: string, freeze: boolean) => {
     setVideos(
@@ -1023,8 +1027,8 @@ const handleNavigationVideoChange = useCallback(
 
                           {!video.freezeAtEnd && (
                             <p className="text-xs text-red-600 my-2">
-                              NOTE: If the video has questions, the video will
-                              automatically be paused at the last frame.
+                              {/* NOTE: If the video has questions, the video will
+                              automatically be paused at the last frame. */}
                             </p>
                           )}
                           {!video.freezeAtEnd && (
@@ -1067,7 +1071,7 @@ const handleNavigationVideoChange = useCallback(
                             </div>
                           )}
                         </div>
-                        {video.question ? (
+                        {/* {video.question ? (
                           <div className="space-y-4 mt-4">
                             <div className="space-y-2">
                               <Label>Question</Label>
@@ -1184,7 +1188,7 @@ const handleNavigationVideoChange = useCallback(
                             <PlusCircle className="h-4 w-4 mr-2" />
                             Add Question
                           </Button>
-                        )}
+                        )} */}
                       </div>
                     )}
                   </div>
@@ -1228,83 +1232,83 @@ const handleNavigationVideoChange = useCallback(
               </Label>
             </div>
 
-            {/* Solution */}
-            <div className="mt-8 border rounded-lg">
-              <button
-                type="button"
-                className="w-full flex justify-between items-center p-4 cursor-pointer"
-                onClick={() => setIsSolutionCollapsed(!isSolutionCollapsed)}
-              >
-                <h3 className="text-lg font-medium">Add a Solution</h3>
-                {isSolutionCollapsed ? (
-                  <ChevronDown className="h-5 w-5" />
-                ) : (
-                  <ChevronUp className="h-5 w-5" />
-                )}
-              </button>
+            {/* comment out Solution section */}
+            {/* <div className="mt-8 border rounded-lg"> */}
+            {/*   <button */}
+            {/*     type="button" */}
+            {/*     className="w-full flex justify-between items-center p-4 cursor-pointer" */}
+            {/*     onClick={() => setIsSolutionCollapsed(!isSolutionCollapsed)} */}
+            {/*   > */}
+            {/*     <h3 className="text-lg font-medium">Add a Solution</h3> */}
+            {/*     {isSolutionCollapsed ? ( */}
+            {/*       <ChevronDown className="h-5 w-5" /> */}
+            {/*     ) : ( */}
+            {/*       <ChevronUp className="h-5 w-5" /> */}
+            {/*     )} */}
+            {/*   </button> */}
 
-              {!isSolutionCollapsed && (
-                <div className="p-4 pt-0 space-y-4">
-                  <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1">
-                      <Label className="block text-sm font-medium mb-1">
-                        Solution Category
-                      </Label>
-                      <Select
-                        disabled={solution !== null}
-                        value={
-                          solutionCategories
-                            .find((c) => c.id === selectedCategory)
-                            ?.id?.toString() || ""
-                        }
-                        onValueChange={(value) =>
-                          setSelectedCategory(Number(value))
-                        }
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select solution type" />
-                        </SelectTrigger>
-                        <SelectContent className="flex-1">
-                          {solutionCategories.map((category) => (
-                            <SelectItem
-                              key={category.id}
-                              value={String(category.id)}
-                            >
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-end gap-2">
-                      <Button
-                        type="button"
-                        onClick={addSolution}
-                        disabled={solution !== null}
-                        className="h-10"
-                      >
-                        Add Solution
-                      </Button>
-                      <button
-                        type="button"
-                        onClick={removeSolution}
-                        className="h-10 text-red-600 hover:text-red-800"
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  </div>
+            {/*   {!isSolutionCollapsed && ( */}
+            {/*     <div className="p-4 pt-0 space-y-4"> */}
+            {/*       <div className="flex flex-col md:flex-row gap-4"> */}
+            {/*         <div className="flex-1"> */}
+            {/*           <Label className="block text-sm font-medium mb-1"> */}
+            {/*             Solution Category */}
+            {/*           </Label> */}
+            {/*           <Select */}
+            {/*             disabled={solution !== null} */}
+            {/*             value={ */}
+            {/*               solutionCategories */}
+            {/*                 .find((c) => c.id === selectedCategory) */}
+            {/*                 ?.id?.toString() || "" */}
+            {/*             } */}
+            {/*             onValueChange={(value) => */}
+            {/*               setSelectedCategory(Number(value)) */}
+            {/*             } */}
+            {/*           > */}
+            {/*             <SelectTrigger className="w-full"> */}
+            {/*               <SelectValue placeholder="Select solution type" /> */}
+            {/*             </SelectTrigger> */}
+            {/*             <SelectContent className="flex-1"> */}
+            {/*               {solutionCategories.map((category) => ( */}
+            {/*                 <SelectItem */}
+            {/*                   key={category.id} */}
+            {/*                   value={String(category.id)} */}
+            {/*                 > */}
+            {/*                   {category.name} */}
+            {/*                 </SelectItem> */}
+            {/*               )} */}
+            {/*             </SelectContent> */}
+            {/*           </Select> */}
+            {/*         </div> */}
+            {/*         <div className="flex items-end gap-2"> */}
+            {/*           <Button */}
+            {/*             type="button" */}
+            {/*             onClick={addSolution} */}
+            {/*             disabled={solution !== null} */}
+            {/*             className="h-10" */}
+            {/*           > */}
+            {/*             Add Solution */}
+            {/*           </Button> */}
+            {/*           <button */}
+            {/*             type="button" */}
+            {/*             onClick={removeSolution} */}
+            {/*             className="h-10 text-red-600 hover:text-red-800" */}
+            {/*           > */}
+            {/*             Reset */}
+            {/*           </button> */}
+            {/*         </div> */}
+            {/*       </div> */}
 
-                  {solution && (
-                    <SolutionCard
-                      solution={solution}
-                      onUpdate={updateSolution}
-                      onDelete={removeSolution}
-                    />
-                  )}
-                </div>
-              )}
-            </div>
+            {/*       {solution && ( */}
+            {/*         <SolutionCard */}
+            {/*           solution={solution} */}
+            {/*           onUpdate={updateSolution} */}
+            {/*           onDelete={removeSolution} */}
+            {/*         /> */}
+            {/*       )} */}
+            {/*     </div> */}
+            {/*   )} */}
+            {/* </div> */}
 
             <div className="flex justify-between items-center gap-2 mt-8">
               <div className="flex-1"></div>

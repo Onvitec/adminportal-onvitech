@@ -30,6 +30,8 @@ export type FormElement = {
 export type FormSolutionData = {
   title?: string;
   elements: FormElement[];
+  cancelPlaceholder?: string;
+  submitPlaceholder?: string;
   email?: string;
 };
 

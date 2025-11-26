@@ -60,7 +60,10 @@ function VideoPlayerWithDraggableImages({
     scaleX?: number;
     scaleY?: number;
   } | null>(null);
-  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
+  const [naturalSize, setNaturalSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   // Calculate actual video dimensions within container
   const calculateVideoRect = useCallback(() => {
@@ -88,9 +91,10 @@ function VideoPlayerWithDraggableImages({
 
     // Center within container
     const offsetLeft = (containerRect.width - actualVideoWidth) / 2;
-    const offsetTop = containerRect.height > 0
-      ? (containerRect.height - actualVideoHeight) / 2
-      : 0;
+    const offsetTop =
+      containerRect.height > 0
+        ? (containerRect.height - actualVideoHeight) / 2
+        : 0;
 
     const rect = {
       width: actualVideoWidth,
@@ -1968,6 +1972,50 @@ function VideoUploadWithLinksComponent({
                                     Valid email is required
                                   </p>
                                 )}
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                <Label className="font-bold">
+                                  Cancel Button Placeholder
+                                </Label>
+                                <Input
+                                  placeholder="Enter Cancel Placeholder"
+                                  value={
+                                    formData.formData.cancelPlaceholder || ""
+                                  }
+                                  onChange={(e) => {
+                                    const newFormData = {
+                                      ...formData.formData,
+                                      cancelPlaceholder: e.target.value,
+                                    };
+                                    handleFormChange(
+                                      index,
+                                      "formData",
+                                      newFormData
+                                    );
+                                  }}
+                                />
+                              </div>
+                              <div className="flex flex-col gap-2">
+                                <Label className="font-bold">
+                                  Submit Button Placeholder
+                                </Label>
+                                <Input
+                                  placeholder="Enter Submit Placeholder"
+                                  value={
+                                    formData.formData.submitPlaceholder || ""
+                                  }
+                                  onChange={(e) => {
+                                    const newFormData = {
+                                      ...formData.formData,
+                                      submitPlaceholder: e.target.value,
+                                    };
+                                    handleFormChange(
+                                      index,
+                                      "formData",
+                                      newFormData
+                                    );
+                                  }}
+                                />
                               </div>
 
                               <EnhancedFormBuilder
