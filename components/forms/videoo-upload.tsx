@@ -112,7 +112,8 @@ function VideoPlayerWithDraggableImages({
 
     const updateDuration = () => setDuration(video.duration);
     const updateTime = () => setCurrentTime(video.currentTime);
-    const updateNaturalSize = () => setNaturalSize({ width: video.videoWidth, height: video.videoHeight });
+    const updateNaturalSize = () =>
+      setNaturalSize({ width: video.videoWidth, height: video.videoHeight });
 
     video.addEventListener("loadedmetadata", updateDuration);
     video.addEventListener("loadedmetadata", updateNaturalSize);
@@ -273,12 +274,14 @@ function VideoPlayerWithDraggableImages({
 
   const getImageDimensions = useCallback(
     (link: VideoLink, isHovered: boolean) => {
-      const baseWidth = isHovered && (link.hover_image_width || link.hover_image_height)
-        ? (link.hover_image_width || 100)
-        : (link.normal_image_width || 100);
-      const baseHeight = isHovered && (link.hover_image_height || link.hover_image_width)
-        ? (link.hover_image_height || 100)
-        : (link.normal_image_height || 100);
+      const baseWidth =
+        isHovered && (link.hover_image_width || link.hover_image_height)
+          ? link.hover_image_width || 100
+          : link.normal_image_width || 100;
+      const baseHeight =
+        isHovered && (link.hover_image_height || link.hover_image_width)
+          ? link.hover_image_height || 100
+          : link.normal_image_height || 100;
 
       // Scale overlay dimensions proportionally to the rendered video size
       if (videoRect?.scaleX && videoRect?.scaleY) {
@@ -301,14 +304,22 @@ function VideoPlayerWithDraggableImages({
     (link: VideoLink) => {
       if (!videoRect) {
         // Fallback to percentages if videoRect not available
-        return { left: `${link.position_x}%`, top: `${link.position_y}%` };
+        return {
+          left: `${link.position_x}%`,
+          top: `${link.position_y}%`,
+          transform: "translate(-50%, -50%)", // Center the image
+        };
       }
 
       // Convert percentage positions to actual pixels within video area
-      const left = videoRect.left + (link.position_x / 100) * videoRect.width;
-      const top = videoRect.top + (link.position_y / 100) * videoRect.height;
+      const left = (link.position_x / 100) * videoRect.width;
+      const top = (link.position_y / 100) * videoRect.height;
 
-      return { left: `${left}px`, top: `${top}px` };
+      return {
+        left: `${left}px`,
+        top: `${top}px`,
+        transform: "translate(-50%, -50%)", // Center the image on the position
+      };
     },
     [videoRect]
   );
@@ -379,7 +390,9 @@ function VideoPlayerWithDraggableImages({
           onResize={() => setTimeout(() => calculateVideoRect(), 100)}
           style={{
             maxWidth: naturalSize?.width ? `${naturalSize.width}px` : undefined,
-            maxHeight: naturalSize?.height ? `${naturalSize.height}px` : undefined,
+            maxHeight: naturalSize?.height
+              ? `${naturalSize.height}px`
+              : undefined,
           }}
         />
 
@@ -1062,22 +1075,22 @@ function VideoUploadWithLinksComponent({
             }
           } else if (field === "timestamp") {
             // Ensure timestamp is within video bounds
-            const timestampValue = parseInt(value) || 0;
+            const timestampValue = parseFloat(value) || 0;
             const maxTimestamp = video.duration || Infinity;
             updated.timestamp = Math.max(
               0,
               Math.min(timestampValue, maxTimestamp)
             ).toString();
           } else if (field === "position_x") {
-            // Ensure position is within reasonable bounds (0-90%) and preserve zero
-            const n = parseInt(value);
+            // FIXED: Use parseFloat instead of parseInt for decimals
+            const n = parseFloat(value);
             const valid = Number.isNaN(n) ? 20 : n;
-            updated.position_x = Math.max(0, Math.min(90, valid));
+            updated.position_x = Math.max(0, Math.min(100, valid));
           } else if (field === "position_y") {
-            // Ensure position is within reasonable bounds (0-90%) and preserve zero
-            const n = parseInt(value);
+            // FIXED: Use parseFloat instead of parseInt for decimals
+            const n = parseFloat(value);
             const valid = Number.isNaN(n) ? 20 : n;
-            updated.position_y = Math.max(0, Math.min(90, valid));
+            updated.position_y = Math.max(0, Math.min(100, valid));
           }
 
           // 🚀 REMOVE SIZE LIMITS (WIDTH/HEIGHT) → store value AS-IS
@@ -1088,7 +1101,7 @@ function VideoUploadWithLinksComponent({
             field === "hover_image_height"
           ) {
             updated[field] =
-              value === null ? undefined : parseInt(value) || (0 as any);
+              value === null ? undefined : parseFloat(value) || (0 as any);
           }
 
           return updated;
@@ -1694,34 +1707,46 @@ function VideoUploadWithLinksComponent({
                       <div className="flex flex-col gap-2 flex-1">
                         <Label className="font-bold">X Position (%)</Label>
                         <Input
-                          type="number"
+                          type="number" // Keep as number but allow step for decimals
+                          step="0.1" // Add this to allow decimal increments
                           min="0"
-                          max="90"
+                          max="100"
                           value={formData.position_x}
                           onChange={(e) =>
                             handleFormChange(
                               index,
                               "position_x",
-                              parseInt(e.target.value) || 0
+                              parseFloat(e.target.value) || 0 // Use parseFloat here too
                             )
                           }
                         />
+                        {isEditMode && (
+                          <div className="text-xs text-gray-500">
+                            Current: {formData.position_x}%
+                          </div>
+                        )}
                       </div>
                       <div className="flex flex-col gap-2 flex-1">
                         <Label className="font-bold">Y Position (%)</Label>
                         <Input
                           type="number"
+                          step="0.1" // Add this to allow decimal increments
                           min="0"
-                          max="90"
+                          max="100"
                           value={formData.position_y}
                           onChange={(e) =>
                             handleFormChange(
                               index,
                               "position_y",
-                              parseInt(e.target.value) || 0
+                              parseFloat(e.target.value) || 0 // Use parseFloat here too
                             )
                           }
                         />
+                        {isEditMode && (
+                          <div className="text-xs text-gray-500">
+                            Current: {formData.position_y}%
+                          </div>
+                        )}
                       </div>
                     </div>
 
