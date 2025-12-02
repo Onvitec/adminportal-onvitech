@@ -304,10 +304,11 @@ function FormDisplay({
               onClick={onCancel}
               className="flex-1 bg-white/20 text-black hover:bg-white/30"
             >
-              {(!formData.cancelPlaceholder ||
-                formData.submitPlaceholder === "") &&
-                "Cancel"}
+              {!formData.cancelPlaceholder || formData.cancelPlaceholder === ""
+                ? "Cancel"
+                : formData.cancelPlaceholder}
             </Button>
+
             <Button
               type="submit"
               disabled={onFormLoading}
@@ -828,7 +829,7 @@ export function CommonVideoPlayer({
             onClick={onNavigationButtonClick}
           >
             <div className="relative">
-              <Image
+              <img
                 src={navigationButton!.image_url}
                 alt="Navigation"
                 className="w-16 h-16 object-contain rounded-lg transition-all"
