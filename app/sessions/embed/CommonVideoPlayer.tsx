@@ -772,7 +772,7 @@ export function CommonVideoPlayer({
 
   return (
     <div
-      className="fixed inset-0 bg-black flex items-center justify-center p-4 sm:p-6 md:p-10"
+      className="fixed inset-0 bg-black flex items-center justify-center p-2 sm:p-3 md:p-6"
       onMouseMove={handleMouseMove}
       onMouseEnter={() => {
         setMouseActive(true);
@@ -796,13 +796,15 @@ export function CommonVideoPlayer({
           playsInline
           src={currentVideo.url}
           className={`object-contain rounded-2xl cursor-pointer`}
-          style={{
-            // Prevent upscaling beyond the video's natural resolution
-            width: videoRect ? `${videoRect.width}px` : undefined,
-            height: videoRect ? `${videoRect.height}px` : undefined,
-            maxWidth: videoRef.current?.videoWidth || undefined,
-            maxHeight: videoRef.current?.videoHeight || undefined,
-          }}
+          style={
+            {
+              // Prevent upscaling beyond the video's natural resolution
+              // width: videoRect ? `${videoRect.width}px` : undefined,
+              // height: videoRect ? `${videoRect.height}px` : undefined,
+              // maxWidth: videoRef.current?.videoWidth || undefined,
+              // maxHeight: videoRef.current?.videoHeight || undefined,
+            }
+          }
           controls={false}
           onClick={togglePlayPause}
           onEnded={handleVideoEnd}
@@ -841,7 +843,7 @@ export function CommonVideoPlayer({
 
         {showBackButton && onBackNavigation && !isPlaying && (
           <div
-            className={`absolute left-4 top-4 z-[999] bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:scale-110 ${
+            className={`absolute left-14 top-4 z-[999] bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:scale-110 ${
               showControls ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
             onClick={onBackNavigation}
