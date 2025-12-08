@@ -457,16 +457,55 @@ export function CommonVideoPlayer({
   }, []);
 
   // Navigation button position - always top right
-  const getNavigationButtonPosition = useCallback(() => {
-    if (!videoRect) {
-      return { right: "20px", top: "20px" };
-    }
-    const margin = 20;
-    const buttonSize = 64; // matches w-16 h-16
-    const top = videoRect.top + margin;
-    const left = videoRect.left + videoRect.width - margin - buttonSize;
-    return { left: `${left}px`, top: `${top}px` };
+  const getResponsiveButtonSize = useCallback(() => {
+    if (!videoRect) return 64;
+    const byWidth = videoRect.width * 0.05; // ~6% of video width
+    const byHeight = videoRect.height * 0.8; // ~10% of video height
+    const size = Math.min(byWidth, byHeight);
+    // Clamp between 36px and 72px for usability across devices
+    return Math.round(Math.max(36, Math.min(size, 72)));
   }, [videoRect]);
+
+  const getNavigationButtonPosition = useCallback(() => {
+    const buttonSize = getResponsiveButtonSize();
+    if (!videoRect) {
+      return {
+        right: "20px",
+        top: "20px",
+        width: `${buttonSize}px`,
+        height: `${buttonSize}px`,
+      };
+    }
+    // const margin = Math.max(12, Math.min(2, Math.round(buttonSize * 0.25)));
+    const top = videoRect.top ;
+    return {
+      right: `15px`,
+      top: `${top}px`,
+      width: `${buttonSize}px`,
+      height: `${buttonSize}px`,
+    };
+  }, [videoRect, getResponsiveButtonSize]);
+
+  const getBackButtonPosition = useCallback(() => {
+    const buttonSize = getResponsiveButtonSize();
+    if (!videoRect) {
+      return {
+        left: "20px",
+        top: "20px",
+        width: `${buttonSize}px`,
+        height: `${buttonSize}px`,
+      };
+    }
+    const margin = Math.max(12, Math.min(24, Math.round(buttonSize * 0.25)));
+    const top = videoRect.top + margin;
+    const left = videoRect.left + margin;
+    return {
+      left: `15px`,
+      top: `${top}px`,
+      width: `${buttonSize}px`,
+      height: `${buttonSize}px`,
+    };
+  }, [videoRect, getResponsiveButtonSize]);
 
   // Enhanced video rect calculation with better timing
   useEffect(() => {
@@ -772,7 +811,7 @@ export function CommonVideoPlayer({
 
   return (
     <div
-      className="fixed inset-0 bg-black flex items-center justify-center p-2 sm:p-3 md:p-6"
+      className="fixed inset-0 bg-black flex items-center justify-center p-2 sm:p-3 md:p-1"
       onMouseMove={handleMouseMove}
       onMouseEnter={() => {
         setMouseActive(true);
@@ -829,26 +868,29 @@ export function CommonVideoPlayer({
             className="absolute z-30 cursor-pointer transition-transform duration-200"
             style={getNavigationButtonPosition()}
             onClick={onNavigationButtonClick}
+            aria-label="Navigate"
           >
-            <div className="relative">
-              <img
-                src={navigationButton!.image_url}
-                alt="Navigation"
-                className="w-16 h-16 object-contain rounded-lg transition-all"
-                draggable={false}
-              />
-            </div>
+            <img
+              src={navigationButton!.image_url}
+              alt="Navigation"
+              className="object-contain rounded-lg transition-all"
+              style={{ width: "100%", height: "100%" }}
+              draggable={false}
+            />
           </div>
         )}
 
         {showBackButton && onBackNavigation && !isPlaying && (
           <div
-            className={`absolute left-14 top-4 z-[999] bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:scale-110 ${
+            className={`absolute z-[999] flex items-center justify-center bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:scale-110 ${
               showControls ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
+            style={getBackButtonPosition()}
             onClick={onBackNavigation}
+            aria-label="Back"
+            role="button"
           >
-            <ChevronLeft className="w-10 h-10 text-white font-bold" />
+            <ChevronLeft className="text-white font-bold w-10 h-10" />
           </div>
         )}
 
