@@ -370,7 +370,7 @@ export function CommonVideoPlayer({
 
   // Video rect state for precise positioning
   const [videoRect, setVideoRect] = useState<{
-    width: number;
+    width: number ;
     height: number;
     left: number;
     top: number;
@@ -418,30 +418,13 @@ export function CommonVideoPlayer({
     const containerH = containerRect.height;
 
     const videoAR = vW / vH;
-    const containerAR = containerW / containerH;
+    // Full width, preserve aspect ratio
+    const actualVideoWidth = containerW;
+    const actualVideoHeight = containerW / videoAR;
 
-    // Fit inside container without exceeding native resolution
-    let fitW: number;
-    let fitH: number;
-    if (containerAR > videoAR) {
-      // Bound by height
-      const heightBound = Math.min(containerH, vH);
-      fitH = heightBound;
-      fitW = heightBound * videoAR;
-    } else {
-      // Bound by width
-      const widthBound = Math.min(containerW, vW);
-      fitW = widthBound;
-      fitH = widthBound / videoAR;
-    }
-
-    // Final clamp
-    const actualVideoWidth = Math.min(fitW, vW);
-    const actualVideoHeight = Math.min(fitH, vH);
-
-    // Center inside container (letterbox/pillarbox if needed)
-    const offsetLeft = (containerW - actualVideoWidth) / 2;
-    const offsetTop = (containerH - actualVideoHeight) / 2;
+    // Center inside container; clamp to container bounds to avoid clipping overlays
+    const offsetLeft = Math.max(0, (containerW - actualVideoWidth) / 2);
+    const offsetTop = Math.max(0, (containerH - actualVideoHeight) / 2);
 
     const rect = {
       width: actualVideoWidth,
@@ -476,10 +459,11 @@ export function CommonVideoPlayer({
         height: `${buttonSize}px`,
       };
     }
-    // const margin = Math.max(12, Math.min(2, Math.round(buttonSize * 0.25)));
-    const top = videoRect.top ;
+    const margin = Math.max(12, Math.min(2, Math.round(buttonSize * 0.25)));
+    const top = videoRect.top + margin;
+    const left = videoRect.left + margin;
     return {
-      right: `15px`,
+      right: `${left}px`,
       top: `${top}px`,
       width: `${buttonSize}px`,
       height: `${buttonSize}px`,
@@ -500,7 +484,7 @@ export function CommonVideoPlayer({
     const top = videoRect.top + margin;
     const left = videoRect.left + margin;
     return {
-      left: `15px`,
+      left: `${left}px`,
       top: `${top}px`,
       width: `${buttonSize}px`,
       height: `${buttonSize}px`,
@@ -832,16 +816,13 @@ export function CommonVideoPlayer({
         <video
           ref={videoRef}
           autoPlay
-          playsInline
+          playsInline 
           src={currentVideo.url}
           className={`object-contain rounded-2xl cursor-pointer`}
           style={
             {
-              // Prevent upscaling beyond the video's natural resolution
-              // width: videoRect ? `${videoRect.width}px` : undefined,
-              // height: videoRect ? `${videoRect.height}px` : undefined,
-              // maxWidth: videoRef.current?.videoWidth || undefined,
-              // maxHeight: videoRef.current?.videoHeight || undefined,
+              width: videoRect ? `${videoRect.width}px` : "100%",
+              height: videoRect ? `${videoRect.height}px` : "auto",
             }
           }
           controls={false}
