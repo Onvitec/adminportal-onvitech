@@ -401,7 +401,6 @@ export function CommonVideoPlayer({
     isNavigationVideo,
   ]);
 
-  // PERFECT Video rect calculation (fit within container, preserve AR, NO UPSCALING)
   const calculateVideoRect = useCallback(() => {
     const video = videoRef.current;
     const container = videoContainerRef.current;
@@ -410,23 +409,17 @@ export function CommonVideoPlayer({
     const containerRect = container.getBoundingClientRect();
     const vW = video.videoWidth || 0;
     const vH = video.videoHeight || 0;
-    if (!vW || !vH) {
-      return null;
-    }
+    if (!vW || !vH) return null;
 
     const containerW = containerRect.width;
     const containerH = containerRect.height;
 
     const videoAR = vW / vH;
-    // Fit within container without exceeding native resolution
-    const widthBound = Math.min(containerW, vW);
-    const heightBound = Math.min(containerH, vH);
-
-    let fitW = widthBound;
-    let fitH = fitW / videoAR;
-    if (fitH > heightBound) {
-      fitH = heightBound;
-      fitW = fitH * videoAR;
+    let fitH = containerH;
+    let fitW = fitH * videoAR;
+    if (fitW > containerW) {
+      fitW = containerW;
+      fitH = fitW / videoAR;
     }
 
     const actualVideoWidth = fitW;
