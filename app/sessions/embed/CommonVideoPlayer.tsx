@@ -418,9 +418,19 @@ export function CommonVideoPlayer({
     const containerH = containerRect.height;
 
     const videoAR = vW / vH;
-    // Full width, preserve aspect ratio
-    const actualVideoWidth = containerW;
-    const actualVideoHeight = containerW / videoAR;
+    // Fit within container without exceeding native resolution
+    const widthBound = Math.min(containerW, vW);
+    const heightBound = Math.min(containerH, vH);
+
+    let fitW = widthBound;
+    let fitH = fitW / videoAR;
+    if (fitH > heightBound) {
+      fitH = heightBound;
+      fitW = fitH * videoAR;
+    }
+
+    const actualVideoWidth = fitW;
+    const actualVideoHeight = fitH;
 
     // Center inside container; clamp to container bounds to avoid clipping overlays
     const offsetLeft = Math.max(0, (containerW - actualVideoWidth) / 2);
@@ -819,12 +829,10 @@ export function CommonVideoPlayer({
           playsInline 
           src={currentVideo.url}
           className={`object-contain rounded-2xl cursor-pointer`}
-          style={
-            {
-              width: videoRect ? `${videoRect.width}px` : "100%",
-              height: videoRect ? `${videoRect.height}px` : "auto",
-            }
-          }
+          style={{
+            width: videoRect ? `${videoRect.width}px` : undefined,
+            height: videoRect ? `${videoRect.height}px` : undefined,
+          }}
           controls={false}
           onClick={togglePlayPause}
           onEnded={handleVideoEnd}
