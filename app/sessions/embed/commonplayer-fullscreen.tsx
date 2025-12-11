@@ -314,29 +314,36 @@ export function CommonVideoPlayer({
     scale: number;
   } | null>(null);
 
-  // FULLSCREEN Video rect calculation - NO BLACK BARS
   const calculateVideoRect = useCallback(() => {
     const video = videoRef.current;
     const container = videoContainerRef.current;
     if (!video || !container) return null;
 
     const containerRect = container.getBoundingClientRect();
+    const containerW = containerRect.width;
+    const containerH = containerRect.height;
+    const vW = video.videoWidth || 0;
+    const vH = video.videoHeight || 0;
+    if (!vW || !vH) return null;
 
-    // For true fullscreen - always fill the entire container
-    // This will crop the video if aspect ratios don't match
+    const ar = vW / vH;
+    let fitH = containerH;
+    let fitW = fitH * ar;
+    if (fitW > containerW) {
+      fitW = containerW;
+      fitH = fitW / ar;
+    }
+
+    const left = Math.max(0, (containerW - fitW) / 2);
+    const top = Math.max(0, (containerH - fitH) / 2);
+
     const rect = {
-      width: containerRect.width,
-      height: containerRect.height,
-      left: 0,
-      top: 0,
-      scale: containerRect.width / video.videoWidth, // Scale based on width
+      width: fitW,
+      height: fitH,
+      left,
+      top,
+      scale: vW ? fitW / vW : 1,
     };
-
-    console.log("True Fullscreen VideoRect:", {
-      container: { width: containerRect.width, height: containerRect.height },
-      video: { width: video.videoWidth, height: video.videoHeight },
-      calculated: rect,
-    });
 
     setVideoRect(rect);
     return rect;
@@ -586,7 +593,7 @@ export function CommonVideoPlayer({
   return (
     <div
       ref={videoContainerRef}
-      className="fixed inset-0 bg-black" // Changed to fixed inset-0 for true fullscreen
+      className="fixed inset-0 bg-black flex items-center justify-center"
       onMouseMove={handleMouseMove}
       onMouseEnter={() => {
         setMouseActive(true);
@@ -599,14 +606,17 @@ export function CommonVideoPlayer({
         }
       }}
     >
-      {/* True Fullscreen video - NO BLACK BARS */}
       <video
         ref={videoRef}
         autoPlay
         muted
         playsInline
         src={currentVideo.url}
-        className="w-[100vw] min-h-screen object-cover cursor-pointer" // object-cover will crop to fill
+        className="object-contain cursor-pointer"
+        style={{
+          width: videoRect ? `${videoRect.width}px` : undefined,
+          height: videoRect ? `${videoRect.height}px` : undefined,
+        }}
         controls={false}
         onClick={togglePlayPause}
         onEnded={handleVideoEnd}

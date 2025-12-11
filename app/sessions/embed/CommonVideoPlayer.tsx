@@ -370,7 +370,7 @@ export function CommonVideoPlayer({
 
   // Video rect state for precise positioning
   const [videoRect, setVideoRect] = useState<{
-    width: number;
+    width: number ;
     height: number;
     left: number;
     top: number;
@@ -401,7 +401,6 @@ export function CommonVideoPlayer({
     isNavigationVideo,
   ]);
 
-  // PERFECT Video rect calculation (fit within container, preserve AR, NO UPSCALING)
   const calculateVideoRect = useCallback(() => {
     const video = videoRef.current;
     const container = videoContainerRef.current;
@@ -410,38 +409,25 @@ export function CommonVideoPlayer({
     const containerRect = container.getBoundingClientRect();
     const vW = video.videoWidth || 0;
     const vH = video.videoHeight || 0;
-    if (!vW || !vH) {
-      return null;
-    }
+    if (!vW || !vH) return null;
 
     const containerW = containerRect.width;
     const containerH = containerRect.height;
 
     const videoAR = vW / vH;
-    const containerAR = containerW / containerH;
-
-    // Fit inside container without exceeding native resolution
-    let fitW: number;
-    let fitH: number;
-    if (containerAR > videoAR) {
-      // Bound by height
-      const heightBound = Math.min(containerH, vH);
-      fitH = heightBound;
-      fitW = heightBound * videoAR;
-    } else {
-      // Bound by width
-      const widthBound = Math.min(containerW, vW);
-      fitW = widthBound;
-      fitH = widthBound / videoAR;
+    let fitH = containerH;
+    let fitW = fitH * videoAR;
+    if (fitW > containerW) {
+      fitW = containerW;
+      fitH = fitW / videoAR;
     }
 
-    // Final clamp
-    const actualVideoWidth = Math.min(fitW, vW);
-    const actualVideoHeight = Math.min(fitH, vH);
+    const actualVideoWidth = fitW;
+    const actualVideoHeight = fitH;
 
-    // Center inside container (letterbox/pillarbox if needed)
-    const offsetLeft = (containerW - actualVideoWidth) / 2;
-    const offsetTop = (containerH - actualVideoHeight) / 2;
+    // Center inside container; clamp to container bounds to avoid clipping overlays
+    const offsetLeft = Math.max(0, (containerW - actualVideoWidth) / 2);
+    const offsetTop = Math.max(0, (containerH - actualVideoHeight) / 2);
 
     const rect = {
       width: actualVideoWidth,
@@ -457,16 +443,56 @@ export function CommonVideoPlayer({
   }, []);
 
   // Navigation button position - always top right
-  const getNavigationButtonPosition = useCallback(() => {
-    if (!videoRect) {
-      return { right: "20px", top: "20px" };
-    }
-    const margin = 20;
-    const buttonSize = 64; // matches w-16 h-16
-    const top = videoRect.top + margin;
-    const left = videoRect.left + videoRect.width - margin - buttonSize;
-    return { left: `${left}px`, top: `${top}px` };
+  const getResponsiveButtonSize = useCallback(() => {
+    if (!videoRect) return 64;
+    const byWidth = videoRect.width * 0.05; // ~6% of video width
+    const byHeight = videoRect.height * 0.8; // ~10% of video height
+    const size = Math.min(byWidth, byHeight);
+    // Clamp between 36px and 72px for usability across devices
+    return Math.round(Math.max(36, Math.min(size, 72)));
   }, [videoRect]);
+
+  const getNavigationButtonPosition = useCallback(() => {
+    const buttonSize = getResponsiveButtonSize();
+    if (!videoRect) {
+      return {
+        right: "20px",
+        top: "20px",
+        width: `${buttonSize}px`,
+        height: `${buttonSize}px`,
+      };
+    }
+    const margin = Math.max(12, Math.min(2, Math.round(buttonSize * 0.25)));
+    const top = videoRect.top + margin;
+    const left = videoRect.left + margin;
+    return {
+      right: `${left}px`,
+      top: `${top}px`,
+      width: `${buttonSize}px`,
+      height: `${buttonSize}px`,
+    };
+  }, [videoRect, getResponsiveButtonSize]);
+
+  const getBackButtonPosition = useCallback(() => {
+    const buttonSize = getResponsiveButtonSize();
+    if (!videoRect) {
+      return {
+        left: "20px",
+        top: "20px",
+        width: `${buttonSize}px`,
+        height: `${buttonSize}px`,
+      };
+    }
+    const margin = Math.max(12, Math.min(24, Math.round(buttonSize * 0.25)));
+    const top = videoRect.top + margin;
+    const left = videoRect.left + margin;
+    return {
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${buttonSize}px`,
+      height: `${buttonSize}px`,
+    };
+  }, [videoRect, getResponsiveButtonSize]);
 
   // Enhanced video rect calculation with better timing
   useEffect(() => {
@@ -772,7 +798,7 @@ export function CommonVideoPlayer({
 
   return (
     <div
-      className="fixed inset-0 bg-black flex items-center justify-center p-4 sm:p-6 md:p-10"
+      className="fixed inset-0 bg-black flex items-center justify-center"
       onMouseMove={handleMouseMove}
       onMouseEnter={() => {
         setMouseActive(true);
@@ -793,15 +819,12 @@ export function CommonVideoPlayer({
         <video
           ref={videoRef}
           autoPlay
-          playsInline
+          playsInline 
           src={currentVideo.url}
           className={`object-contain rounded-2xl cursor-pointer`}
           style={{
-            // Prevent upscaling beyond the video's natural resolution
             width: videoRect ? `${videoRect.width}px` : undefined,
             height: videoRect ? `${videoRect.height}px` : undefined,
-            maxWidth: videoRef.current?.videoWidth || undefined,
-            maxHeight: videoRef.current?.videoHeight || undefined,
           }}
           controls={false}
           onClick={togglePlayPause}
@@ -827,26 +850,29 @@ export function CommonVideoPlayer({
             className="absolute z-30 cursor-pointer transition-transform duration-200"
             style={getNavigationButtonPosition()}
             onClick={onNavigationButtonClick}
+            aria-label="Navigate"
           >
-            <div className="relative">
-              <img
-                src={navigationButton!.image_url}
-                alt="Navigation"
-                className="w-16 h-16 object-contain rounded-lg transition-all"
-                draggable={false}
-              />
-            </div>
+            <img
+              src={navigationButton!.image_url}
+              alt="Navigation"
+              className="object-contain rounded-lg transition-all"
+              style={{ width: "100%", height: "100%" }}
+              draggable={false}
+            />
           </div>
         )}
 
         {showBackButton && onBackNavigation && !isPlaying && (
           <div
-            className={`absolute left-4 top-4 z-[999] bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:scale-110 ${
+            className={`absolute z-[999] flex items-center justify-center bg-white/30 backdrop-blur-sm rounded-lg p-2 shadow-lg border border-white/60 cursor-pointer hover:bg-white/40 transition-all duration-200 hover:scale-110 ${
               showControls ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
+            style={getBackButtonPosition()}
             onClick={onBackNavigation}
+            aria-label="Back"
+            role="button"
           >
-            <ChevronLeft className="w-10 h-10 text-white font-bold" />
+            <ChevronLeft className="text-white font-bold w-10 h-10" />
           </div>
         )}
 
