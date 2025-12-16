@@ -16,6 +16,7 @@ import { IframeModal } from "@/components/Modal/IframeModal";
 import ViewSelectionSession from "./SelectionView";
 import { Loader } from "@/components/Loader";
 import { TreeViewSession } from "./TreeViewSession";
+import { exportSessionAnalyticsToPDF } from "@/lib/helper";
 
 export default function SessionViewPage() {
   const { id } = useParams();
@@ -204,6 +205,35 @@ export default function SessionViewPage() {
           >
             <EditIcon className="w-4 h-4 text-white" />
             Share Session
+          </Button>
+          <Button
+            onClick={async () => {
+              try {
+                const { data: leads } = await supabase
+                  .from("leads")
+                  .select("id, session_id, form_title, user_journey, created_at")
+                  .eq("session_id", id);
+                const { data: watchEntries } = await supabase
+                  .from("watch_time")
+                  .select("watch_time")
+                  .eq("session_id", id);
+                exportSessionAnalyticsToPDF({
+                  session: {
+                    id: String(id),
+                    title: session?.title || "Session",
+                    total_views: (session as any)?.total_views || 0,
+                  },
+                  leads: leads || [],
+                  watchEntries: watchEntries || [],
+                  videos,
+                });
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+            className="mt-4 flex items-center gap-2 cursor-pointer"
+          >
+            Download Analytics PDF
           </Button>
 
           {/* Add this at the bottom of your component, just before the final closing div */}
