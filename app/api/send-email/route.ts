@@ -6,7 +6,9 @@ export async function POST(req: Request) {
     const { email, title, message_html } = await req.json();
 
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "asmtp.mail.hostpoint.ch",
+      port: 465,
+      secure: true,
       auth: {
         user: process.env.NEXT_PUBLIC_NODEMAILER_EMAIL_USER,
         pass: process.env.NEXT_PUBLIC_NODEMAILER_EMAIL_PASS, // Gmail App Password
@@ -14,7 +16,7 @@ export async function POST(req: Request) {
     });
 
     await transporter.sendMail({
-      from: `"Onvitec"`,
+      from: `"Onvitec" <noreply.smartflow.mail@onvitec.ch>`,
       to: email,
       subject: title,
       html: message_html, // ✅ raw HTML works here

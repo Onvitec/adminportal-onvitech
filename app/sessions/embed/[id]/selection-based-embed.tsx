@@ -825,17 +825,21 @@ export function SelectionSessionEmbed({ sessionId }: { sessionId: string }) {
           completedAt: new Date().toLocaleString(),
         });
 
-        const res = await fetch("/api/send-email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: data.email,
-            title: data.title,
-            message_html,
-            user_journey: journeySummary,
-            journey_data: finalJourney,
-          }),
-        });
+        if (data.email) {
+          const res = await fetch("/api/send-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: data.email,
+              title: data.title,
+              message_html,
+              user_journey: journeySummary,
+              journey_data: finalJourney,
+            }),
+          });
+        } else {
+          console.warn("No email configured for this form, skipping email send.");
+        }
 
         setIsFormSubmitting(false);
       } catch (err) {
